@@ -1,0 +1,164 @@
+```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
+#opts_chunk$set(dev="CairoPNG",dpi=300)
+library(ggplot2)
+```
+
+Quantitative Big Imaging  Segmentation
+========================================================
+author: Kevin Mader
+date: 6 March 2014
+
+Course Outline
+========================================================
+- 20th February - Introductory Lecture
+- 27th February - Filtering and Image Enhancement (A. Kaestner)
+- 6th March - **Basic Segmentation, Discrete Binary Structures**
+- 13th March - Advanced Segmentation
+- 20th March - Analyzing Single Objects
+- 27th March -  Analyzing Complex Objects
+- 3rd April -  Spatial Distribution
+- 10th April -  Statistics and Reproducibility
+- 17th April - Dynamic Experiments
+- 8th May - Big Data
+- 15th May - Guest Lecture - Applications in Material Science
+- 22th May - Project Presentations
+
+Literature
+========================================================
+- Jean Claude, Morphometry with R,(Online through ETHZ at http://link.springer.com/book/10.1007%2F978-0-387-77789-4  Buy it at: http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X
+- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press(Available online within domain ethz.ch (or proxy.ethz.ch / public VPN) http://dx.doi.org/10.1201/9780203881095
+
+Motivation:  Why do we do imaging experiments?
+========================================================
+- To get an idea of what is going on
+- To test a hypothesis
+ - Does temperature affect bubble size?
+ - Is this gene important for cell shape and thus mechanosensation in bone?
+ - Does higher canal volume make bones weaker?
+ - Does the granule shape affect battery life expectancy?
+
+
+To test a hypothesis
+========================================================
+- We perform an experiment bone to see how big the cells are inside the tissue
+$$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
+
+### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
+- Filtering and Preprocessing!  
+$$\downarrow$$
+- 20h of computer time later ...
+- 56GB of less noisy data
+- Way too much data, we need to reduce
+
+What did we want in the first place
+========================================================
+### _Single number_:
+* volume fraction,
+* cell count,
+* average cell stretch,
+* cell volume variability
+
+Where does segmentation get us?
+========================================================
+- We convert a decimal value (or something even more complicated like 3 values for RGB images, a spectrum for hyperspectral imaging, or a vector / tensor in a mechanical stress field)
+- Each point reduces to a single value  
+
+### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
+$$\downarrow$$
+### 2560 x 2560 x 2160 x **1 bit** = 1.75GB / sample
+Fiji Introduction
+========================================================
+Watch this video to see how to open data and visualize it in Fiji
+http://people.ee.ethz.ch/~maderk/videos/StartingAndVisualizing.swf
+
+
+Other Datasets
+========================================================
+The data are in a folder called data inside the qbi folder you just created
+* Open with: Fiji/File -> Open ...
+ * pivo5,6,7raw.tif : A beer foam measured using propagation-based phase contrast at -- different times
+ * cortical-056_A/B.tif a section of cortical bone taken from a mouse
+
+The same in Matlab
+========================================================
+* Make a new terminal  (Accessories -> Terminal)
+* Start matlab by typing
+```
+matlab
+```
+* Change to the image directory by typing   
+```
+cd /scratch/qbi/data/
+```
+
+Loading an image
+========================================================
+* Matlab was designed to process matrices and arrays and consequently treats images as matrices
+* Matlab has several built in functions for handling images but offers many more in the Image Processing Toolbox (images). 
+* You can get an overview of the functions available using the follwing command  
+```
+help images
+```
+* You can load the image of cortical bone into a variable called _cort_img_ by using the _imread_ command 
+```
+cort_img=imread('cortical-056_A.tif');
+```
+
+Showing an image
+========================================================
+* You can show the image using the _imagesc_ command  
+```
+imagesc(cort_img);
+```
+* You can create a histogram for the image using the hist command  
+```
+hist(double(cort_img(:));
+```
+
+Loading an image
+========================================================
+* Load the cell image and show it
+```
+cellImage=imread('http://imagej.nih.gov/ij/images/Cell_Colony.jpg');
+cellImage=double(cellImage);
+imagesc(cellImage);
+```
+```{r, echo=FALSE,fig.cap="Cell Colony"}
+cellImage<-jpeg::readJPEG("Cell_Colony.jpg")
+image(cellImage)
+```
+
+Show a histogram
+========================================================
+```
+hist(cellImage(:));
+```
+```{r dev='svg', echo=FALSE}
+hist(cellImage)
+```
+
+Why do we need quantitative metrics?
+========================================================
+* Situationally dependent performance  
+Are the bands uniform in brightness?
+```{r, echo=FALSE,fig.cap="Bands"}
+s.grad<-function(y.val,n=255,steps=5) 
+  data.frame(y=y.val,x=0:n,col=floor(0:n/n*steps)/steps)
+grad.im<-rbind(s.grad(0),s.grad(1),s.grad(2))
+ggplot(grad.im,aes(x=x,y=y,fill=col))+geom_tile()+scale_fill_gradient(low="black",high="white")
+```
+
+Why do we need quantitative metrics?
+========================================================
+```{r, echo=FALSE,fig.cap="Bands"}
+ggplot(grad.im,aes(x=x,y=y,fill=col))+geom_tile()+scale_fill_gradient(low="black",high="white")
+```
+***
+```{r, echo=FALSE,fig.cap="Bands"}
+ggplot(subset(cbind(grad.im,d.col=c(0,diff(grad.im$col))),y=0),aes(x=x,y=col))+
+  geom_line(aes(color="Gray Value"),size=2)+
+  geom_line(aes(y=d.col,color="Derivative"),size=2)+ylim(0,1)+
+  labs(title="Profile Plots",color="Value",y="y")+theme_bw(24)
+```
+
+
