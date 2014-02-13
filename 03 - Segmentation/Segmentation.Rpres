@@ -1,5 +1,5 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
-opts_chunk$set(dev="CairoPNG",dpi=300,cache=T)
+opts_chunk$set(dev="CairoPNG",dpi=300,cache=T,results='hide',warning=F)
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -168,7 +168,7 @@ grad.im<-cbind(grad.im,
                y.vec=with(grad.im,y/sqrt(x^2+y^2)))
 bn.wid<-c(diff(range(grad.im$x.vec))/10,diff(range(grad.im$y.vec))/10)
 ggplot(grad.im,aes(x=x,y=y,fill=col))+
-  geom_tile(alpha=0.5)+
+  #geom_tile(alpha=0.5)+
   geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
@@ -180,7 +180,7 @@ $$ P_{\vec{f}\cdot \vec{i}}(x,y), P_{\vec{f}\cdot \vec{j}}(x,y) $$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 ggplot(grad.im,aes(x=x.vec,y=y.vec))+
   stat_bin2d(binwidth=c(0.25,.25),drop=F)+
-  labs(x="Pfx",y="Pfy")+xlim(-1,1)+ylim(-1,1)+
+  labs(x="Pfx",y="Pfy",fill="Frequency")+xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
 
@@ -190,12 +190,12 @@ Applying a threshold
 A threshold is now more difficult to apply since there are now two distinct variables to deal with. The standard approach can be applied to both
 $$ I(x,y) = 
 \begin{cases}
-1, & f(x,y)\cdot\vec{i} \geq0.5 \\
-& \text{ and } f(x,y)\cdot\vec{j} \geq0.5 \\
+1, & \vec{f}_x(x,y) \geq0.25 \text{ and}\\
+& \vec{f}_y(x,y) \geq0.25 \\
 0, & \text{otherwise}
 \end{cases}$$
 ```{r, echo=FALSE,fig.cap=""}
-g.with.thresh<-cbind(grad.im,in.thresh=with(grad.im,x.vec>0.5 & y.vec>0.5))
+g.with.thresh<-cbind(grad.im,in.thresh=with(grad.im,x.vec>0.25 & y.vec>0.25))
 ggplot(g.with.thresh,
        aes(x=x,y=y,fill=in.thresh,color=in.thresh))+
   geom_tile(alpha=0.5,aes(fill=in.thresh))+
@@ -206,14 +206,63 @@ ggplot(g.with.thresh,
 ***
 This can also be shown on the joint probability distribution as 
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+bn.wid<-c(0.25,.25)
+keep.bins<-expand.grid(x.vec=seq(-1,1,bn.wid[1]/10),y.vec=seq(-1,1,bn.wid[2]/10))
+keep.bins<-cbind(keep.bins,in.thresh=with(keep.bins,x.vec>0.25 & y.vec>0.25))
 ggplot(g.with.thresh,aes(x=x.vec,y=y.vec))+
-  stat_bin2d(binwidth=c(0.25,.25),drop=F)+
-  stat_bin2d(data=subset(g.with.thresh,in.thresh),binwidth=c(0.25,.25),drop=F,alpha=0.5,color="red")+
-  labs(x="Pfx",y="Pfy")+xlim(-1,1)+ylim(-1,1)+
+  stat_bin2d(binwidth=bn.wid,drop=F)+
+  geom_tile(data=subset(keep.bins,in.thresh),fill="red",alpha=0.4)+
+  labs(x="Pfx",y="Pfy",fill="Threshold")+xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
 
-
+Applying a threshold
+========================================================
+Given the presence of two variables; however, more advanced approaches can also be investigated. For example we can keep only components parallel to the x axis by using the dot product.
+$$ I(x,y) = 
+\begin{cases}
+1, & |\vec{f}(x,y)\cdot \vec{i}| = 1 \\
+0, & \text{otherwise}
+\end{cases}$$
+```{r, echo=FALSE,fig.cap=""}
+i.vec<-c(1,0)
+j.vec<-c(0,1)
+g.cmp.thresh<-cbind(grad.im,in.thresh=with(grad.im,
+                                            abs(x.vec*i.vec[1]+y.vec*i.vec[2])==1
+                                            ))
+ggplot(g.cmp.thresh,
+       aes(x=x,y=y,fill=in.thresh,color=in.thresh))+
+  geom_tile(alpha=0.5,aes(fill=in.thresh))+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
+  labs(color="In Threshold")+guides(fill=FALSE)+
+  theme_bw(20)
+```
+Applying a threshold
+========================================================
+We can tune the angular acceptance by using the fact $$\vec{x}\cdot\vec{y}=|\vec{x}| |\vec{y}| \cos(\theta_{x\rightarrow y}) $$
+$$ I(x,y) = 
+\begin{cases}
+1, & \cos^{-1}(\vec{f}(x,y)\cdot \vec{i}) \leq \theta^{\circ} \\
+0, & \text{otherwise}
+\end{cases}$$
+***
+```{r, echo=FALSE,fig.cap="",results='hide'}
+i.vec<-c(1,0)
+j.vec<-c(0,1)
+ang.accept<-function(c.ang) g.cmp.thresh<-cbind(grad.im,
+                                                ang.val=c.ang,
+                                                in.thresh=with(grad.im,
+                                            acos(x.vec*i.vec[1]+y.vec*i.vec[2])<=c.ang/180*pi
+                                            ))
+ang.vals<-seq(5,180,length.out=9)
+ggplot(ldply(ang.vals,ang.accept),
+       aes(x=x,y=y,fill=in.thresh,color=in.thresh))+
+  geom_tile(alpha=0.5,aes(fill=in.thresh))+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
+  facet_wrap(~ang.val)+
+  labs(color="In Threshold")+guides(fill=FALSE)
+  theme_bw(20)
+```
 
 
 
