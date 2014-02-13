@@ -1,15 +1,17 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
-opts_chunk$set(dev="CairoPNG",dpi=300)
+opts_chunk$set(dev="CairoPNG",dpi=300,cache=T)
 library(ggplot2)
 ```
 
-Quantitative Big Imaging  Segmentation
+Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
 date: 6 March 2014
 width: 1440
 height: 900
 transition: rotate
+## Basic Segmentation and Discrete Binary Structures
+
 
 Course Outline
 ========================================================
@@ -75,6 +77,8 @@ $$\downarrow$$
 
 Applying a threshold to an image
 ========================================================
+Start out with a simple image
+$$ I(x,y) = f(x,y) $$
 ```{r, echo=FALSE,fig.cap=""}
 grad.im<-expand.grid(x=c(1:5),y=c(1:5))
 grad.im<-cbind(grad.im,col=runif(nrow(grad.im)))
@@ -82,20 +86,77 @@ ggplot(grad.im,aes(x=x,y=y,fill=col))+
   geom_tile()+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
-  theme_bw(25)
+  theme_bw(20)
+```
+***
+The intensity can be described with a probability density function 
+$$ P_f(x,y) $$
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=0.2)+
+  labs(x="Intensity")+
+  theme_bw(20)
+```
+
+Applying a threshold to an image
+========================================================
+A threshold for scalar images is a very simple operation
+$$ I(x,y) = 
+\begin{cases}
+1, & f(x,y)\geq0.5 \\
+0, & f(x,y)<0.5
+\end{cases}$$
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+thresh.val<-0.5
+ggplot(grad.im,aes(x=x,y=y))+
+  geom_tile(aes(fill=col))+
+  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  scale_fill_gradient(low="black",high="white")+
+  labs(fill="Intensity")+
+  theme_bw(20)
 ```
 ***
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
+  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
+  theme_bw(20)
+```
+Too high a threshold
+========================================================
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+thresh.val<-0.75
 ggplot(grad.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
-  geom_tile(data=subset(grad.im,col>0.5),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(grad.im,col<0.5),fill="blue",color="black",alpha=0.3)+
+  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
-  theme_bw(25)
+  theme_bw(20)
 ```
 ***
-Hello
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
+  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
+  theme_bw(20)
+```
+Too low a threshold
+========================================================
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+thresh.val<-0.25
+ggplot(grad.im,aes(x=x,y=y))+
+  geom_tile(aes(fill=col))+
+  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  scale_fill_gradient(low="black",high="white")+
+  labs(fill="Intensity")+
+  theme_bw(20)
+```
+***
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
+  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
+  theme_bw(20)
+```
 
 
 
