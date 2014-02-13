@@ -1,5 +1,5 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
-opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F)
+opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center')
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -12,7 +12,6 @@ date: 6 March 2014
 width: 1440
 height: 900
 transition: rotate
-css: ../template.css
 
 ## Basic Segmentation and Discrete Binary Structures
 
@@ -42,6 +41,8 @@ Literature / Useful References
 
 Motivation:  Why do we do imaging experiments?
 ========================================================
+incremental: true
+
 - To get an idea of what is going on
 - To test a hypothesis
  - Does temperature affect bubble size?
@@ -64,6 +65,7 @@ $$\downarrow$$
 
 What did we want in the first place
 ========================================================
+type: sub-section
 ### _Single number_:
 * volume fraction,
 * cell count,
@@ -72,15 +74,14 @@ What did we want in the first place
 
 Where does segmentation get us?
 ========================================================
-type: section
 incremental: true
 
 - We convert a decimal value (or something even more complicated like 3 values for RGB images, a spectrum for hyperspectral imaging, or a vector / tensor in a mechanical stress field)
 - Each point reduces to a single value  
 
-### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
-$$\downarrow$$
-### 2560 x 2560 x 2160 x **1 bit** = 1.75GB / sample
+- __2560 x 2560 x 2160 x 32 bit = 56GB / sample__
+- $$\downarrow$$
+- 2560 x 2560 x 2160 x **1 bit** = 1.75GB / sample
 
 Applying a threshold to an image
 ========================================================
@@ -159,21 +160,24 @@ Other Image Types
 While scalar images are easiest, it is possible for any type of image
 $$ I(x,y) = \vec{f}(x,y) $$
 ```{r, echo=FALSE,fig.cap=""}
-nx<-5
-ny<-5
-grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+nx<-7
+ny<-7
+n.pi<-4
+grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,y=c(-ny:ny)/ny*n.pi*pi)
 
 grad.im<-cbind(grad.im,
                col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
                  0.5*runif(nrow(grad.im)),
-               x.vec=with(grad.im,x/sqrt(x^2+y^2)),
-               y.vec=with(grad.im,y/sqrt(x^2+y^2)))
+               x.vec=with(grad.im,y),
+               y.vec=with(grad.im,x))
+# normalize vector
+grad.im[,c("x.vec","y.vec")]<-with(grad.im,cbind(x.vec/(sqrt(x.vec^2+y.vec^2)),
+                                         y.vec/(sqrt(x.vec^2+y.vec^2))))
 bn.wid<-c(diff(range(grad.im$x.vec))/10,diff(range(grad.im$y.vec))/10)
 ggplot(grad.im,aes(x=x,y=y,fill=col))+
   #geom_tile(alpha=0.5)+
-  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.15,"cm")),size=3)+
   scale_fill_gradient(low="black",high="white")+
-  labs(fill="Intensity")+
   theme_bw(20)
 ```
 ***
@@ -182,7 +186,8 @@ $$ P_{\vec{f}\cdot \vec{i}}(x,y), P_{\vec{f}\cdot \vec{j}}(x,y) $$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 ggplot(grad.im,aes(x=x.vec,y=y.vec))+
   stat_bin2d(binwidth=c(0.25,.25),drop=F)+
-  labs(x="Pfx",y="Pfy",fill="Frequency")+xlim(-1,1)+ylim(-1,1)+
+  labs(x="Pfx",y="Pfy",fill="Frequency")+
+  xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
 
@@ -213,7 +218,7 @@ keep.bins<-expand.grid(x.vec=seq(-1,1,bn.wid[1]/10),y.vec=seq(-1,1,bn.wid[2]/10)
 keep.bins<-cbind(keep.bins,in.thresh=with(keep.bins,x.vec>0.25 & y.vec>0.25))
 ggplot(g.with.thresh,aes(x=x.vec,y=y.vec))+
   stat_bin2d(binwidth=bn.wid,drop=F)+
-  geom_tile(data=subset(keep.bins,in.thresh),fill="red",alpha=0.4)+
+  geom_tile(data=subset(g.with.thresh,in.thresh),fill="red",alpha=0.4)+
   labs(x="Pfx",y="Pfy",fill="Threshold")+xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
@@ -226,7 +231,7 @@ $$ I(x,y) =
 1, & |\vec{f}(x,y)\cdot \vec{i}| = 1 \\
 0, & \text{otherwise}
 \end{cases}$$
-```{r, echo=FALSE,fig.cap=""}
+```{r, echo=FALSE,fig.cap="",fig.width=7,fig.height=4}
 i.vec<-c(1,0)
 j.vec<-c(0,1)
 g.cmp.thresh<-cbind(grad.im,in.thresh=with(grad.im,
@@ -239,7 +244,7 @@ ggplot(g.cmp.thresh,
   labs(color="In Threshold")+guides(fill=FALSE)+
   theme_bw(20)
 ```
-Applying a threshold
+Looking at Orientations
 ========================================================
 We can tune the angular acceptance by using the fact $$\vec{x}\cdot\vec{y}=|\vec{x}| |\vec{y}| \cos(\theta_{x\rightarrow y}) $$
 $$ I(x,y) = 

@@ -5,13 +5,6 @@
     color: black;
     position: relative;
     top: 4%;}
-    
-.reveal .present {
-   background: white;
-   background-image: url(http://jhollist.github.io/files/images/TopBar.jpg);
-   background-repeat: no-repeat;
-   background-position: 0% 9.35%;
-   background-size: 100%;}
 
 .reveal h3{
    position: relative;
