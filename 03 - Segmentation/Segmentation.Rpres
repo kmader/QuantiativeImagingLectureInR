@@ -1,5 +1,5 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
-opts_chunk$set(dev="CairoPNG",dpi=300,cache=T,results='hide',warning=F)
+opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F)
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -12,6 +12,7 @@ date: 6 March 2014
 width: 1440
 height: 900
 transition: rotate
+css: ../template.css
 
 ## Basic Segmentation and Discrete Binary Structures
 
@@ -71,7 +72,7 @@ What did we want in the first place
 
 Where does segmentation get us?
 ========================================================
-type: sub-section
+type: section
 incremental: true
 
 - We convert a decimal value (or something even more complicated like 3 values for RGB images, a spectrum for hyperspectral imaging, or a vector / tensor in a mechanical stress field)
@@ -83,6 +84,7 @@ $$\downarrow$$
 
 Applying a threshold to an image
 ========================================================
+type: sub-section
 Start out with a simple image of a cross with added noise
 $$ I(x,y) = f(x,y) $$
 ```{r, echo=FALSE,fig.cap=""}
@@ -102,9 +104,9 @@ ggplot(grad.im,aes(x=x,y=y,fill=col))+
 ***
 The intensity can be described with a probability density function 
 $$ P_f(x,y) $$
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, echo=FALSE,fig.cap="Probability density function"}
 ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
-  labs(x="Intensity")+
+  labs(x="Intensity",title="Probability Density Function")+
   theme_bw(20)
 ```
 
