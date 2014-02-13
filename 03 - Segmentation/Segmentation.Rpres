@@ -1,6 +1,8 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
 opts_chunk$set(dev="CairoPNG",dpi=300,cache=T)
 library(ggplot2)
+library(plyr)
+library(grid) # contains the arrow function
 ```
 
 Quantitative Big Imaging  
@@ -10,6 +12,7 @@ date: 6 March 2014
 width: 1440
 height: 900
 transition: rotate
+
 ## Basic Segmentation and Discrete Binary Structures
 
 
@@ -28,10 +31,13 @@ Course Outline
 - 15th May - Guest Lecture - Applications in Material Science
 - 22th May - Project Presentations
 
-Literature
+Literature / Useful References
 ========================================================
-- Jean Claude, Morphometry with R,(Online through ETHZ at http://link.springer.com/book/10.1007%2F978-0-387-77789-4  Buy it at: http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X
-- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press(Available online within domain ethz.ch (or proxy.ethz.ch / public VPN) http://dx.doi.org/10.1201/9780203881095
+- Jean Claude, Morphometry with R
+ - Online through ETHZ at http://link.springer.com/book/10.1007%2F978-0-387-77789-4
+ - Buy it at: http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X
+- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
+ - Available online within domain ethz.ch (or proxy.ethz.ch / public VPN) http://dx.doi.org/10.1201/9780203881095
 
 Motivation:  Why do we do imaging experiments?
 ========================================================
@@ -77,11 +83,16 @@ $$\downarrow$$
 
 Applying a threshold to an image
 ========================================================
-Start out with a simple image
+Start out with a simple image of a cross with added noise
 $$ I(x,y) = f(x,y) $$
 ```{r, echo=FALSE,fig.cap=""}
-grad.im<-expand.grid(x=c(1:5),y=c(1:5))
-grad.im<-cbind(grad.im,col=runif(nrow(grad.im)))
+nx<-5
+ny<-5
+grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+grad.im<-cbind(grad.im,
+               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(grad.im)))
+bn.wid<-diff(range(grad.im$col))/10
 ggplot(grad.im,aes(x=x,y=y,fill=col))+
   geom_tile()+
   scale_fill_gradient(low="black",high="white")+
@@ -92,7 +103,7 @@ ggplot(grad.im,aes(x=x,y=y,fill=col))+
 The intensity can be described with a probability density function 
 $$ P_f(x,y) $$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=0.2)+
+ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
   labs(x="Intensity")+
   theme_bw(20)
 ```
@@ -106,24 +117,6 @@ $$ I(x,y) =
 0, & f(x,y)<0.5
 \end{cases}$$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-thresh.val<-0.5
-ggplot(grad.im,aes(x=x,y=y))+
-  geom_tile(aes(fill=col))+
-  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
-  scale_fill_gradient(low="black",high="white")+
-  labs(fill="Intensity")+
-  theme_bw(20)
-```
-***
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
-  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
-  theme_bw(20)
-```
-Too high a threshold
-========================================================
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
 ggplot(grad.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
@@ -135,28 +128,91 @@ ggplot(grad.im,aes(x=x,y=y))+
 ```
 ***
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
+ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+
+  geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
   theme_bw(20)
 ```
-Too low a threshold
+Various Thresholds
 ========================================================
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-thresh.val<-0.25
-ggplot(grad.im,aes(x=x,y=y))+
-  geom_tile(aes(fill=col))+
-  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+thresh.vals<-c(1:9)/9
+grad.im.th<-ldply(thresh.vals,function(thresh.val) 
+  cbind(grad.im,thresh=thresh.val,in.thresh=(grad.im$col>=thresh.val)))
+ggplot(grad.im.th,aes(x=x,y=y))+
+  geom_tile(aes(fill=in.thresh),color="black",alpha=0.75)+
+  labs(fill="Above Threshold")+facet_wrap(~thresh)+
+  theme_bw(20)
+```
+***
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(grad.im.th,aes(x=col))+
+  geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
+  labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
+  theme_bw(20)
+```
+
+Other Image Types
+========================================================
+While scalar images are easiest, it is possible for any type of image
+$$ I(x,y) = \vec{f}(x,y) $$
+```{r, echo=FALSE,fig.cap=""}
+nx<-5
+ny<-5
+grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+
+grad.im<-cbind(grad.im,
+               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(grad.im)),
+               x.vec=with(grad.im,x/sqrt(x^2+y^2)),
+               y.vec=with(grad.im,y/sqrt(x^2+y^2)))
+bn.wid<-c(diff(range(grad.im$x.vec))/10,diff(range(grad.im$y.vec))/10)
+ggplot(grad.im,aes(x=x,y=y,fill=col))+
+  geom_tile(alpha=0.5)+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
   theme_bw(20)
 ```
 ***
+The intensity can be described with two seperate or a single joint probability density function
+$$ P_{\vec{f}\cdot \vec{i}}(x,y), P_{\vec{f}\cdot \vec{j}}(x,y) $$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+geom_histogram(binwidth=0.2,aes(fill=in.thresh))+
-  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
+ggplot(grad.im,aes(x=x.vec,y=y.vec))+
+  stat_bin2d(binwidth=c(0.25,.25),drop=F)+
+  labs(x="Pfx",y="Pfy")+xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
+
+
+Applying a threshold
+========================================================
+A threshold is now more difficult to apply since there are now two distinct variables to deal with. The standard approach can be applied to both
+$$ I(x,y) = 
+\begin{cases}
+1, & f(x,y)\cdot\vec{i} \geq0.5 \\
+& \text{ and } f(x,y)\cdot\vec{j} \geq0.5 \\
+0, & \text{otherwise}
+\end{cases}$$
+```{r, echo=FALSE,fig.cap=""}
+g.with.thresh<-cbind(grad.im,in.thresh=with(grad.im,x.vec>0.5 & y.vec>0.5))
+ggplot(g.with.thresh,
+       aes(x=x,y=y,fill=in.thresh,color=in.thresh))+
+  geom_tile(alpha=0.5,aes(fill=in.thresh))+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.2,"cm")),size=3)+
+  labs(color="In Threshold")+guides(fill=FALSE)+
+  theme_bw(20)
+```
+***
+This can also be shown on the joint probability distribution as 
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+ggplot(g.with.thresh,aes(x=x.vec,y=y.vec))+
+  stat_bin2d(binwidth=c(0.25,.25),drop=F)+
+  stat_bin2d(data=subset(g.with.thresh,in.thresh),binwidth=c(0.25,.25),drop=F,alpha=0.5,color="red")+
+  labs(x="Pfx",y="Pfy")+xlim(-1,1)+ylim(-1,1)+
+  theme_bw(20)
+```
+
 
 
 
