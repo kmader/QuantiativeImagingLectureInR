@@ -1,4 +1,5 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
+library(knitr)
 opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center')
 library(ggplot2)
 library(plyr)
@@ -133,7 +134,7 @@ ggplot(grad.im,aes(x=x,y=y))+
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
-  labs(x="Intensity")+scale_fill_manual(values=c("blue","red"))+
+  labs(x="Intensity",color="In Threshold")+scale_fill_manual(values=c("blue","red"))+
   theme_bw(20)
 ```
 Various Thresholds
@@ -153,6 +154,41 @@ ggplot(grad.im.th,aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
   theme_bw(20)
+```
+Segmenting Cells
+========================================================
+```{r, echo=FALSE,fig.cap="Cell Colony"}
+im.to.df<-function(in.img) {
+    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+    out.im$val<-as.vector(in.img)
+    out.im
+}
+cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
+ggplot(cellImage,aes(x=x,y=y,fill=val))+
+  geom_tile()+guides(fill=F)+theme_bw(20)
+```
+***
+```{r, echo=FALSE}
+ggplot(cellImage,aes(x=val))+geom_histogram()+theme_bw(20)
+```
+Different Threshold Values
+========================================================
+```{r, echo=FALSE,fig.cap="Cell Colony"}
+th.vals<-seq(0.4,0.85,length.out=3)
+thlabel<-function(x,...) switch(x,"Too low","Good","Too high")
+im.vals<-ldply(1:length(th.vals),function(th.val)
+  cbind(cellImage,
+        in.thresh=cellImage$val<th.vals[th.val],
+        th.val=th.vals[th.val],
+        th.label=thlabel(th.val)))
+ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
+  geom_raster()+guides(fill=F)+theme_bw(20)+facet_grid(th.label~.)
+```
+***
+```{r, echo=FALSE}
+ggplot(im.vals,aes(x=val))+geom_histogram(aes(fill=in.thresh))+
+  scale_y_sqrt()+
+  theme_bw(20)+facet_grid(th.label~.)+labs(x="Intensity",y="Count")
 ```
 
 Other Image Types
@@ -272,7 +308,57 @@ ggplot(ldply(ang.vals,ang.accept),
 ```
 
 
+Other Image Types
+========================================================
+Going beyond vector the possibilities for images are limitless. The following shows a tensor plot with the tensor represented as an ellipse. 
+$$ I(x,y) = \hat{f}(x,y) $$
+```{r, echo=FALSE,fig.cap=""}
+source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
+nx<-3
+ny<-3
+n.pi<-4
+grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,
+                     y=c(-ny:ny)/ny*n.pi*pi)
 
+grad.im<-cbind(grad.im,
+               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(grad.im)),
+              a=with(grad.im,sqrt(1/(abs(x)+0.5))),
+               b=with(grad.im,sqrt(x)),
+              th=0.5*runif(nrow(grad.im)),
+              aiso=1,count=1)
+
+
+deform.ellipse.draw<-function(c.box) {
+  create.ellipse.points(x.off=c.box$x[1],
+                        y.off=c.box$y[1],
+                        a=c.box$a[1],
+                        b=c.box$b[1],
+                        th.off=c.box$th[1],
+                        col=c.box$col[1])                    
+}
+
+# normalize vector
+tens.im<-ddply(grad.im,.(x,y),deform.ellipse.draw)
+
+ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
+  geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
+  theme_bw(20)
+```
+***
+```{r, echo=FALSE,fig.cap="Variable distributions",fig.height=3}
+ggplot(grad.im,aes(color="black"))+
+  geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
+  geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
+  geom_histogram(aes(x=th,fill="Orientation"),alpha=0.7)+
+  geom_histogram(aes(x=col,fill="Color"),alpha=0.7)+
+  guides(color=F)+labs(fill="Variable")
+  theme_bw(15)
+```
+Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
+```{r, echo=FALSE,fig.cap="With Threshold Overlay",fig.height=4}
+plot(grad.im[,c("a","b","th","col")])
+```
 
 
 
