@@ -1,6 +1,6 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
 library(knitr)
-opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center')
+opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F)
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -267,7 +267,7 @@ $$ I(x,y) =
 1, & |\vec{f}(x,y)\cdot \vec{i}| = 1 \\
 0, & \text{otherwise}
 \end{cases}$$
-```{r, echo=FALSE,fig.cap="",fig.width=7,fig.height=4}
+```{r ,fig.cap="",fig.width=7,fig.height=4}
 i.vec<-c(1,0)
 j.vec<-c(0,1)
 g.cmp.thresh<-cbind(grad.im,in.thresh=with(grad.im,
@@ -360,7 +360,56 @@ Once the variable count is above 2, individual density functions and a series of
 plot(grad.im[,c("a","b","th","col")])
 ```
 
+Multiple Phases: Segmenting Shale
+========================================================
+% Shale provided from Kanitpanyacharoen, W. (2012). Synchrotron X-ray Applications Toward an Understanding of Elastic Anisotropy.
+Here we have a shale sample with three different phases inside (clay, rock, and air).
+```{r, echo=FALSE,fig.cap="Shale Sample"}
+im.to.df<-function(in.img) {
+    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+    out.im$val<-as.vector(in.img)
+    out.im
+}
+shaleImage<-im.to.df(jpeg::readJPEG("ext-figures/ShaleSample.jpg"))
+ggplot(shaleImage,aes(x=x,y=y,fill=val))+
+  geom_tile()+
+  labs(fill="Absorption")+theme_bw(20)
+```
+***
+While there are 3 phases clearly visible in the image, the histogram is less telling (even after being re-scaled).
+```{r, echo=FALSE}
+ggplot(shaleImage,aes(x=val))+geom_histogram()+
+  scale_y_sqrt()+
+  labs(x="Absorption Intensity",y="Counts")+theme_bw(20)
+```
 
-
+Multiple Segmentations
+========================================================
+For this exercise we choose arbitrarily 3 ranges for the different phases and perform visual inspection
+```{r, echo=FALSE}
+void.max<-0.2
+clay.max<-0.5
+thresh.fun<-function(x.val) {
+  if(x.val<void.max) "Void"
+  else if (x.val>void.max & x.val<clay.max) "Clay"
+  else "Rock"
+}
+shale.vals<-cbind(shaleImage,th.label=sapply(shaleImage$val,thresh.fun))
+ggplot(shale.vals,aes(x=val))+geom_histogram(aes(fill=th.label))+
+  scale_y_sqrt()+
+  theme_bw(20)+labs(x="Intensity",y="Count")
+```
+***
+The relation can explicitly be written out as
+$$ I(x) = 
+\begin{cases}
+\text{Void}, & 0 \leq x \leq 0.2  \\
+\text{Clay}, & 0.2 < x \leq 0.5 \\
+\text{Rock}, & 0.5 < x
+\end{cases}$$
+```{r, echo=FALSE,fig.cap="Segmented Images"}
+ggplot(shale.vals,aes(x=x,y=y,fill=th.label,alpha=1-val))+coord_fixed(ratio=1)+
+  geom_raster()+guides(fill=F,alpha=F)+theme_bw(20)+facet_wrap(~th.label)
+```
 
 
