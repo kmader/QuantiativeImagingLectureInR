@@ -1,6 +1,6 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
 library(knitr)
-opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F)
+opts_chunk$set(dev="CairoPNG",dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F,fig.height=4)
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -73,12 +73,45 @@ type: sub-section
 * average cell stretch,
 * cell volume variability
 
+Why do we perform segmentation?
+========================================================
+- In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
+- Occam's Razor is very important here : The simplest solution is usually the right one
+ - Non-local diffusion-smoothed medians must perform a lot better than Gaussian to justify using it
+- For filtering this was a noise process which was added to otherwise clean imaging data
+
+Why do we perform segmentation?
+========================================================
+- For segmentation this model is: 
+ - there are 2 (or more) distinct components that make up the image
+ - these components are distinguishable by their values (or vectors, colors, tensors, ...)
+```{r, echo=FALSE,fig.cap="",fig.height=4}
+nx<-4
+ny<-4
+grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+phase.im<-runif(nrow(grad.im))
+grad.im<-cbind(grad.im,
+               col=1*(phase.im>0.66)+
+                 2*(phase.im<0.33)+
+                 0.4*runif(nrow(grad.im),min=-1,max=1))
+bn.wid<-diff(range(grad.im$col))/10
+ggplot(grad.im,aes(x=col))+
+  geom_density(aes(fill=cut_interval(col,3)))+
+  geom_segment(data=data.frame(
+    x=c(0.5,1.5),y=c(0),
+    xend=c(0.5,1.5),yend=c(6)
+    ),aes(x=x,y=y,xend=xend,yend=yend),fill="red",size=3,alpha=0.5)+
+  labs(x="Gray Value",y="Frequency",title="Probability Density Function",fill="Groups")+
+  theme_bw(20)
+```
+
+ 
 Where does segmentation get us?
 ========================================================
 incremental: true
 
 - We convert a decimal value (or something even more complicated like 3 values for RGB images, a spectrum for hyperspectral imaging, or a vector / tensor in a mechanical stress field)
-- Each point reduces to a single value  
+- Each point is mapped to single value (loss of information)
 
 - __2560 x 2560 x 2160 x 32 bit = 56GB / sample__
 - $$\downarrow$$
@@ -114,12 +147,7 @@ ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
 
 Applying a threshold to an image
 ========================================================
-A threshold for scalar images is a very simple operation
-$$ I(x,y) = 
-\begin{cases}
-1, & f(x,y)\geq0.5 \\
-0, & f(x,y)<0.5
-\end{cases}$$
+By examining the image and probability distribution function, we can _deduce_ that the underyling model is a whitish phase that makes up the cross and the darkish background
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
 ggplot(grad.im,aes(x=x,y=y))+
@@ -131,6 +159,12 @@ ggplot(grad.im,aes(x=x,y=y))+
   theme_bw(20)
 ```
 ***
+Applying the threshold is a very simple operation
+$$ I(x,y) = 
+\begin{cases}
+1, & f(x,y)\geq0.5 \\
+0, & f(x,y)<0.5
+\end{cases}$$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
