@@ -78,7 +78,7 @@ Why do we perform segmentation?
 - In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
 - Occam's Razor is very important here : The simplest solution is usually the right one
  - Non-local diffusion-smoothed medians must perform a lot better than Gaussian to justify using it
-- For filtering this was a noise process which was added to otherwise clean imaging data
+- When we did filtering, this was a noise process which was added to otherwise clean imaging data
 
 Why do we perform segmentation?
 ========================================================
@@ -111,7 +111,7 @@ Where does segmentation get us?
 incremental: true
 
 - We convert a decimal value (or something even more complicated like 3 values for RGB images, a spectrum for hyperspectral imaging, or a vector / tensor in a mechanical stress field)
-- Each point is mapped to single value (loss of information)
+- to a single, discrete value (usually true or false, but for images with phases it would be each phase, e.g. bone, air, cellular tissue)
 
 - __2560 x 2560 x 2160 x 32 bit = 56GB / sample__
 - $$\downarrow$$
@@ -456,7 +456,6 @@ ggplot(shale.vals,aes(x=x,y=y,fill=th.label,alpha=1-val))+coord_fixed(ratio=1)+
   geom_raster()+guides(fill=F,alpha=F)+theme_bw(20)+facet_wrap(~th.label)
 ```
 
-
 Implementation
 ========================================================
 The implementations of basic thresholds and segmentations is very easy since it is a unary operation of a single image
@@ -585,3 +584,13 @@ ggplot(morph.3d,aes(x=x,y=y))+
   labs(fill="Pixel Type")+
   theme_bw(14)
 ```
+
+What do we do with it?
+========================================================
+A neighborhood or representative volume is the basis for a large number of image processing operations:
+- filtering
+- morphological operations
+- component labeling
+- distance maps
+- image correlation based tracking methods
+
