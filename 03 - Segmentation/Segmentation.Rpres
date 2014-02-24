@@ -1,6 +1,6 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
 library(knitr)
-opts_chunk$set(dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F,fig.height=4) #dev="CairoPNG"
+opts_chunk$set(dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F,fig.height=5) #dev="CairoPNG"
 library(ggplot2)
 library(plyr)
 library(grid) # contains the arrow function
@@ -125,12 +125,12 @@ $$ I(x,y) = f(x,y) $$
 ```{r, echo=FALSE,fig.cap=""}
 nx<-5
 ny<-5
-grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
-grad.im<-cbind(grad.im,
-               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
-                 0.5*runif(nrow(grad.im)))
-bn.wid<-diff(range(grad.im$col))/10
-ggplot(grad.im,aes(x=x,y=y,fill=col))+
+cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+cross.im<-cbind(cross.im,
+               col=1.5*with(cross.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(cross.im)))
+bn.wid<-diff(range(cross.im$col))/10
+ggplot(cross.im,aes(x=x,y=y,fill=col))+
   geom_tile()+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
@@ -140,7 +140,7 @@ ggplot(grad.im,aes(x=x,y=y,fill=col))+
 The intensity can be described with a probability density function 
 $$ P_f(x,y) $$
 ```{r, echo=FALSE,fig.cap="Probability density function"}
-ggplot(grad.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
+ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
   labs(x="Intensity",title="Probability Density Function")+
   theme_bw(20)
 ```
@@ -150,10 +150,10 @@ Applying a threshold to an image
 By examining the image and probability distribution function, we can _deduce_ that the underyling model is a whitish phase that makes up the cross and the darkish background
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
-ggplot(grad.im,aes(x=x,y=y))+
+ggplot(cross.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
-  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
   theme_bw(20)
@@ -166,7 +166,7 @@ $$ I(x,y) =
 0, & f(x,y)<0.5
 \end{cases}$$
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
-ggplot(cbind(grad.im,in.thresh=grad.im$col>=thresh.val),aes(x=col))+
+ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",color="In Threshold")+scale_fill_manual(values=c("blue","red"))+
   theme_bw(20)
@@ -353,7 +353,7 @@ Other Image Types
 ========================================================
 Going beyond vector the possibilities for images are limitless. The following shows a tensor plot with the tensor represented as an ellipse. 
 $$ I(x,y) = \hat{f}(x,y) $$
-```{r, echo=FALSE,fig.cap=""}
+```{r, echo=FALSE,fig.cap="",fig.height=3}
 source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
 nx<-3
 ny<-3
@@ -364,8 +364,8 @@ grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,
 grad.im<-cbind(grad.im,
                col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
                  0.5*runif(nrow(grad.im)),
-              a=with(grad.im,sqrt(1/(abs(x)+0.5))),
-               b=with(grad.im,sqrt(x)),
+              a=with(grad.im,sqrt(2/(abs(x)+0.5))),
+               b=with(grad.im,0.5*sqrt(abs(x)+1)),
               th=0.5*runif(nrow(grad.im)),
               aiso=1,count=1)
 
@@ -386,17 +386,18 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
   geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
   theme_bw(20)
 ```
+Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
 ***
-```{r, echo=FALSE,fig.cap="Variable distributions",fig.height=3}
-ggplot(grad.im,aes(color="black"))+
+
+```{r, echo=FALSE,fig.cap="Variable distributions",fig.height=4}
+ggplot(grad.im)+
   geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
   geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
   geom_histogram(aes(x=th,fill="Orientation"),alpha=0.7)+
   geom_histogram(aes(x=col,fill="Color"),alpha=0.7)+
-  guides(color=F)+labs(fill="Variable")
+  guides(color=F)+labs(fill="Variable")+
   theme_bw(15)
 ```
-Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay",fig.height=4}
 plot(grad.im[,c("a","b","th","col")])
 ```
@@ -456,3 +457,25 @@ ggplot(shale.vals,aes(x=x,y=y,fill=th.label,alpha=1-val))+coord_fixed(ratio=1)+
 ```
 
 
+Implementation
+========================================================
+The implementations of basic thresholds and segmentations is very easy since it is a unary operation of a single image
+$$ f(I(\vec{x})) $$
+In mathematical terms this is called a map and since it does not require information from neighboring voxels or images it can be calculated for each point independently (_parallel_). Filters on the other hand almost always depend on neighboring voxels and thus the calculations are not as easy to seperate.
+
+Morphology
+========================================================
+Returning to the original image of a cross
+```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+thresh.val<-0.75
+ggplot(grad.im,aes(x=x,y=y))+
+  geom_tile(aes(fill=col))+
+  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  scale_fill_gradient(low="black",high="white")+
+  labs(fill="Intensity")+
+  theme_bw(20)
+```
+We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
+***
+Like filtering the assumption behind morphological operations is that nearby voxels in __real__ images are related / strongly correlated with one another  and that noise and imaging artifacts less so. Therefore these imaging problems can be alleviated by adjusting the balance between local and neighborhood values.
