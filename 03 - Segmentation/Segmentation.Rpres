@@ -466,7 +466,7 @@ In mathematical terms this is called a map and since it does not require informa
 Morphology
 ========================================================
 Returning to the original image of a cross
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, echo=FALSE,fig.cap="Cross With Threshold Overlay"}
 thresh.val<-0.75
 ggplot(grad.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
@@ -478,4 +478,110 @@ ggplot(grad.im,aes(x=x,y=y))+
 ```
 We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
 ***
-Like filtering the assumption behind morphological operations is that nearby voxels in __real__ images are related / strongly correlated with one another  and that noise and imaging artifacts less so. Therefore these imaging problems can be alleviated by adjusting the balance between local and neighborhood values.
+Like filtering the assumption behind morphological operations are
+- nearby voxels in __real__ images are related / strongly correlated with one another 
+- noise and imaging artifacts are less spatially correlated. 
+
+Therefore these imaging problems can be alleviated by adjusting the balance between local and neighborhood values.
+
+Morphology: Neighbors in 2D
+========================================================
+For standard morphological operations there are two definitions of neighborhood. The 4 and 8 adjacent neighbors shown below. Given the blue pixel in the center the red are the 4-adjacent and the red and green make up the 8 adjacent. 
+```{r, echo=FALSE,fig.cap=""}
+morph.2d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1))
+morph.2d$r<-with(morph.2d,sqrt(x^2+y^2))
+
+ggplot(morph.2d,aes(x=x,y=y))+
+  geom_tile(color="black",
+            aes(fill=ifelse(r==0,"Pixel of Interest",
+                                   ifelse(r==1,"4-Adjacent","8-Adjacent")))
+            )+
+  geom_text(aes(label=3*(y+1)+x+1))+
+  labs(fill="Pixel Type")+
+  theme_bw(20)
+```
+
+Formal Neighborhood Definitions
+========================================================
+Formally these have two effectively equivalent, but different definitions. 
+- Pixels which share a face (red line) with the pixel
+- Pixels which share a vertex (yellow dot) with the pixel
+
+```{r, echo=FALSE,fig.cap="",fig.height=3}
+
+cent.pix<-data.frame(x=c(-1, 1,1,-1,-1)/2,
+                     y=c(-1,-1,1, 1,-1)/2)
+ggplot(morph.2d,aes(x=x,y=y))+
+  geom_tile(color="black",size=1,alpha=0.7,
+            aes(fill=ifelse(r==0,"Pixel of Interest",
+                                   ifelse(r==1,"4-Adjacent","8-Adjacent")))
+            )+
+  geom_path(data=cent.pix,color="red",size=3)+
+  geom_point(data=cent.pix,color="yellow",size=5)+
+  geom_text(aes(label=3*(y+1)+x+1))+
+  labs(fill="Pixel Type")+
+  theme_bw(20)
+```
+***
+- Pixels which are distance 1 from the pixel
+- Pixels which are distance $$\sqrt{2}$$ from the pixel
+```{r, echo=FALSE,fig.cap="",fig.height=3}
+morph.2d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1))
+morph.2d$r<-with(morph.2d,sqrt(x^2+y^2))
+ggplot(morph.2d,aes(x=x,y=y))+
+  geom_tile(color="black",
+            aes(fill=ifelse(r==0,"Pixel of Interest",
+                                   ifelse(r==1,"4-Adjacent","8-Adjacent")))
+            )+
+  geom_text(aes(label=round(r*100)/100))+
+  labs(fill="Pixel Type")+
+  theme_bw(20)
+```
+
+Formal Neighborhood Definitions in 3D
+========================================================
+In 3D there is now an additional group to consider because of the extra-dimension
+- Voxels which share a face (red line) with the voxel (6-adjacent)
+- Voxels which share an edge (yellow dot) with the voxel (18-adjacent)
+- Voxels which share a vertex (purple dot) with the voxel (26-adjacent)
+
+```{r, echo=FALSE,fig.cap="",fig.height=3}
+morph.3d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1),z=c(-1,0,1))
+morph.3d$r<-with(morph.3d,sqrt(x^2+y^2+z^2))
+
+cent.pix.3d<-data.frame(x=c(-1, 1,1,-1,-1,-1, 1,1,-1,-1)/2,
+                     y=c(-1,-1,1, 1,-1,-1,-1,1, 1,-1)/2,
+                     z=c(-1,-1,-1,-1,-1,1, 1,1, 1, 1))
+face.pix.3d<-data.frame(x=c(-1, 1, 1,-1,-1)/2,
+                        y=c(-1,-1, 1, 1,-1)/2,
+                        z=c( 0, 0, 0, 0, 0))
+pixel.label<-function(r) ifelse(r==0,"Pixel of Interest",
+                                   ifelse(r==1," 6-Adjacent",
+                                          ifelse(r==sqrt(2),"18-Adjacent","26-Adjacent")))
+ggplot(morph.3d,aes(x=x,y=y))+
+  geom_tile(color="black",size=1,alpha=0.7,
+            aes(fill=pixel.label(r))
+            )+
+  geom_path(data=cent.pix.3d,color="yellow",size=3)+
+  geom_point(data=cent.pix.3d,color="purple",size=5)+
+  geom_path(data=face.pix.3d,color="red",size=3)+
+  geom_point(data=face.pix.3d,color="yellow",size=5)+
+  geom_text(aes(label=9*(z+1)+3*(y+1)+x+1))+
+  facet_grid(~z)+
+  labs(fill="Pixel Type")+
+  theme_bw(20)
+```
+***
+- Voxels which are distance 1 from the voxel
+- Voxels which are distance $$\sqrt{2}$$ from the voxel
+- Voxels which are distance $$\sqrt{3}$$ from the voxel
+```{r, echo=FALSE,fig.cap="",fig.height=3}
+ggplot(morph.3d,aes(x=x,y=y))+
+  geom_tile(color="black",size=1,
+            aes(fill=pixel.label(r))
+            )+
+  geom_text(aes(label=round(r*100)/100))+
+  facet_grid(~z)+
+  labs(fill="Pixel Type")+
+  theme_bw(14)
+```
