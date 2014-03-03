@@ -1,9 +1,24 @@
 ```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
-library(knitr)
+require(knitr)
 opts_chunk$set(dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F,fig.height=5) #dev="CairoPNG"
-library(ggplot2)
-library(plyr)
-library(grid) # contains the arrow function
+require(ggplot2)
+require(plyr)
+require(grid) # contains the arrow function
+require(biOps)
+# functions for converting images back and forth
+im.to.df<-function(in.img) {
+    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+    out.im$val<-as.vector(in.img)
+    out.im
+}
+df.to.im<-function(in.df,val.col="val",inv=F) {
+  in.vals<-in.df[[val.col]]
+  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
+  if(inv) in.vals<-255-in.vals
+  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
+  attr(out.mat,"type")<-"grey"
+  out.mat
+}
 ```
 
 Quantitative Big Imaging  
@@ -42,7 +57,7 @@ Literature / Useful References
 
 Motivation:  Why do we do imaging experiments?
 ========================================================
-incremental: true
+#incremental: true
 
 - To get an idea of what is going on
 - To test a hypothesis
@@ -50,6 +65,18 @@ incremental: true
  - Is this gene important for cell shape and thus mechanosensation in bone?
  - Does higher canal volume make bones weaker?
  - Does the granule shape affect battery life expectancy?
+
+***
+- What we are looking at
+![Standard Cell, http://en.wikipedia.org/wiki/File:Average_prokaryote_cell-_en.svg](ext-figures/Average_prokaryote_cell.svg) 
+- What we get from the machine 
+```{r, echo=FALSE,fig.cap="Single Cell",fig.height=3}
+dkimg<-jpeg::readJPEG("ext-figures/Average_prokaryote_cell.jpg")
+gray.img<-sqrt(1-(dkimg[,,1]+dkimg[,,2]+dkimg[,,3])/3)
+cellImage<-im.to.df(gray.img)
+ggplot(cellImage,aes(x=y,y=-x,fill=val))+
+  geom_tile()+guides(fill=F)+theme_bw(20)
+```
 
 
 To test a hypothesis
@@ -66,7 +93,6 @@ $$\downarrow$$
 
 What did we want in the first place
 ========================================================
-type: sub-section
 ### _Single number_:
 * volume fraction,
 * cell count,
@@ -77,14 +103,45 @@ Why do we perform segmentation?
 ========================================================
 - In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
 - Occam's Razor is very important here : The simplest solution is usually the right one
- - Non-local diffusion-smoothed medians must perform a lot better than Gaussian to justify using it
-- When we did filtering, this was a noise process which was added to otherwise clean imaging data
+ - Bayesian, neural networks optimized using genetic algorithms with Fuzzy logic has a much larger parameter space to explore, establish sensitivity in, and must perform much better and be tested much more thoroughly than thresholding to be justified
 
-Why do we perform segmentation?
+Review: Filtering and Image Enhancement
+========================================================
+type: sub-section
+incremental: true
+- This was a noise process which was added to otherwise clean imaging data
+- $$ I_{measured}(x,y) = I_{real}(x,y) + \text{Noise}(x,y) $$
+- What would the perfect filter be
+ - $$ \textit{Filter} \ast I_{real}(x,y) = I_{real}(x,y) $$
+ - $$ \textit{Filter} \ast \text{Noise}(x,y) = 0 $$ 
+ - $$ \textit{Filter} \ast I_{measured}(x,y)) = \text{Filter} \ast I_{real}(x,y) + \textit{Filter}\ast \text{Noise}(x,y) \rightarrow \bf I_{real}(x,y) $$
+ 
+
+What did people used to do?
+========================================================
+- What comes out of our detector / enhancement process 
+```{r, echo=FALSE,fig.cap="Single Cell",fig.height=5}
+ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
+  geom_tile()+guides(fill=F)+theme_bw(20)+labs(x="x",y="y")
+```
+***
+- Identify objects by eye
+ - Count, describe qualitatively: "many little cilia on surface", "long curly flaggelum", "elongated nuclear structure"
+- Morphometrics
+ - Trace the outline of the object (or sub-structures)
+ - Can calculate the area by using equal-weight-paper and employing the "[cut-and-weigh](http://ion.chem.usu.edu/~sbialkow/Classes/361/GC/GC.html)" method
+
+ 
+
+Quantitative Analysis
 ========================================================
 - For segmentation this model is: 
  - there are 2 (or more) distinct components that make up the image
  - these components are distinguishable by their values (or vectors, colors, tensors, ...)
+ - For absorption/attenuation microscopy, [Beer-Lambert Law](http://en.wikipedia.org/wiki/Attenuation_coefficient)
+ $$ I_{detector} = I_{source}\exp(-\alpha d) $$
+ - Different components have either a different $\alpha$ or a different _d_
+ 
 ```{r, echo=FALSE,fig.cap="",fig.height=4}
 nx<-4
 ny<-4
@@ -150,10 +207,11 @@ Applying a threshold to an image
 By examining the image and probability distribution function, we can _deduce_ that the underyling model is a whitish phase that makes up the cross and the darkish background
 ```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
+cross.im$val<-(cross.im$col>=thresh.val)
 ggplot(cross.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
-  geom_tile(data=subset(cross.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(cross.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,!val),fill="blue",color="black",alpha=0.3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
   theme_bw(20)
@@ -192,11 +250,7 @@ ggplot(grad.im.th,aes(x=col))+
 Segmenting Cells
 ========================================================
 ```{r, echo=FALSE,fig.cap="Cell Colony"}
-im.to.df<-function(in.img) {
-    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-    out.im$val<-as.vector(in.img)
-    out.im
-}
+
 cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
 ggplot(cellImage,aes(x=x,y=y,fill=val))+
   geom_tile()+guides(fill=F)+theme_bw(20)
@@ -466,11 +520,18 @@ Morphology
 ========================================================
 Returning to the original image of a cross
 ```{r, echo=FALSE,fig.cap="Cross With Threshold Overlay"}
+nx<-8
+ny<-8
+cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+cross.im<-cbind(cross.im,
+               col=with(cross.im,1.5*((abs(x)<2) | (abs(y)<2))+
+                 0.5*runif(nrow(cross.im))))
 thresh.val<-0.75
-ggplot(grad.im,aes(x=x,y=y))+
+cross.im$val<-(cross.im$col>=thresh.val)
+ggplot(cross.im,aes(x=x,y=y))+
   geom_tile(aes(fill=col))+
-  geom_tile(data=subset(grad.im,col>=thresh.val),fill="red",color="black",alpha=0.3)+
-  geom_tile(data=subset(grad.im,col<thresh.val),fill="blue",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,val),fill="red",color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.im,!val),fill="blue",color="black",alpha=0.3)+
   scale_fill_gradient(low="black",high="white")+
   labs(fill="Intensity")+
   theme_bw(20)
@@ -594,3 +655,106 @@ A neighborhood or representative volume is the basis for a large number of image
 - distance maps
 - image correlation based tracking methods
 
+Erosion and Dilation
+========================================================
+type:alert
+
+Applied Erosion and Dilation
+========================================================
+Taking an image of the cross at a too-high threshold, we show how dilation can be used to recover some of the missing pixels
+```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+cross.im$thresh<-cross.im$col>1.75
+
+cross.mat<-df.to.im(cross.im,"thresh",inv=T)
+cross.df<-im.to.df(cross.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+cross.dil.mat<-imgStdBinaryDilation(cross.mat)
+cross.dil.df<-im.to.df(cross.dil.mat)
+
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  geom_tile(data=subset(cross.dil.df,val==0),aes(fill="post dilation"),color="black",alpha=0.3)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+***
+Taking an image of the cross at a too-low threshold, we show how erosion can be used to remove some of the extra pixels
+```{r, echo=FALSE,fig.cap="Erosion Example",fig.height=3}
+cross.im$thresh<-cross.im$col>0.4
+cross.mat<-df.to.im(cross.im,"thresh",inv=T)
+cross.df<-im.to.df(cross.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+```{r, echo=FALSE,fig.cap="Erosion Example"}
+
+cross.ero.mat<-imgStdBinaryErosion(cross.mat)
+cross.ero.df<-im.to.df(cross.ero.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  geom_tile(data=subset(cross.ero.df,val==0),aes(fill="post erosion"),color="black",alpha=0.3)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
+
+
+Applied Opening and Closing
+========================================================
+Taking an image of the cross at a too-high threshold, we show how closing can be used to recover some of the missing pixels
+```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+cross.im$thresh<-cross.im$col>1.75
+
+cross.mat<-df.to.im(cross.im,"thresh",inv=T)
+cross.df<-im.to.df(cross.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+cross.dil.mat<-imgStdBinaryClosing(cross.mat)
+cross.dil.df<-im.to.df(cross.dil.mat)
+
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  geom_tile(data=subset(cross.dil.df,val==0),aes(fill="post dilation"),color="black",alpha=0.3)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+***
+Taking an image of the cross at a too-low threshold, we show how opening can be used to remove some of the extra pixels
+```{r, echo=FALSE,fig.cap="Erosion Example",fig.height=3}
+cross.im$thresh<-cross.im$col>0.4
+cross.mat<-df.to.im(cross.im,"thresh",inv=T)
+cross.df<-im.to.df(cross.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+```{r, echo=FALSE,fig.cap="Erosion Example"}
+
+cross.ero.mat<-imgStdBinaryOpening(cross.mat)
+cross.ero.df<-im.to.df(cross.ero.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  geom_tile(data=subset(cross.ero.df,val==0),aes(fill="post erosion"),color="black",alpha=0.3)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
+
+Segmenting Fossils!
+========================================================
+<video controls>
+  <source src="ext-figures/PaleontologyMovie.m4v" type="video/mp4">
+Your browser does not support the video tag.
+</video>
