@@ -1,6 +1,21 @@
-```{r global_setup, echo=FALSE, warning=FALSE, cache=FALSE}
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,results='hide'}
+if(!exists("printed")) { # settings for printed version
+  echo.val<-force.echo
+  fig.height<-3
+  dpi<-100
+  cache<-F
+  fig.path<-"print_figures/"
+} else { # settings for presentation version
+  echo.val<-F
+  fig.height<-5
+  dpi<-150
+  cache<-T
+  fig.path<-"pres_figures/"
+}
 require(knitr)
-opts_chunk$set(dpi=150,cache=T,results='hide',warning=F,fig.align='center',echo=F,fig.height=5) #dev="CairoPNG"
+opts_chunk$set(dpi=dpi,cache=cache,results='hide',
+               warning=F,fig.align='center',echo=echo.val,
+               fig.height=fig.height,fig.path=fig.path) #dev="CairoPNG"
 require(ggplot2)
 require(plyr)
 require(grid) # contains the arrow function
@@ -69,8 +84,8 @@ Motivation:  Why do we do imaging experiments?
 ***
 - What we are looking at
 ![Standard Cell, http://en.wikipedia.org/wiki/File:Average_prokaryote_cell-_en.svg](ext-figures/Average_prokaryote_cell.svg) 
-- What we get from the machine 
-```{r, echo=FALSE,fig.cap="Single Cell",fig.height=3}
+- What we get from the imaging modality 
+```{r, fig.cap="Single Cell",fig.height=3}
 dkimg<-jpeg::readJPEG("ext-figures/Average_prokaryote_cell.jpg")
 gray.img<-sqrt(1-(dkimg[,,1]+dkimg[,,2]+dkimg[,,3])/3)
 cellImage<-im.to.df(gray.img)
@@ -93,6 +108,7 @@ $$\downarrow$$
 
 What did we want in the first place
 ========================================================
+
 ### _Single number_:
 * volume fraction,
 * cell count,
@@ -101,26 +117,32 @@ What did we want in the first place
 
 Why do we perform segmentation?
 ========================================================
+
 - In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
 - Occam's Razor is very important here : The simplest solution is usually the right one
  - Bayesian, neural networks optimized using genetic algorithms with Fuzzy logic has a much larger parameter space to explore, establish sensitivity in, and must perform much better and be tested much more thoroughly than thresholding to be justified
 
 Review: Filtering and Image Enhancement
 ========================================================
+
 type: sub-section
 incremental: true
 - This was a noise process which was added to otherwise clean imaging data
-- $$ I_{measured}(x,y) = I_{real}(x,y) + \text{Noise}(x,y) $$
+- $$ I_{measured}(x,y) = I_{sample}(x,y) + \text{Noise}(x,y) $$
 - What would the perfect filter be
- - $$ \textit{Filter} \ast I_{real}(x,y) = I_{real}(x,y) $$
+ - $$ \textit{Filter} \ast I_{sample}(x,y) = I_{sample}(x,y) $$
  - $$ \textit{Filter} \ast \text{Noise}(x,y) = 0 $$ 
- - $$ \textit{Filter} \ast I_{measured}(x,y)) = \text{Filter} \ast I_{real}(x,y) + \textit{Filter}\ast \text{Noise}(x,y) \rightarrow \bf I_{real}(x,y) $$
- 
+ - $$ \textit{Filter} \ast I_{measured}(x,y) = \textit{Filter} \ast I_{real}(x,y) + \textit{Filter}\ast \text{Noise}(x,y) \rightarrow \bf I_{sample}(x,y) $$
+- What most filters end up doing
+$$ \textit{Filter} \ast I_{measured}(x,y) = 90\%  I_{real}(x,y) + 10\% \text{Noise}(x,y) $$
+- What bad filters do
+$$ \textit{Filter} \ast I_{measured}(x,y) = 10\% I_{real}(x,y) + 90\% \text{Noise}(x,y) $$
 
 What did people used to do?
 ========================================================
+
 - What comes out of our detector / enhancement process 
-```{r, echo=FALSE,fig.cap="Single Cell",fig.height=5}
+```{r, fig.cap="Single Cell",fig.height=5}
 ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
   geom_tile()+guides(fill=F)+theme_bw(20)+labs(x="x",y="y")
 ```
@@ -131,7 +153,6 @@ ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
  - Trace the outline of the object (or sub-structures)
  - Can calculate the area by using equal-weight-paper and employing the "[cut-and-weigh](http://ion.chem.usu.edu/~sbialkow/Classes/361/GC/GC.html)" method
 
- 
 
 Quantitative Analysis
 ========================================================
@@ -140,9 +161,12 @@ Quantitative Analysis
  - these components are distinguishable by their values (or vectors, colors, tensors, ...)
  - For absorption/attenuation microscopy, [Beer-Lambert Law](http://en.wikipedia.org/wiki/Attenuation_coefficient)
  $$ I_{detector} = I_{source}\exp(-\alpha d) $$
- - Different components have either a different $\alpha$ or a different _d_
- 
-```{r, echo=FALSE,fig.cap="",fig.height=4}
+ - Different components have a different $\alpha$ based on the strength of the interaction between the light and the chemical / nuclear structure of the material
+$$ I_{sample}(x,y) = I_{source}\exp(-\alpha(x,y) d) $$
+$$ \alpha = f(N,Z,\sigma,\cdots) $$
+
+***
+```{r, fig.cap="Attenuation to Intensity",fig.height=4}
 nx<-4
 ny<-4
 grad.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
@@ -152,17 +176,29 @@ grad.im<-cbind(grad.im,
                  2*(phase.im<0.33)+
                  0.4*runif(nrow(grad.im),min=-1,max=1))
 bn.wid<-diff(range(grad.im$col))/10
+
+bl.fun<-function(x) 1*exp(-x*0.5)
+
+ggplot(grad.im,aes(x=col,y=bl.fun(col)))+
+  geom_point(aes(color=cut_interval(col,3)))+
+  geom_segment(data=data.frame(
+    x=c(0.5,1.5),y=c(0.25),
+    xend=c(0.5,1.5),yend=c(1.25)
+    ),aes(x=x,y=y,xend=xend,yend=yend),fill="red",size=3,alpha=0.5)+
+  labs(x=expression(alpha(x,y)),y=expression(paste("I"[sample],"(x,y)")),title="Probability Density Function",fill="Groups")+theme_bw(20)
+```
+
+```{r, fig.cap="Image Histogram",fig.height=5}
 ggplot(grad.im,aes(x=col))+
   geom_density(aes(fill=cut_interval(col,3)))+
   geom_segment(data=data.frame(
     x=c(0.5,1.5),y=c(0),
     xend=c(0.5,1.5),yend=c(6)
     ),aes(x=x,y=y,xend=xend,yend=yend),fill="red",size=3,alpha=0.5)+
-  labs(x="Gray Value",y="Frequency",title="Probability Density Function",fill="Groups")+
-  theme_bw(20)
+  labs(x=expression(alpha(x,y)),y="Frequency",title="Probability Density Function",fill="Groups")+theme_bw(20)
 ```
 
- 
+
 Where does segmentation get us?
 ========================================================
 incremental: true
@@ -171,7 +207,7 @@ incremental: true
 - to a single, discrete value (usually true or false, but for images with phases it would be each phase, e.g. bone, air, cellular tissue)
 
 - __2560 x 2560 x 2160 x 32 bit = 56GB / sample__
-- $$\downarrow$$
+$$\downarrow$$
 - 2560 x 2560 x 2160 x **1 bit** = 1.75GB / sample
 
 Applying a threshold to an image
@@ -179,7 +215,7 @@ Applying a threshold to an image
 type: sub-section
 Start out with a simple image of a cross with added noise
 $$ I(x,y) = f(x,y) $$
-```{r, echo=FALSE,fig.cap=""}
+```{r, fig.cap=""}
 nx<-5
 ny<-5
 cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
@@ -196,7 +232,7 @@ ggplot(cross.im,aes(x=x,y=y,fill=col))+
 ***
 The intensity can be described with a probability density function 
 $$ P_f(x,y) $$
-```{r, echo=FALSE,fig.cap="Probability density function"}
+```{r, fig.cap="Probability density function"}
 ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
   labs(x="Intensity",title="Probability Density Function")+
   theme_bw(20)
@@ -205,7 +241,7 @@ ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
 Applying a threshold to an image
 ========================================================
 By examining the image and probability distribution function, we can _deduce_ that the underyling model is a whitish phase that makes up the cross and the darkish background
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
 cross.im$val<-(cross.im$col>=thresh.val)
 ggplot(cross.im,aes(x=x,y=y))+
@@ -223,7 +259,7 @@ $$ I(x,y) =
 1, & f(x,y)\geq0.5 \\
 0, & f(x,y)<0.5
 \end{cases}$$
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",color="In Threshold")+scale_fill_manual(values=c("blue","red"))+
@@ -231,7 +267,7 @@ ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
 ```
 Various Thresholds
 ========================================================
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 thresh.vals<-c(1:9)/9
 grad.im.th<-ldply(thresh.vals,function(thresh.val) 
   cbind(grad.im,thresh=thresh.val,in.thresh=(grad.im$col>=thresh.val)))
@@ -241,7 +277,7 @@ ggplot(grad.im.th,aes(x=x,y=y))+
   theme_bw(20)
 ```
 ***
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 ggplot(grad.im.th,aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
@@ -249,7 +285,7 @@ ggplot(grad.im.th,aes(x=col))+
 ```
 Segmenting Cells
 ========================================================
-```{r, echo=FALSE,fig.cap="Cell Colony"}
+```{r, fig.cap="Cell Colony"}
 
 cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
 ggplot(cellImage,aes(x=x,y=y,fill=val))+
@@ -268,7 +304,7 @@ ggplot(cellImage,aes(x=val))+geom_histogram()+theme_bw(20)
 
 Different Threshold Values
 ========================================================
-```{r, echo=FALSE,fig.cap="Cell Colony"}
+```{r, fig.cap="Cell Colony"}
 th.vals<-seq(0.4,0.85,length.out=3)
 thlabel<-function(x,...) switch(x,"Too low","Good","Too high")
 im.vals<-ldply(1:length(th.vals),function(th.val)
@@ -290,7 +326,7 @@ Other Image Types
 ========================================================
 While scalar images are easiest, it is possible for any type of image
 $$ I(x,y) = \vec{f}(x,y) $$
-```{r, echo=FALSE,fig.cap=""}
+```{r, fig.cap=""}
 nx<-7
 ny<-7
 n.pi<-4
@@ -314,7 +350,7 @@ ggplot(grad.im,aes(x=x,y=y,fill=col))+
 ***
 The intensity can be described with two seperate or a single joint probability density function
 $$ P_{\vec{f}\cdot \vec{i}}(x,y), P_{\vec{f}\cdot \vec{j}}(x,y) $$
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 ggplot(grad.im,aes(x=x.vec,y=y.vec))+
   stat_bin2d(binwidth=c(0.25,.25),drop=F)+
   labs(x="Pfx",y="Pfy",fill="Frequency")+
@@ -332,7 +368,7 @@ $$ I(x,y) =
 & \vec{f}_y(x,y) \geq0.25 \\
 0, & \text{otherwise}
 \end{cases}$$
-```{r, echo=FALSE,fig.cap=""}
+```{r, fig.cap=""}
 g.with.thresh<-cbind(grad.im,in.thresh=with(grad.im,x.vec>0.25 & y.vec>0.25))
 ggplot(g.with.thresh,
        aes(x=x,y=y,fill=in.thresh,color=in.thresh))+
@@ -343,7 +379,7 @@ ggplot(g.with.thresh,
 ```
 ***
 This can also be shown on the joint probability distribution as 
-```{r, echo=FALSE,fig.cap="With Threshold Overlay"}
+```{r, fig.cap="With Threshold Overlay"}
 bn.wid<-c(0.25,.25)
 keep.bins<-expand.grid(x.vec=seq(-1,1,bn.wid[1]/10),y.vec=seq(-1,1,bn.wid[2]/10))
 keep.bins<-cbind(keep.bins,in.thresh=with(keep.bins,x.vec>0.25 & y.vec>0.25))
@@ -384,7 +420,7 @@ $$ I(x,y) =
 0, & \text{otherwise}
 \end{cases}$$
 ***
-```{r, echo=FALSE,fig.cap="",results='hide'}
+```{r, fig.cap="",results='hide'}
 i.vec<-c(1,0)
 j.vec<-c(0,1)
 ang.accept<-function(c.ang) g.cmp.thresh<-cbind(grad.im,
@@ -407,7 +443,7 @@ Other Image Types
 ========================================================
 Going beyond vector the possibilities for images are limitless. The following shows a tensor plot with the tensor represented as an ellipse. 
 $$ I(x,y) = \hat{f}(x,y) $$
-```{r, echo=FALSE,fig.cap="",fig.height=3}
+```{r, fig.cap="",fig.height=3}
 source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
 nx<-3
 ny<-3
@@ -443,7 +479,7 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
 Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
 ***
 
-```{r, echo=FALSE,fig.cap="Variable distributions",fig.height=4}
+```{r, fig.cap="Variable distributions",fig.height=4}
 ggplot(grad.im)+
   geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
   geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
@@ -452,7 +488,7 @@ ggplot(grad.im)+
   guides(color=F)+labs(fill="Variable")+
   theme_bw(15)
 ```
-```{r, echo=FALSE,fig.cap="With Threshold Overlay",fig.height=4}
+```{r, fig.cap="With Threshold Overlay",fig.height=4}
 plot(grad.im[,c("a","b","th","col")])
 ```
 
@@ -461,7 +497,7 @@ Multiple Phases: Segmenting Shale
 % Shale provided from Kanitpanyacharoen, W. (2012). Synchrotron X-ray Applications Toward an Understanding of Elastic Anisotropy.
 - Here we have a shale sample measured with X-ray tomography with three different phases inside (clay, rock, and air).
 - The model is that because the chemical composition and density of each phase is different they will absorb different amounts of x-rays and appear as different brightnesses in the image
-```{r, echo=FALSE,fig.cap="Shale Sample"}
+```{r, fig.cap="Shale Sample"}
 im.to.df<-function(in.img) {
     out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
     out.im$val<-as.vector(in.img)
@@ -505,7 +541,7 @@ $$ I(x) =
 \text{Clay}, & 0.2 < x \leq 0.5 \\
 \text{Rock}, & 0.5 < x
 \end{cases}$$
-```{r, echo=FALSE,fig.cap="Segmented Images"}
+```{r, fig.cap="Segmented Images"}
 ggplot(shale.vals,aes(x=x,y=y,fill=th.label,alpha=1-val))+coord_fixed(ratio=1)+
   geom_raster()+guides(fill=F,alpha=F)+theme_bw(20)+facet_wrap(~th.label)
 ```
@@ -519,7 +555,7 @@ In mathematical terms this is called a map and since it does not require informa
 Morphology
 ========================================================
 Returning to the original image of a cross
-```{r, echo=FALSE,fig.cap="Cross With Threshold Overlay"}
+```{r, fig.cap="Cross With Threshold Overlay"}
 nx<-8
 ny<-8
 cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
@@ -544,10 +580,22 @@ Like filtering the assumption behind morphological operations are
 
 Therefore these imaging problems can be alleviated by adjusting the balance between local and neighborhood values.
 
-Morphology: Neighbors in 2D
+
+Fundamentals: Neighborhood
 ========================================================
-For standard morphological operations there are two definitions of neighborhood. The 4 and 8 adjacent neighbors shown below. Given the blue pixel in the center the red are the 4-adjacent and the red and green make up the 8 adjacent. 
-```{r, echo=FALSE,fig.cap=""}
+A neighborhood consists of the pixels or voxels which are of sufficient proximity to a given point. There are a number of possible definitions which largely affect the result when it is invoked.   
+***
+The neighborhood is important for a large number of image and other (communication, mapping, networking) processing operations:
+- filtering
+- morphological operations
+- component labeling
+- distance maps
+- image correlation based tracking methods
+
+Fundamentals: Neighbors in 2D
+========================================================
+For standard image operations there are two definitions of neighborhood. The 4 and 8 adjacent neighbors shown below. Given the blue pixel in the center the red are the 4-adjacent and the red and green make up the 8 adjacent. 
+```{r, fig.cap=""}
 morph.2d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1))
 morph.2d$r<-with(morph.2d,sqrt(x^2+y^2))
 
@@ -567,7 +615,7 @@ Formally these have two effectively equivalent, but different definitions.
 - Pixels which share a face (red line) with the pixel
 - Pixels which share a vertex (yellow dot) with the pixel
 
-```{r, echo=FALSE,fig.cap="",fig.height=3}
+```{r, fig.cap="",fig.height=3}
 
 cent.pix<-data.frame(x=c(-1, 1,1,-1,-1)/2,
                      y=c(-1,-1,1, 1,-1)/2)
@@ -584,8 +632,8 @@ ggplot(morph.2d,aes(x=x,y=y))+
 ```
 ***
 - Pixels which are distance 1 from the pixel
-- Pixels which are distance $$\sqrt{2}$$ from the pixel
-```{r, echo=FALSE,fig.cap="",fig.height=3}
+- Pixels which are distance $\sqrt{2}$ from the pixel
+```{r, fig.cap="",fig.height=3}
 morph.2d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1))
 morph.2d$r<-with(morph.2d,sqrt(x^2+y^2))
 ggplot(morph.2d,aes(x=x,y=y))+
@@ -605,7 +653,7 @@ In 3D there is now an additional group to consider because of the extra-dimensio
 - Voxels which share an edge (yellow dot) with the voxel (18-adjacent)
 - Voxels which share a vertex (purple dot) with the voxel (26-adjacent)
 
-```{r, echo=FALSE,fig.cap="",fig.height=3}
+```{r, fig.cap="",fig.height=3}
 morph.3d<-expand.grid(x=c(-1,0,1),y=c(-1,0,1),z=c(-1,0,1))
 morph.3d$r<-with(morph.3d,sqrt(x^2+y^2+z^2))
 
@@ -633,9 +681,9 @@ ggplot(morph.3d,aes(x=x,y=y))+
 ```
 ***
 - Voxels which are distance 1 from the voxel
-- Voxels which are distance $$\sqrt{2}$$ from the voxel
-- Voxels which are distance $$\sqrt{3}$$ from the voxel
-```{r, echo=FALSE,fig.cap="",fig.height=3}
+- Voxels which are distance $\sqrt{2}$ from the voxel
+- Voxels which are distance $\sqrt{3}$ from the voxel
+```{r, fig.cap="",fig.height=3}
 ggplot(morph.3d,aes(x=x,y=y))+
   geom_tile(color="black",size=1,
             aes(fill=pixel.label(r))
@@ -646,15 +694,6 @@ ggplot(morph.3d,aes(x=x,y=y))+
   theme_bw(14)
 ```
 
-What do we do with it?
-========================================================
-A neighborhood or representative volume is the basis for a large number of image processing operations:
-- filtering
-- morphological operations
-- component labeling
-- distance maps
-- image correlation based tracking methods
-
 Erosion and Dilation
 ========================================================
 type:alert
@@ -662,7 +701,7 @@ type:alert
 Applied Erosion and Dilation
 ========================================================
 Taking an image of the cross at a too-high threshold, we show how dilation can be used to recover some of the missing pixels
-```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+```{r, fig.cap="Dilation Example",fig.height=3}
 cross.im$thresh<-cross.im$col>1.75
 
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
@@ -672,7 +711,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+```{r, fig.cap="Dilation Example",fig.height=3}
 cross.dil.mat<-imgStdBinaryDilation(cross.mat)
 cross.dil.df<-im.to.df(cross.dil.mat)
 
@@ -684,7 +723,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 ```
 ***
 Taking an image of the cross at a too-low threshold, we show how erosion can be used to remove some of the extra pixels
-```{r, echo=FALSE,fig.cap="Erosion Example",fig.height=3}
+```{r, fig.cap="Erosion Example",fig.height=3}
 cross.im$thresh<-cross.im$col>0.4
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
@@ -693,7 +732,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, echo=FALSE,fig.cap="Erosion Example"}
+```{r, fig.cap="Erosion Example"}
 
 cross.ero.mat<-imgStdBinaryErosion(cross.mat)
 cross.ero.df<-im.to.df(cross.ero.mat)
@@ -709,7 +748,7 @@ We can now utilize information from neighborhood voxels to improve the results. 
 Applied Opening and Closing
 ========================================================
 Taking an image of the cross at a too-high threshold, we show how closing can be used to recover some of the missing pixels
-```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+```{r, fig.cap="Dilation Example",fig.height=3}
 cross.im$thresh<-cross.im$col>1.75
 
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
@@ -719,7 +758,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, echo=FALSE,fig.cap="Dilation Example",fig.height=3}
+```{r, fig.cap="Dilation Example",fig.height=3}
 cross.dil.mat<-imgStdBinaryClosing(cross.mat)
 cross.dil.df<-im.to.df(cross.dil.mat)
 
@@ -731,7 +770,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 ```
 ***
 Taking an image of the cross at a too-low threshold, we show how opening can be used to remove some of the extra pixels
-```{r, echo=FALSE,fig.cap="Erosion Example",fig.height=3}
+```{r, fig.cap="Erosion Example",fig.height=3}
 cross.im$thresh<-cross.im$col>0.4
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
@@ -740,7 +779,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, echo=FALSE,fig.cap="Erosion Example"}
+```{r, fig.cap="Erosion Example"}
 
 cross.ero.mat<-imgStdBinaryOpening(cross.mat)
 cross.ero.df<-im.to.df(cross.ero.mat)
