@@ -1,10 +1,12 @@
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,results='hide'}
-if(!exists("printed")) { # settings for printed version
+
+if(exists("printed")) { # settings for printed version
   echo.val<-force.echo
   fig.height<-3
   dpi<-100
   cache<-F
   fig.path<-"print_figures/"
+  
 } else { # settings for presentation version
   echo.val<-F
   fig.height<-5
@@ -12,6 +14,7 @@ if(!exists("printed")) { # settings for printed version
   cache<-T
   fig.path<-"pres_figures/"
 }
+
 require(knitr)
 opts_chunk$set(dpi=dpi,cache=cache,results='hide',
                warning=F,fig.align='center',echo=echo.val,
@@ -696,7 +699,18 @@ ggplot(morph.3d,aes(x=x,y=y))+
 
 Erosion and Dilation
 ========================================================
-type:alert
+
+### Erosion
+If any of the voxels in the neighborhood are 0/false than the voxel will be set to 0
+
+- Has the effect of peeling the surface layer off of an object
+
+***
+
+### Dilation
+
+If any of the voxels in the neigbhorhood are 1/true then the voxel will be set to 1
+- Has the effect of adding a layer onto an object (dunking an strawberry in chocolate, adding a coat of paint to a car)
 
 Applied Erosion and Dilation
 ========================================================
@@ -742,7 +756,29 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
+
+
+Opening and Closing
+========================================================
+
+
+### Opening
+
+An erosion followed by a dilation operation
+
+- Peels a layer off and adds a layer on
+- Very small objects and connections are deleted in the erosion and do not return the image is thus __open__ed
+- A cube larger than several voxels will have the exact same volume after (conservative)
+
+***
+
+### Closing
+
+A dilation followed by an erosion operation
+
+- Adds a layer and then peels a layer off
+- Objects that are very close are connected when the layer is added and they stay connected when the layer is removed thus the image is __close__d
+- A cube larger than one voxel will have the exact same volume after (conservative)
 
 
 Applied Opening and Closing
