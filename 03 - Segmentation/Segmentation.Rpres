@@ -21,8 +21,10 @@ if(exists("printed")) { # settings for printed version (if the variable exists)
 opts_chunk$set(dpi=dpi,cache=cache,
                cache.path=cache.path,results='hide',
                warning=F,fig.align='center',echo=echo.val,
-               fig.height=fig.height,fig.path=fig.path) #dev="CairoPNG"
+               fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+```
 
+```{r script_setup,results='hide',cache=FALSE}
 require(ggplot2)
 require(plyr)
 require(grid) # contains the arrow function
@@ -69,13 +71,25 @@ Course Outline
 - 15th May - Guest Lecture - Applications in Material Science
 - 22th May - Project Presentations
 
+Lesson Outline
+========================================================
+- Motivation
+- The old ways
+- Thresholding
+ - Other types of images
+ - Selecting a good threshold
+- Implementation
+- Morphology
+- Applications
+
+
 Literature / Useful References
 ========================================================
 - Jean Claude, Morphometry with R
- - Online through ETHZ at http://link.springer.com/book/10.1007%2F978-0-387-77789-4
- - Buy it at: http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X
+ - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+ - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
- - Available online within domain ethz.ch (or proxy.ethz.ch / public VPN) http://dx.doi.org/10.1201/9780203881095
+ - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 
 Motivation:  Why do we do imaging experiments?
 ========================================================
@@ -94,7 +108,9 @@ Motivation:  Why do we do imaging experiments?
 - What we get from the imaging modality 
 ```{r, fig.cap="Single Cell",fig.height=3}
 dkimg<-jpeg::readJPEG("ext-figures/Average_prokaryote_cell.jpg")
-gray.img<-sqrt(1-(dkimg[,,1]+dkimg[,,2]+dkimg[,,3])/3)
+material.img<-1-(dkimg[,,1]+dkimg[,,2]+dkimg[,,3])/3
+# assume the sample is constant 0.1m thick and color indicates alpha
+gray.img<-1.0*exp(-material.img*0.1)
 cellImage<-im.to.df(gray.img)
 ggplot(cellImage,aes(x=y,y=-x,fill=val))+
   geom_tile()+guides(fill=F)+theme_bw(20)
@@ -274,23 +290,23 @@ ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
 ```
 Various Thresholds
 ========================================================
-```{r, fig.cap="Threshold Images"}
-thresh.vals<-c(0:8)/10+0.5
+```{r, fig.cap="Threshold Images",fig.height=5}
+thresh.vals<-c(2:10)/10
 grad.im.th<-ldply(thresh.vals,function(thresh.val) 
-  cbind(grad.im,thresh=thresh.val,in.thresh=(grad.im$col>=thresh.val)))
+  cbind(cross.im,thresh=thresh.val,in.thresh=(cross.im$col>=thresh.val)))
 ggplot(grad.im.th,aes(x=x,y=y))+
   geom_tile(aes(fill=in.thresh),color="black",alpha=0.75)+
   labs(fill="Above Threshold")+facet_wrap(~thresh)+
   theme_bw(20)
 ```
 ***
-```{r, fig.cap="Threshold Histograms"}
-
+```{r, fig.cap="Threshold Histograms",fig.height=5}
 ggplot(grad.im.th,aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
   theme_bw(20)
 ```
+
 Segmenting Cells
 ========================================================
 ```{r, fig.cap="Cell Colony",fig.height=4}
@@ -304,7 +320,9 @@ ggplot(cellImage,aes(x=x,y=y,fill=val))+
 ggplot(cellImage,aes(x=val))+geom_histogram()+
   labs(x="Intensity")+theme_bw(20)
 ```
+
 ***
+
 - We can peform the same sort of analysis with this image of cells
 - This time we can derive the model from the basic physics of the system
  - The field is illuminated by white light of nearly uniform brightness
@@ -323,8 +341,9 @@ im.vals<-ldply(1:length(th.vals),function(th.val)
         th.val=th.vals[th.val],
         th.label=thlabel(th.val)))
 ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
-  geom_raster()+theme_bw(20)+
-  coord_equal()+facet_grid(th.label~.)
+  geom_raster()+facet_grid(th.label~.)+
+  labs(fill="Phase")+
+  theme_bw(20)+coord_equal()
 ```
 ***
 ```{r, echo=FALSE}
@@ -353,9 +372,9 @@ grad.im[,c("x.vec","y.vec")]<-with(grad.im,cbind(x.vec/(sqrt(x.vec^2+y.vec^2)),
                                          y.vec/(sqrt(x.vec^2+y.vec^2))))
 bn.wid<-c(diff(range(grad.im$x.vec))/10,diff(range(grad.im$y.vec))/10)
 ggplot(grad.im,aes(x=x,y=y,fill=col))+
-  #geom_tile(alpha=0.5)+
-  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.15,"cm")),size=3)+
+  geom_segment(aes(xend=x+x.vec,yend=y+y.vec),arrow=arrow(length = unit(0.15,"cm")),size=2)+
   scale_fill_gradient(low="black",high="white")+
+  guides(fill=F)+labs(title="Orientation Map")+
   theme_bw(20)
 ```
 ***
@@ -364,7 +383,7 @@ $$ P_{\vec{f}\cdot \vec{i}}(x,y), P_{\vec{f}\cdot \vec{j}}(x,y) $$
 ```{r, fig.cap="With Threshold Overlay"}
 ggplot(grad.im,aes(x=x.vec,y=y.vec))+
   stat_bin2d(binwidth=c(0.25,.25),drop=F)+
-  labs(x="Pfx",y="Pfy",fill="Frequency")+
+  labs(x="Pfx",y="Pfy",fill="Frequency",title="Orientation Histogram")+
   xlim(-1,1)+ylim(-1,1)+
   theme_bw(20)
 ```
@@ -455,9 +474,8 @@ Other Image Types
 Going beyond vector the possibilities for images are limitless. The following shows a tensor plot with the tensor represented as an ellipse. 
 $$ I(x,y) = \hat{f}(x,y) $$
 ```{r, fig.cap="",fig.height=3}
-source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
-nx<-3
-ny<-3
+nx<-4
+ny<-4
 n.pi<-4
 grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,
                      y=c(-ny:ny)/ny*n.pi*pi)
@@ -470,7 +488,13 @@ grad.im<-cbind(grad.im,
               th=0.5*runif(nrow(grad.im)),
               aiso=1,count=1)
 
-
+create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
+  if (is.null(b)) b<-a
+  th<-seq(0,th.max,length.out=pts)
+  data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
+             y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
+             id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
+}
 deform.ellipse.draw<-function(c.box) {
   create.ellipse.points(x.off=c.box$x[1],
                         y.off=c.box$y[1],
@@ -488,9 +512,11 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
   theme_bw(20)
 ```
 Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
+
 ***
 
 ```{r, fig.cap="Variable distributions",fig.height=4}
+
 ggplot(grad.im)+
   geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
   geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
@@ -499,7 +525,9 @@ ggplot(grad.im)+
   guides(color=F)+labs(fill="Variable")+
   theme_bw(15)
 ```
+
 ```{r, fig.cap="With Threshold Overlay",fig.height=4}
+
 plot(grad.im[,c("a","b","th","col")])
 ```
 
@@ -509,11 +537,6 @@ Multiple Phases: Segmenting Shale
 - Here we have a shale sample measured with X-ray tomography with three different phases inside (clay, rock, and air).
 - The model is that because the chemical composition and density of each phase is different they will absorb different amounts of x-rays and appear as different brightnesses in the image
 ```{r, fig.cap="Shale Sample"}
-im.to.df<-function(in.img) {
-    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-    out.im$val<-as.vector(in.img)
-    out.im
-}
 shaleImage<-im.to.df(jpeg::readJPEG("ext-figures/ShaleSample.jpg"))
 ggplot(shaleImage,aes(x=x,y=y,fill=val))+
   geom_tile()+
@@ -561,8 +584,56 @@ Implementation
 ========================================================
 The implementations of basic thresholds and segmentations is very easy since it is a unary operation of a single image
 $$ f(I(\vec{x})) $$
-In mathematical terms this is called a map and since it does not require information from neighboring voxels or images it can be calculated for each point independently (_parallel_). Filters on the other hand almost always depend on neighboring voxels and thus the calculations are not as easy to seperate.
+In mathematical terms this is called a map and since it does not require information from neighboring voxels or images it can be calculated for each point independently (_parallel_). Filters on the other hand almost always depend on neighboring voxels and thus the calculations are not as easy to seperate. 
 
+Implementation Code 
+========================================================
+### Matlab
+The simplist is a single threshold in Matlab: 
+```
+thresh_img = gray_img > thresh
+```
+
+A more complicated threshold: 
+```
+thresh_img = (gray_img > thresh_a) & (gray_img > thresh_b)
+```
+
+### Python (numpy)
+``` 
+thresh_img = gray_img > thresh
+```
+
+### Python
+``` 
+thresh_img = map(lambda gray_val: gray_val>thresh,
+                gray_img)
+```
+
+***
+
+### Java
+```
+boolean[] thresh_img = new boolean[x_size*y_size*z_size];
+for(int x=x_min;x<x_max;x++)
+  for(int y=y_min;y<y_max;y++)
+    for(int z=z_min;z<z_max;z++) {
+      int offset=(z*y_size+y)*x_size+x;
+      thresh_img[offset]=gray_img[offset]>thresh;
+    }
+```
+
+### In C/C++
+
+```
+bool* thresh_img = new bool[x_size*y_size*z_size];
+for(int x=x_min;x<x_max;x++)
+  for(int y=y_min;y<y_max;y++)
+    for(int z=z_min;z<z_max;z++) {
+      int offset=(z*y_size+y)*x_size+x;
+      thresh_img[offset]=gray_img[offset]>thresh;
+    }
+```
 Morphology
 ========================================================
 Returning to the original image of a cross
@@ -853,8 +924,9 @@ ggplot(cross.df,aes(x=x,y=y))+
 ```
 
 
-Segmenting Fossils!
+Segmenting Fossils
 ========================================================
+## Taken from the BBC Documentary [First Life](http://www.bbc.co.uk/programmes/b00vw49d) by David Attenborough
 <video controls>
   <source src="ext-figures/PaleontologyMovie.m4v" type="video/mp4">
 Your browser does not support the video tag.
