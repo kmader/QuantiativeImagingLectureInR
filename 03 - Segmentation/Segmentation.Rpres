@@ -1,24 +1,28 @@
-```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,results='hide'}
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+require(knitr)
+# default settings, # settings for presentation version
+echo.val<-F
+fig.height<-5
+dpi<-150
+cache<-T
+fig.path<-"pres_figures/"
+cache.path<-"pres_cache/"
 
-if(exists("printed")) { # settings for printed version
-  echo.val<-force.echo
+if(exists("printed")) { # settings for printed version (if the variable exists)
+  echo.val<-T # show code
   fig.height<-3
-  dpi<-100
-  cache<-F
-  fig.path<-"print_figures/"
-  
-} else { # settings for presentation version
-  echo.val<-F
-  fig.height<-5
   dpi<-150
   cache<-T
-  fig.path<-"pres_figures/"
+  fig.path<-"print_figures/"
+  cache.path<-"print_cache/"
 }
 
-require(knitr)
-opts_chunk$set(dpi=dpi,cache=cache,results='hide',
+
+opts_chunk$set(dpi=dpi,cache=cache,
+               cache.path=cache.path,results='hide',
                warning=F,fig.align='center',echo=echo.val,
                fig.height=fig.height,fig.path=fig.path) #dev="CairoPNG"
+
 require(ggplot2)
 require(plyr)
 require(grid) # contains the arrow function
@@ -127,9 +131,8 @@ Why do we perform segmentation?
 
 Review: Filtering and Image Enhancement
 ========================================================
-
-type: sub-section
 incremental: true
+
 - This was a noise process which was added to otherwise clean imaging data
 - $$ I_{measured}(x,y) = I_{sample}(x,y) + \text{Noise}(x,y) $$
 - What would the perfect filter be
@@ -215,7 +218,6 @@ $$\downarrow$$
 
 Applying a threshold to an image
 ========================================================
-type: sub-section
 Start out with a simple image of a cross with added noise
 $$ I(x,y) = f(x,y) $$
 ```{r, fig.cap=""}
@@ -255,7 +257,9 @@ ggplot(cross.im,aes(x=x,y=y))+
   labs(fill="Intensity")+
   theme_bw(20)
 ```
+
 ***
+
 Applying the threshold is a deceptively simple operation
 $$ I(x,y) = 
 \begin{cases}
@@ -270,8 +274,8 @@ ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
 ```
 Various Thresholds
 ========================================================
-```{r, fig.cap="With Threshold Overlay"}
-thresh.vals<-c(1:9)/9
+```{r, fig.cap="Threshold Images"}
+thresh.vals<-c(0:8)/10+0.5
 grad.im.th<-ldply(thresh.vals,function(thresh.val) 
   cbind(grad.im,thresh=thresh.val,in.thresh=(grad.im$col>=thresh.val)))
 ggplot(grad.im.th,aes(x=x,y=y))+
@@ -280,7 +284,8 @@ ggplot(grad.im.th,aes(x=x,y=y))+
   theme_bw(20)
 ```
 ***
-```{r, fig.cap="With Threshold Overlay"}
+```{r, fig.cap="Threshold Histograms"}
+
 ggplot(grad.im.th,aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
@@ -288,14 +293,16 @@ ggplot(grad.im.th,aes(x=col))+
 ```
 Segmenting Cells
 ========================================================
-```{r, fig.cap="Cell Colony"}
-
+```{r, fig.cap="Cell Colony",fig.height=4}
 cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
 ggplot(cellImage,aes(x=x,y=y,fill=val))+
-  geom_tile()+guides(fill=F)+theme_bw(20)
+  geom_tile()+
+  labs(fill="Intensity")+coord_equal()+
+  theme_bw(20)
 ```
-```{r, echo=FALSE}
-ggplot(cellImage,aes(x=val))+geom_histogram()+theme_bw(20)
+```{r, echo=FALSE,fig.height=3}
+ggplot(cellImage,aes(x=val))+geom_histogram()+
+  labs(x="Intensity")+theme_bw(20)
 ```
 ***
 - We can peform the same sort of analysis with this image of cells
@@ -307,7 +314,7 @@ ggplot(cellImage,aes(x=val))+geom_histogram()+theme_bw(20)
 
 Different Threshold Values
 ========================================================
-```{r, fig.cap="Cell Colony"}
+```{r, fig.cap="Cell Colony",fig.height=5}
 th.vals<-seq(0.4,0.85,length.out=3)
 thlabel<-function(x,...) switch(x,"Too low","Good","Too high")
 im.vals<-ldply(1:length(th.vals),function(th.val)
@@ -316,7 +323,8 @@ im.vals<-ldply(1:length(th.vals),function(th.val)
         th.val=th.vals[th.val],
         th.label=thlabel(th.val)))
 ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
-  geom_raster()+guides(fill=F)+theme_bw(20)+facet_grid(th.label~.)
+  geom_raster()+theme_bw(20)+
+  coord_equal()+facet_grid(th.label~.)
 ```
 ***
 ```{r, echo=FALSE}
@@ -587,7 +595,15 @@ Therefore these imaging problems can be alleviated by adjusting the balance betw
 Fundamentals: Neighborhood
 ========================================================
 A neighborhood consists of the pixels or voxels which are of sufficient proximity to a given point. There are a number of possible definitions which largely affect the result when it is invoked.   
+- A large neighborhood performs operations over larger areas / volumes
+ - Computationally intensive
+ - Can _smooth_ out features
+- A small neighborhood performs operations over small areas / volumes
+ - Computationally cheaper
+ - Struggles with large noise / filling large holes
+ 
 ***
+
 The neighborhood is important for a large number of image and other (communication, mapping, networking) processing operations:
 - filtering
 - morphological operations
@@ -714,6 +730,8 @@ If any of the voxels in the neigbhorhood are 1/true then the voxel will be set t
 
 Applied Erosion and Dilation
 ========================================================
+
+### Erosion
 Taking an image of the cross at a too-high threshold, we show how dilation can be used to recover some of the missing pixels
 ```{r, fig.cap="Dilation Example",fig.height=3}
 cross.im$thresh<-cross.im$col>1.75
@@ -735,7 +753,10 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
+
 ***
+
+### Dilation
 Taking an image of the cross at a too-low threshold, we show how erosion can be used to remove some of the extra pixels
 ```{r, fig.cap="Erosion Example",fig.height=3}
 cross.im$thresh<-cross.im$col>0.4
@@ -746,7 +767,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, fig.cap="Erosion Example"}
+```{r, fig.cap="Erosion Example",fig.height=3}
 
 cross.ero.mat<-imgStdBinaryErosion(cross.mat)
 cross.ero.df<-im.to.df(cross.ero.mat)
@@ -783,6 +804,32 @@ A dilation followed by an erosion operation
 
 Applied Opening and Closing
 ========================================================
+
+### Opening
+Taking an image of the cross at a too-low threshold, we show how opening can be used to remove some of the extra pixels
+```{r, fig.cap="Erosion Example",fig.height=3}
+cross.im$thresh<-cross.im$col>0.4
+cross.mat<-df.to.im(cross.im,"thresh",inv=T)
+cross.df<-im.to.df(cross.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+```{r, fig.cap="Erosion Example",fig.height=3}
+
+cross.ero.mat<-imgStdBinaryOpening(cross.mat)
+cross.ero.df<-im.to.df(cross.ero.mat)
+ggplot(cross.df,aes(x=x,y=y))+
+  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
+  geom_tile(data=subset(cross.ero.df,val==0),aes(fill="post opening"),color="black",alpha=0.3)+
+  labs(fill="Type")+
+  theme_bw(20)
+```
+
+***
+
+### Closing
 Taking an image of the cross at a too-high threshold, we show how closing can be used to recover some of the missing pixels
 ```{r, fig.cap="Dilation Example",fig.height=3}
 cross.im$thresh<-cross.im$col>1.75
@@ -800,32 +847,11 @@ cross.dil.df<-im.to.df(cross.dil.mat)
 
 ggplot(cross.df,aes(x=x,y=y))+
   geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
-  geom_tile(data=subset(cross.dil.df,val==0),aes(fill="post dilation"),color="black",alpha=0.3)+
+  geom_tile(data=subset(cross.dil.df,val==0),aes(fill="post closing"),color="black",alpha=0.3)+
   labs(fill="Type")+
   theme_bw(20)
 ```
-***
-Taking an image of the cross at a too-low threshold, we show how opening can be used to remove some of the extra pixels
-```{r, fig.cap="Erosion Example",fig.height=3}
-cross.im$thresh<-cross.im$col>0.4
-cross.mat<-df.to.im(cross.im,"thresh",inv=T)
-cross.df<-im.to.df(cross.mat)
-ggplot(cross.df,aes(x=x,y=y))+
-  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
-  labs(fill="Type")+
-  theme_bw(20)
-```
-```{r, fig.cap="Erosion Example"}
 
-cross.ero.mat<-imgStdBinaryOpening(cross.mat)
-cross.ero.df<-im.to.df(cross.ero.mat)
-ggplot(cross.df,aes(x=x,y=y))+
-  geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
-  geom_tile(data=subset(cross.ero.df,val==0),aes(fill="post erosion"),color="black",alpha=0.3)+
-  labs(fill="Type")+
-  theme_bw(20)
-```
-We can now utilize information from neighborhood voxels to improve the results. These steps are called morphological operations.
 
 Segmenting Fossils!
 ========================================================
@@ -833,3 +859,42 @@ Segmenting Fossils!
   <source src="ext-figures/PaleontologyMovie.m4v" type="video/mp4">
 Your browser does not support the video tag.
 </video>
+
+
+
+Quantifying Alzheimers: Segment the Cortex
+========================================================
+#### Courtesy of Alberto Alfonso
+- Understand the progress of Alzheimer's disease as it relates to plaque formation in different regions of the brain 
+![Cortex Image](ext-figures/cortex.png)
+
+***
+
+- First identify different regions
+ - Manually contoured
+![Cortex Mask](ext-figures/cortex_mask.png)
+
+Quantifying Alzheimers: Segment the Cortex
+========================================================
+- The cortex is barely visible to the human eye
+- Tiny structures hint at where cortex is located
+```{r, fig.cap="Brain with Threshold",fig.height=5}
+alz.df<-im.to.df(t(png::readPNG("ext-figures/cortex.png")))
+ggplot(alz.df,aes(x=x,y=518-y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Electron Density",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+- A simple threshold is insufficient to finding the cortical structures
+- Other filtering techniques are unlikely to magicially fix this problem
+```{r, fig.cap="Brain with Threshold",fig.height=5}
+ggplot(alz.df,aes(x=x,y=518-y))+
+  geom_raster(aes(fill=cut_interval(val,4)))+
+  labs(fill="Segmented Phases",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
