@@ -51,6 +51,26 @@ df.to.im<-function(in.df,val.col="val",inv=F) {
   attr(out.mat,"type")<-"grey"
   out.mat
 }
+ddply.cutcols<-function(...,cols=1) {
+  # run standard ddply command
+  cur.table<-ddply(...)
+  cutlabel.fixer<-function(oVal) {
+    sapply(oVal,function(x) {
+      cnv<-as.character(x)
+      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
+    })
+  }
+  cutname.fixer<-function(c.str) {
+    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
+    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
+    paste(t.str[c(1:length(t.str)-1)],collapse=",")
+  }
+  for(i in c(1:cols)) {
+    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
+    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
+  }
+  cur.table
+}
 ```
 
 Quantitative Big Imaging  
@@ -630,11 +650,11 @@ for(int x=x_min;x<x_max;x++)
       thresh_img[offset]=gray_img[offset]>thresh;
     }
 ```
-
+  
 ### In C/C++
 
 ```
-bool* pix = malloc(x_size*y_size*z_size * sizeof (bool));
+bool* thesh_img = malloc(x_size*y_size*z_size * sizeof (bool));
 
 for(int x=x_min;x<x_max;x++)
   for(int y=y_min;y<y_max;y++)
@@ -642,6 +662,64 @@ for(int x=x_min;x<x_max;x++)
       int offset=(z*y_size+y)*x_size+x;
       thresh_img[offset]=gray_img[offset]>thresh;
     }
+```
+
+Pitfalls with Segmentation
+========================================================
+type: alert
+### Partial Volume Effect
+- The [partial volume effect](http://bit.ly/1mW7kdP) is the name for the effect of discretization on the image into pixels or voxels.
+- Surfaces are complicated, voxels are simple boxes which make poor representations
+- Many voxels are only partially filled, but only the voxels on the surface
+- Removing the first layer alleviates issue
+
+```{r, fig.cap="Partial Volume Effect",fig.height=4}
+make.circle<-function(nx,r,nscale=1,
+                      circ.fun=function(x,y,r) ((x^2+y^2)<r^2)) {
+  ny<-nx
+  grad.im<-expand.grid(x=c(-nx:nx)/nscale,y=c(-ny:ny)/nscale)
+  grad.im$val<-with(grad.im,circ.fun(x,y,r))
+  grad.im$nx<-nx
+  grad.im$r<-r
+  grad.im
+}
+#' Simulates partial volume effect by binning a data-frame
+#'
+#' 
+#'
+#' @param count is the number of bins to create for the final image
+#' ...
+part.vol.circ<-function(in.im,bin.count=2) {
+  ddply.cutcols(in.im,.(cut_interval(x,bin.count),cut_interval(y,bin.count)),
+                function(c.df) data.frame(val=mean(c.df$val),
+                                          r=c.df$r[1],
+                                          nx=c.df$nx[1]),
+                cols=2)
+}
+r.list<-seq(2,9.5,length.out=9)
+sph.list<-ldply(r.list,function(r) part.vol.circ(make.circle(100,r,10),20))
+ggplot(sph.list,aes(x=x,y=y,fill=val))+
+  geom_raster()+facet_wrap(~r)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Partial Volume Effect",fig.height=3}
+ggplot(sph.list,aes(x=val,color=as.factor(r)))+
+  geom_density(trim=T,adjust=1,kernel="biweight")+#facet_wrap(~r)+#scale_y_log10()+
+  theme_bw(20)+labs(x="Intensity",y="Frequency",color="Radius")
+```
+
+- Shown as a function of radius
+
+```{r,results="asis"}
+pve.table<-ddply(sph.list,.(r),function(c.rad.df) data.frame(m.int=mean(c.rad.df$val),
+                                                             m.sd=sd(c.rad.df$val)
+                                                             )
+                 )
+names(pve.table)<-c("Radius","Mean Intensity","Sd Intensity")
+kable(pve.table)
 ```
 Morphology
 ========================================================
@@ -951,7 +1029,7 @@ A segmented slice taken from a cortical bone sample. The dark is the calcified b
 Filling Holes / Creating Masks
 ========================================================
 
-```{r, fig.cap="Cortical Segment closing",fig.height=6}
+```{r, fig.cap="Cortical Segment closing",fig.height=7}
 cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
 cortbone.df<-im.to.df(cortbone.im)
 #cortbone.df$val<-255*(cortbone.df$val>0.5)
@@ -967,7 +1045,7 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
 
 ***
 
-```{r, fig.cap="Cortical Segment closing 7",fig.height=4}
+```{r, fig.cap="Cortical Segment closing 7",fig.height=7}
 cortbone.close.im<-imgStdBinaryClosing(cortbone.im,dim=7)
 ggplot(subset(cortbone.df,val<1),aes(x=x,y=600-y))+
   geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
@@ -1121,16 +1199,12 @@ ggplot(alz.df,aes(x=x,y=518-y))+
 ```
 
 
-
-
-
-
 Surface Area / Perimeter
 ========================================================
 
 We see that the dilation and erosion affects are strongly related to the surface area of an object: the more surface area the larger the affect of a single dilation or erosion step. 
 
-```{r, fig.cap="Attenuation to Intensity",fig.height=4}
+```{r, fig.cap="Surface Area Estimation",fig.height=4}
 make.circle<-function(nx,r,nscale=1) {
   ny<-nx
   grad.im<-expand.grid(x=c(-nx:nx)/nscale,y=c(-ny:ny)/nscale)
@@ -1140,7 +1214,6 @@ make.circle<-function(nx,r,nscale=1) {
   grad.im
 }
 r.list<-seq(0.5,5,length.out=9)
-
 ggplot(ldply(r.list,function(r) make.circle(10,r)),aes(x=x,y=y,fill=val))+
   geom_raster()+scale_fill_grey()+facet_wrap(~r)+
   theme_bw(20)+guides(fill=F)
