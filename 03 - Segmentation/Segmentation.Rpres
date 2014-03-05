@@ -29,6 +29,14 @@ require(ggplot2)
 require(plyr)
 require(grid) # contains the arrow function
 require(biOps)
+require(doMC) # for parallel code
+require(EBImage)
+## To install EBImage
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("EBImage")
+
+# start parallel environment
+registerDoMC()
 # functions for converting images back and forth
 im.to.df<-function(in.img) {
     out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
@@ -142,7 +150,7 @@ Why do we perform segmentation?
 ========================================================
 
 - In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
-- Occam's Razor is very important here : The simplest solution is usually the right one
+- [_Occam's Razor_](http://en.wikipedia.org/wiki/Occams_Razor) is very important here : The simplest solution is usually the right one
  - Bayesian, neural networks optimized using genetic algorithms with Fuzzy logic has a much larger parameter space to explore, establish sensitivity in, and must perform much better and be tested much more thoroughly than thresholding to be justified
 
 Review: Filtering and Image Enhancement
@@ -922,6 +930,144 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
+
+Applying Morphological Tools
+========================================================
+
+- For many applications morphology appears to be the same as filter
+- The key difference is the avalanche or non-linear nature of the results
+ - A single off voxel can turn its entire neighborhood off (erosion)
+ - A single on voxel can turn its entire neighborhood on (dilation)
+- The effects of this are most pronounced when performed iteratively
+- This is very useful for filling holes, connecting objects, creating masks
+
+***
+
+A segmented slice taken from a cortical bone sample. The dark is the calcified bone tissue and the white are holes in the image
+
+![Bone Slice](ext-figures/bone.png)
+
+Filling Holes / Creating Masks
+========================================================
+
+```{r, fig.cap="Cortical Segment closing",fig.height=6}
+cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
+cortbone.df<-im.to.df(cortbone.im)
+#cortbone.df$val<-255*(cortbone.df$val>0.5)
+cortbone.close.im<-imgStdBinaryClosing(cortbone.im)
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
+              aes(fill="closing 3x3"),alpha=0.8)+
+  geom_raster(aes(fill="before closing"),alpha=0.6)+
+  labs(fill="Image",y="y",x="x",title="3x3 Closing")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Cortical Segment closing 7",fig.height=4}
+cortbone.close.im<-imgStdBinaryClosing(cortbone.im,dim=7)
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=600-y))+
+  geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
+              aes(fill="closing 7x7"),alpha=0.8)+
+  geom_raster(aes(fill="before closing"),alpha=0.6)+
+  labs(fill="Image",y="y",x="x",title="7x7 Closing")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+Filling Holes / Creating Masks
+========================================================
+
+Applying the closing with even larger windows will close everything but being to destroy the underlying structure of the mask
+
+```{r, fig.cap="Cortical Segment closing 19",fig.height=7}
+full.kernel<-makeBrush(45,"box")
+cortbone.close.im<-closing(cortbone.im<1,full.kernel)
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=600-y))+
+  geom_raster(data=subset(im.to.df(cortbone.close.im),val>0),
+              aes(fill="closing 45x45"),alpha=0.8)+
+  geom_raster(aes(fill="before closing"),alpha=0.6)+
+  labs(fill="Image",y="x",x="y",title="45x45 Closing")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+We can characterize this by examining the dependency of the closing size and the volume fraction (note scale)
+
+```{r, fig.cap="Cortical Segment closing 19",fig.height=3}
+get.vf<-function(img) (100*sum(img>0)/
+               (nrow(cortbone.im)*ncol(cortbone.im)))
+vf.of.closing<-function(dim.size) {
+  data.frame(dim.size=dim.size,
+             vf.full=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"box" )))
+             )
+  }
+pt.list<-c(seq(1,10),seq(11,40,2))
+vf.df<-ldply(pt.list,vf.of.closing,.parallel=T)
+ggplot(vf.df,aes(x=dim.size))+
+  geom_line(aes(y=vf.full))+
+  labs(fill="Image",y="Volume Fraction of Bone (%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
+  theme_bw(20)
+```
+
+- Be careful when using large area opening / closing operations (always check the images)
+- Noise and defects in images can be amplified with these larger operations
+
+
+Different Kernels
+========================================================
+
+Using a better kernel shape (circular, diamond shaped, etc) the artifacts from morphological operations can be reduced
+
+```{r, fig.cap="Cortical Segment closing 19",fig.height=7}
+disc.kernel<-makeBrush(45,"disc")
+cortbone.close.im<-closing(cortbone.im<1,disc.kernel)
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=600-y))+
+  geom_raster(data=subset(im.to.df(cortbone.close.im),val>0),
+              aes(fill="closing 45x45"),alpha=0.8)+
+  geom_raster(aes(fill="before closing"),alpha=0.6)+
+  labs(fill="Image",y="x",x="y",title="45x45 Closing")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+We can characterize this by examining the dependency of the closing size and the volume fraction (note scale)
+
+```{r, fig.cap="Cortical Segment closing Graph",fig.height=6}
+get.vf<-function(img) (100*sum(img>0)/
+               (nrow(cortbone.im)*ncol(cortbone.im)))
+vf.of.closing<-function(dim.size) {
+  data.frame(dim.size=dim.size,
+             vf.full=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"box" ))),
+             vf.disc=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"disc"))),
+             vf.diam=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"diamond"))),
+             vf.vline=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"line",angle=0))),
+             vf.hline=get.vf(closing(cortbone.im<1,makeBrush(dim.size,"line",angle=90)))
+             )
+  }
+pt.list<-c(seq(1,9,2),seq(11,60,4))
+vf.df<-ldply(pt.list,vf.of.closing,.parallel=T)
+ggplot(vf.df,aes(x=dim.size))+
+  geom_line(aes(y=vf.full,color="Full"))+
+  geom_line(aes(y=vf.disc,color="Circular"))+
+  geom_line(aes(y=vf.diam,color="Diamond-Shape"))+
+  geom_line(aes(y=vf.vline,color="Vertical Line"))+
+  geom_line(aes(y=vf.hline,color="Horizontal Line"))+
+  labs(color="Kernel Used",y="Volume Fraction of Bone (%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
+  theme_bw(20)
+```
+
+
+
+Surface Area / Perimeter
+========================================================
+
 
 
 Segmenting Fossils
