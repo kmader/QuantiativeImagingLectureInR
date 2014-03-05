@@ -1010,8 +1010,8 @@ pt.list<-c(seq(1,10),seq(11,40,2))
 vf.df<-ldply(pt.list,vf.of.closing,.parallel=T)
 ggplot(vf.df,aes(x=dim.size))+
   geom_line(aes(y=vf.full))+
-  labs(fill="Image",y="Volume Fraction of Bone (%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
-  theme_bw(20)
+  labs(fill="Image",y="Bone Volume Frac(%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
+  theme_bw(15)
 ```
 
 - Be careful when using large area opening / closing operations (always check the images)
@@ -1059,15 +1059,12 @@ ggplot(vf.df,aes(x=dim.size))+
   geom_line(aes(y=vf.diam,color="Diamond-Shape"))+
   geom_line(aes(y=vf.vline,color="Vertical Line"))+
   geom_line(aes(y=vf.hline,color="Horizontal Line"))+
-  labs(color="Kernel Used",y="Volume Fraction of Bone (%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
+  labs(color="Kernel Used",y="Bone Volume Fraction (%)",x="Closing Size",title="Closing Size vs Volume Fraction")+
   theme_bw(20)
 ```
-
-
-
-Surface Area / Perimeter
-========================================================
-
+- Alternative techniques
+ - [Convex Hull](http://en.wikipedia.org/wiki/Convex_hull) - assuming convex shapes
+ - [Flood Filling](http://en.wikipedia.org/wiki/Flood_fill) - like in paint
 
 
 Segmenting Fossils
@@ -1077,6 +1074,11 @@ Segmenting Fossils
   <source src="ext-figures/PaleontologyMovie.m4v" type="video/mp4">
 Your browser does not support the video tag.
 </video>
+
+- Gut Data
+ - Slice 182 you can make out the intenstine track
+- Teeth Data
+ - Explore the sample and apply a threshold to locate the teeth using the 3D viewer
 
 
 
@@ -1114,5 +1116,56 @@ ggplot(alz.df,aes(x=x,y=518-y))+
   geom_raster(aes(fill=cut_interval(val,4)))+
   labs(fill="Segmented Phases",y="y",x="x")+
   coord_equal()+
+  theme_bw(20)
+```
+
+
+
+
+
+
+Surface Area / Perimeter
+========================================================
+
+We see that the dilation and erosion affects are strongly related to the surface area of an object: the more surface area the larger the affect of a single dilation or erosion step. 
+
+```{r, fig.cap="Attenuation to Intensity",fig.height=4}
+make.circle<-function(nx,r,nscale=1) {
+  ny<-nx
+  grad.im<-expand.grid(x=c(-nx:nx)/nscale,y=c(-ny:ny)/nscale)
+  grad.im$val<-with(grad.im,(x^2+y^2)<r^2)
+  grad.im$nx<-nx
+  grad.im$r<-r
+  grad.im
+}
+r.list<-seq(0.5,5,length.out=9)
+
+erosion(df.to.im(grad.im))
+
+ggplot(ldply(r.list,function(r) make.circle(10,r)),aes(x=x,y=y,fill=val))+
+  geom_raster()+scale_fill_grey()+facet_wrap(~r)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Attenuation to Intensity",fig.height=4}
+calc.eros.cnt<-function(nx,r,nscale=1,im.fun=make.circle) {
+  in.cir<-im.fun(nx,r,nscale=nscale)
+  cir.im<-df.to.im(in.cir)
+  data.frame(nx=nx,r=r,nscale=nscale,
+             dvolume=sum(dilate(cir.im>0,makeBrush(3,"diamond"))>0),
+             evolume=sum(erode(cir.im>0,makeBrush(3,"diamond"))>0),
+             volume=sum(cir.im>0)
+             )
+}
+max.rad<-20
+r.list<-seq(0.2,max.rad,length.out=20)
+r.table<-ldply(r.list,function(r) calc.eros.cnt(max.rad+1,r,1))
+r.table$model.perimeter<-with(r.table,2*pi*r)
+ggplot(r.table,aes(x=r))+
+  geom_line(aes(y=((dvolume-volume)+(volume-evolume))/2,color="Morphological Estimation"))+
+  geom_line(aes(y=model.perimeter,color="Model Circumference"))+
+  labs(x="Radius",y="Perimeter",color="Source")+
   theme_bw(20)
 ```
