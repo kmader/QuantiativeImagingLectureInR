@@ -634,7 +634,8 @@ for(int x=x_min;x<x_max;x++)
 ### In C/C++
 
 ```
-bool* thresh_img = new bool[x_size*y_size*z_size];
+bool* pix = malloc(x_size*y_size*z_size * sizeof (bool));
+
 for(int x=x_min;x<x_max;x++)
   for(int y=y_min;y<y_max;y++)
     for(int z=z_min;z<z_max;z++) {
@@ -1064,7 +1065,7 @@ ggplot(vf.df,aes(x=dim.size))+
 ```
 - Alternative techniques
  - [Convex Hull](http://en.wikipedia.org/wiki/Convex_hull) - assuming convex shapes
- - [Flood Filling](http://en.wikipedia.org/wiki/Flood_fill) - like in paint
+ - [Flood Filling](http://en.wikipedia.org/wiki/Flood_fill) - fill connected pixels like in Microsoft Paint
 
 
 Segmenting Fossils
@@ -1140,8 +1141,6 @@ make.circle<-function(nx,r,nscale=1) {
 }
 r.list<-seq(0.5,5,length.out=9)
 
-erosion(df.to.im(grad.im))
-
 ggplot(ldply(r.list,function(r) make.circle(10,r)),aes(x=x,y=y,fill=val))+
   geom_raster()+scale_fill_grey()+facet_wrap(~r)+
   theme_bw(20)+guides(fill=F)
@@ -1163,8 +1162,10 @@ max.rad<-20
 r.list<-seq(0.2,max.rad,length.out=20)
 r.table<-ldply(r.list,function(r) calc.eros.cnt(max.rad+1,r,1))
 r.table$model.perimeter<-with(r.table,2*pi*r)
+r.table$estimated.perimeter<-with(r.table,
+                                  ((dvolume-volume)+(volume-evolume))/2)
 ggplot(r.table,aes(x=r))+
-  geom_line(aes(y=((dvolume-volume)+(volume-evolume))/2,color="Morphological Estimation"))+
+  geom_line(aes(y=estimated.perimeter,color="Morphological Estimation"))+
   geom_line(aes(y=model.perimeter,color="Model Circumference"))+
   labs(x="Radius",y="Perimeter",color="Source")+
   theme_bw(20)
