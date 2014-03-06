@@ -1,0 +1,184 @@
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+require(knitr)
+# default settings, # settings for presentation version
+echo.val<-F
+fig.height<-5
+dpi<-150
+cache<-T
+fig.path<-"pres_figures/"
+cache.path<-"pres_cache/"
+
+if(exists("printed")) { # settings for printed version (if the variable exists)
+  echo.val<-T # show code
+  fig.height<-3
+  dpi<-150
+  cache<-T
+  fig.path<-"print_figures/"
+  cache.path<-"print_cache/"
+}
+
+
+opts_chunk$set(dpi=dpi,cache=cache,
+               cache.path=cache.path,results='hide',
+               warning=F,fig.align='center',echo=echo.val,
+               fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+```
+
+```{r script_setup,results='hide',cache=FALSE}
+require(ggplot2)
+require(plyr)
+require(grid) # contains the arrow function
+require(biOps)
+require(doMC) # for parallel code
+require(EBImage)
+## To install EBImage
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("EBImage")
+
+# start parallel environment
+registerDoMC()
+# functions for converting images back and forth
+im.to.df<-function(in.img) {
+    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+    out.im$val<-as.vector(in.img)
+    out.im
+}
+df.to.im<-function(in.df,val.col="val",inv=F) {
+  in.vals<-in.df[[val.col]]
+  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
+  if(inv) in.vals<-255-in.vals
+  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
+  attr(out.mat,"type")<-"grey"
+  out.mat
+}
+ddply.cutcols<-function(...,cols=1) {
+  # run standard ddply command
+  cur.table<-ddply(...)
+  cutlabel.fixer<-function(oVal) {
+    sapply(oVal,function(x) {
+      cnv<-as.character(x)
+      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
+    })
+  }
+  cutname.fixer<-function(c.str) {
+    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
+    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
+    paste(t.str[c(1:length(t.str)-1)],collapse=",")
+  }
+  for(i in c(1:cols)) {
+    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
+    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
+  }
+  cur.table
+}
+```
+
+Quantitative Big Imaging  
+========================================================
+author: Kevin Mader
+date: 13 March 2014
+width: 1440
+height: 900
+transition: rotate
+
+## Advanced Segmentation and Labeling
+
+
+Course Outline
+========================================================
+- 20th February - Introductory Lecture
+- 27th February - Filtering and Image Enhancement (A. Kaestner)
+- 6th March - Basic Segmentation, Discrete Binary Structures
+- 13th March - **Advanced Segmentation**
+- 20th March - Analyzing Single Objects
+- 27th March -  Analyzing Complex Objects
+- 3rd April -  Spatial Distribution
+- 10th April -  Statistics and Reproducibility
+- 17th April - Dynamic Experiments
+- 8th May - Big Data
+- 15th May - Guest Lecture - Applications in Material Science
+- 22th May - Project Presentations
+
+Literature / Useful References
+========================================================
+- Jean Claude, Morphometry with R
+ - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+ - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
+- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
+ - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+
+
+Lesson Outline
+========================================================
+- Motivation
+ - Difficult Samples 
+- Thresholding
+ - Other types of images
+ - Selecting a good threshold
+- Implementation
+- Morphology
+- Applications
+
+
+
+
+To test a hypothesis
+========================================================
+- We perform an experiment bone to see how big the cells are inside the tissue
+$$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
+
+### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
+- Filtering and Preprocessing!  
+$$\downarrow$$
+- 20h of computer time later ...
+- 56GB of less noisy data
+- Way too much data, we need to reduce
+
+
+What we covered last time
+========================================================
+
+- Selecting a threshold
+- Applying morphological operations
+- Partial Volume Effect Caution
+
+Where segmentation fails: Canaliculi
+========================================================
+![Bone Slice](bonegfiltslice.png)
+Here is a bone slice
+1. Find the larger cellular structures (osteocyte lacunae)
+1. FInd the small channels which connect them together
+
+***
+
+The first task is easy using a threshold and size criteria (we know how big the cells should be)
+
+The second is much more difficult 
+
+Where segmentation fails: Brain Cortex
+========================================================
+- The cortex is barely visible to the human eye
+- Tiny structures hint at where cortex is located
+```{r, fig.cap="Brain with Threshold",fig.height=5}
+alz.df<-im.to.df(t(png::readPNG("ext-figures/cortex.png")))
+ggplot(alz.df,aes(x=x,y=518-y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Electron Density",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+- A simple threshold is insufficient to finding the cortical structures
+- Other filtering techniques are unlikely to magicially fix this problem
+```{r, fig.cap="Brain with Threshold",fig.height=5}
+ggplot(alz.df,aes(x=x,y=518-y))+
+  geom_raster(aes(fill=cut_interval(val,4)))+
+  labs(fill="Segmented Phases",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+
+
