@@ -318,25 +318,28 @@ ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
 ```
 Various Thresholds
 ========================================================
-```{r, fig.cap="Threshold Images",fig.height=5}
+
+```{r, fig.cap="Threshold Histograms",fig.height=7}
 thresh.vals<-c(2:10)/10
 grad.im.th<-ldply(thresh.vals,function(thresh.val) 
   cbind(cross.im,thresh=thresh.val,in.thresh=(cross.im$col>=thresh.val)))
+ggplot(grad.im.th,aes(x=col))+
+  geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
+  labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
+  theme_bw(15)
+```
+
+***
+```{r, fig.cap="Threshold Images",fig.height=7}
 ggplot(grad.im.th,aes(x=x,y=y))+
   geom_tile(aes(fill=in.thresh),color="black",alpha=0.75)+
   labs(fill="Above Threshold")+facet_wrap(~thresh)+
   theme_bw(20)
 ```
-***
-```{r, fig.cap="Threshold Histograms",fig.height=5}
-ggplot(grad.im.th,aes(x=col))+
-  geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
-  labs(x="Intensity",fill="Above Threshold")+facet_wrap(~thresh)+
-  theme_bw(20)
-```
 
 Segmenting Cells
 ========================================================
+
 ```{r, fig.cap="Cell Colony",fig.height=4}
 cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
 ggplot(cellImage,aes(x=x,y=y,fill=val))+
@@ -360,7 +363,7 @@ ggplot(cellImage,aes(x=val))+geom_histogram()+
 
 Different Threshold Values
 ========================================================
-```{r, fig.cap="Cell Colony",fig.height=5}
+```{r, fig.cap="Cell Colony",fig.height=7}
 th.vals<-seq(0.4,0.85,length.out=3)
 thlabel<-function(x,...) switch(x,"Too low","Good","Too high")
 im.vals<-ldply(1:length(th.vals),function(th.val)
@@ -374,7 +377,7 @@ ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
   theme_bw(20)+coord_equal()
 ```
 ***
-```{r, echo=FALSE}
+```{r, echo=FALSE,fig.height=7}
 ggplot(im.vals,aes(x=val))+geom_histogram(aes(fill=in.thresh))+
   scale_y_sqrt()+
   theme_bw(20)+facet_grid(th.label~.)+labs(x="Intensity",y="Count",fill="Phase")
@@ -603,7 +606,7 @@ $$ I(x) =
 \text{Clay}, & 0.2 < x \leq 0.5 \\
 \text{Rock}, & 0.5 < x
 \end{cases}$$
-```{r, fig.cap="Segmented Images"}
+```{r, fig.cap="Segmented Images",fig.height=4}
 ggplot(shale.vals,aes(x=x,y=y,fill=th.label,alpha=1-val))+coord_fixed(ratio=1)+
   geom_raster()+guides(fill=F,alpha=F)+theme_bw(20)+facet_wrap(~th.label)
 ```
@@ -654,7 +657,7 @@ for(int x=x_min;x<x_max;x++)
 ### In C/C++
 
 ```
-bool* thesh_img = malloc(x_size*y_size*z_size * sizeof (bool));
+bool* thresh_img = malloc(x_size*y_size*z_size * sizeof (bool));
 
 for(int x=x_min;x<x_max;x++)
   for(int y=y_min;y<y_max;y++)
