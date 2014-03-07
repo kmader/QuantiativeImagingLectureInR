@@ -111,6 +111,7 @@ Literature / Useful References
 Lesson Outline
 ========================================================
 - Motivation
+ - Many Samples
  - Difficult Samples 
 - Thresholding
  - Other types of images
@@ -118,9 +119,6 @@ Lesson Outline
 - Implementation
 - Morphology
 - Applications
-
-
-
 
 To test a hypothesis
 ========================================================
@@ -141,6 +139,11 @@ What we covered last time
 - Selecting a threshold
 - Applying morphological operations
 - Partial Volume Effect Caution
+
+Where segmentation fails: Inconsistent Illumination
+========================================================
+
+With inconsistent or every changing illumination it may not be possible to apply the same threshold to every image. 
 
 Where segmentation fails: Canaliculi
 ========================================================
@@ -180,5 +183,53 @@ ggplot(alz.df,aes(x=x,y=518-y))+
   theme_bw(20)
 ```
 
+
+Automated Threshold Selection
+========================================================
+type:alert
+![Many possible automated techniques](ext-figures/automaticthresh.png)
+
+Fiji -> Adjust -> Auto Threshold
+========================================================
+type:alert
+Automatically try all of them on your image
+![Many possible automated techniques](ext-figures/tryall.png)
+
+
+Hysteresis Thresholding
+========================================================
+type:alert
+
+[Source](http://imagejdocu.tudor.lu/doku.php?id=plugin:segmentation:hysteresis_thresholding:start)
+
+```{r, fig.cap="Bone Slice",fig.height=3}
+bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
+ggplot(bone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Calcification Dens",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+```{r, fig.cap="Bone Slice Histogram",fig.height=3}
+ggplot(bone.df,aes(x=val))+
+  geom_density()+
+  labs(x="Calcification Dens")+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Bone Slice",fig.height=3}
+thresh.fun<-function(x) {if()}
+bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
+ggplot(bone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Calcification Dens",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+- For some images a single threshold does not work
 
 
