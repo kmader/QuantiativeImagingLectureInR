@@ -26,6 +26,7 @@ opts_chunk$set(dpi=dpi,cache=cache,
 
 ```{r script_setup,results='hide',cache=FALSE}
 require(ggplot2)
+require(lattice) # nicer scatter plots
 require(plyr)
 require(grid) # contains the arrow function
 require(biOps)
@@ -341,17 +342,16 @@ Once the variable count is above 2, individual density functions and a series of
 ***
 
 ```{r, fig.cap="Variable distributions",fig.height=4}
-
 ggplot(grad.im)+
   geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
   geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
   geom_histogram(aes(x=th,fill="Orientation"),alpha=0.7)+
   geom_histogram(aes(x=col,fill="Color"),alpha=0.7)+
-  guides(color=F)+labs(fill="Variable")+
+  guides(color=F)+labs(x="Value",fill="Variable")+
   theme_bw(15)
 ```
 
-```{r, fig.cap="With Threshold Overlay",fig.height=4}
+```{r, fig.cap="Intervariable correlation",fig.height=4}
 plot(grad.im[,c("a","b","th","col")])
 ```
 
@@ -374,23 +374,96 @@ We give as an initial parameter the number of groups we want to find and possibl
 
 What vector space to we have?
 - Sometimes represent physical locations (classify swiss people into cities)
-- Can include intensity or color (K-means can be used as a thresholding technique when you give it image intensity as the vector and tell it to find two groups)
+- Can include intensity or color (K-means can be used as a thresholding technique when you give it image intensity as the vector and tell it to find two or more groups)
+- Can also include orientation, shape, or in extreme cases full spectra (chemically sensitive imaging)
 
+#### Note:  If you look for 2 groups you will almost always find two groups, whether or not they make any sense
 
+K-Means Example
+===
+```{matlab}
+objColor=kmeans(indata,2);
+```
+```{r, fig.cap="KMeans",fig.height=4}
+grad.im$km.cluster<-kmeans(grad.im,2)$cluster
+# normalize vector
+tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
+                                                     km.cluster=c.data[1,"km.cluster"]
+                                                     )
+               )
+
+ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
+  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
+  theme_bw(20)
+```
+```{r, fig.cap="Variable distributions",fig.height=3}
+splom(grad.im[,c("x","y","th","col")],groups=grad.im$km.cluster,pch=16)
+```
+
+***
+
+Or just the anisotropy and orientation
+```{matlab}
+objColor=kmeans(indata(:,[aisoCol,thCol]),2);
+```
+
+```{r, fig.cap="KMeans",fig.height=4}
+grad.im$km.cluster<-kmeans(grad.im[,c("th","aiso")],2)$cluster
+# normalize vector
+tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
+                                                     km.cluster=c.data[1,"km.cluster"]
+                                                     )
+               )
+ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
+  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
+  theme_bw(20)
+```
+
+```{r, fig.cap="Variable distributions",fig.height=3}
+
+splom(grad.im[,c("x","y","th","col")],groups=grad.im$km.cluster,pch=16)
+```
 
 Probabilistic Models of Segmentation
 ===
 type:alert
-A more general approach is to use a probabilistic model to segmentation
+A more general approach is to use a probabilistic model to segmentation. We start with our image $I(\vec{x}) \forall \vec{x}\in \mathbb{R}^N$ and we classify it into two phases $\alpha$ and $\beta$
 
-$$P(\{\vec{x} , f(\vec{x})\}  | \text{ph}) \propto P(\text{ph}) + P(f(\vec{x}) | \text{ph})+  P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \text{ph})  $$
-- $P(\{\vec{x} , f(\vec{x})\}  | \text{ph})$ the probability a given pixel is in phase ph given we know it's position and value
-- $P(\text{ph})$ probability of any pixel in an image being part of the phase (expected volume fraction of that phase)
-- $P(f(\vec{x}) | \text{ph})$ probability adjustment based on knowing the value of f at the given point
-- $P(f(\vec{x^{\prime}}) |  \text{ph})$ are the collective probability adjustments based on knowing the value of a pixels neighbors
-Fuzzy-Classification
+$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(f(\vec{x}) | \alpha)+  P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \alpha)$$
+- $P(\{\vec{x} , f(\vec{x})\}  | \alpha)$ the probability a given pixel is in phase ph given we know it's position and value
+- $P(\alpha)$ probability of any pixel in an image being part of the phase (expected volume fraction of that phase)
+- $P(I(\vec{x}) | \alpha)$ probability adjustment based on knowing the value of f at the given point
+- $P(f(\vec{x^{\prime}}) |  \alpha)$ are the collective probability adjustments based on knowing the value of a pixels neighbors
+
+Fuzzy Classification
 ===
+Fuzzy classification based on [Fuzzy logic](http://en.wikipedia.org/wiki/Fuzzy_logic) and [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing) and is a general catagory for multi-value logic instead of simply __true__ and __false__ and can be used to build __IF__ and __THEN__ statements from our probabilistic models.
 
-A multitude of other techniques exist for classifying groups and courses in Artificial Intelligence go into much greater details
+### Instead of
+
+$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(f(\vec{x}) | \alpha)+$$
+$$P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \alpha)$$
+
+***
+
+### Clear simple rules
+which encompass aspects of filtering, thresholding, and morphological operations
+- __IF__ the intensity if dark ($<100$)
+ - __AND__ a majority of the neighborhood ($\textrm{N}$) values are dark ($<100$)
+- __THEN__ it is a cell
+
+
+![Cell Colony](ext-figures/Cell_Colony.jpg)
+
+
+Beyond
+===
+- A multitude of other techniques exist for classifying groups and courses in Data Science and Artificial Intelligence go into much greater details. 
+- These techniques are generally underused because they are complicated to explain and robustly test and can arouse suspicion from reviewers. 
+ - Because of their added complexity it is easier to manipulate these methods to get desired results from almost any dataset
+ - But if the approach is based on a physical model of the images and the underyling system it is acceptable
+- Additionally they usually require some degree of implementation (coding).
+
+
 
 
