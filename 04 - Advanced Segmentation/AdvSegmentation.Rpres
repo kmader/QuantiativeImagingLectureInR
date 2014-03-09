@@ -213,6 +213,7 @@ ggplot(bone.df,aes(x=x,y=y))+
 
 ```{r, fig.cap="Bone Slice Histogram",fig.height=3}
 ggplot(bone.df,aes(x=val))+
+  geom_histogram(aes(y=..density..),alpha=0.5)+
   geom_density()+
   labs(x="Calcification Dens")+
   theme_bw(20)
@@ -221,12 +222,21 @@ ggplot(bone.df,aes(x=val))+
 ***
 
 ```{r, fig.cap="Bone Slice",fig.height=3}
-thresh.fun<-function(x) {if()}
-bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
+thresh.fun<-function(x) {ifelse(x<0.05,"Air",ifelse(x<0.30,"Between","Bone"))}
+bone.df$phase<-thresh.fun(bone.df$val)
 ggplot(bone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=val))+
-  labs(fill="Calcification Dens",y="y",x="x")+
+  geom_raster(aes(fill=phase))+
+  labs(fill="Phase",y="y",x="x")+
   coord_equal()+
+  theme_bw(20)
+```
+
+```{r, fig.cap="Bone Labeled Histogram",fig.height=3}
+ggplot(bone.df,aes(x=val))+
+  geom_histogram(aes(fill=phase),binwidth=0.02,alpha=0.5)+
+  geom_density(aes(y=15000/1.5*..scaled..))+
+  labs(x="Calcification Density (au)")+
+  scale_y_sqrt()+#(c(0,20))+
   theme_bw(20)
 ```
 
