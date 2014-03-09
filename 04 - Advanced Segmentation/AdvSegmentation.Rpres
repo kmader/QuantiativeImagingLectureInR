@@ -189,18 +189,71 @@ Automated Threshold Selection
 type:alert
 ![Many possible automated techniques](ext-figures/automaticthresh.png)
 
+***
+
+Given that applying a threshold is such a common and signficant step, there have been many tools developed to automatically (unsupervised) perform it. A particularly important step in setups where images are rarely consistent such as outdoor imaging which has varying lighting (sun, clouds). The methods are based on several basic principles. 
+
+### Histogram-based methods
+Just like we visually inspect a histogram an algorithm can examine the histogram and find local minimums between two peaks, maximum / minimum entropy and other factors
+
+- Otsu, Isodata, Intermodes, etc
+
+### Image based Methods
+These look at the statistics of the thresheld image themselves (like entropy) to estimate the threshold  
+
+
+### Results-based Methods
+These search for a threshold which delivers the desired results in the final objects. For example if you know you have an image of cells and each cell is between 200-10000 pixels the algorithm runs thresholds until the objects are of the desired size
+- More specific requirements need to be implemented manually
+
+
 Fiji -> Adjust -> Auto Threshold
 ========================================================
-type:alert
-Automatically try all of them on your image
+There are many methods and they can be complicated to implement yourself. FIJI offers many of them as built in functions so you can automatically try all of them on your image
 ![Many possible automated techniques](ext-figures/tryall.png)
+
+Pitfalls
+===
+While an incredibly useful tool, there are many potential pitfalls to these automated techniques. 
+
+### Histogram-based
+
+These methods are very sensitive to the distribution of pixels in your image and may work really well on images with equal amounts of each phase but work horribly on images which have very high amounts of one phase compared to the others
+
+### Image-based
+
+These methods are sensitive to noise and a large noise content in the image can change statistics like entropy significantly. 
+
+### Results-based
+
+These methods are inherently biased by the expectations you have. If you want to find objects between 200 and 1000 pixels you will, they just might not be anything meaningful.
+
+Realistic Approaches for Dealing with these Shortcomings
+===
+
+Imaging science rarely represents the ideal world and will never be 100% perfect. At some point we need to write our master's thesis, defend, or publish a paper. These are approaches for more qualitative assessment we will later cover how to do this a bit more robustly with quantitative approaches
+
+### Model-based
+
+One approach is to try and simulate everything (including noise) as well as possible and to apply these techniques to many realizations of the same image and qualitatively keep track of how many of the results accurately identify your phase or not. Hint: >95% seems to convince most biologists
+
+### Sample-based
+
+Apply the methods to each sample and keep track of which threshold was used for each one. Go back and apply each threshold to each sample in the image and keep track of how many of them are correct enough to be used for further study.
+
+### Worst-case Scenario
+
+Come up with the worst-case scenario (noise, misalignment, etc) and assess how inacceptable the results are. Then try to estimate the quartiles range (75% - 25% of images).
 
 
 Hysteresis Thresholding
 ========================================================
 type:alert
+For some images a single threshold does not work
+- large structures are very clearly defined
+- smaller structures are difficult to differentiated (see [partial volume effect](http://bit.ly/1mW7kdP))
 
-[Source](http://imagejdocu.tudor.lu/doku.php?id=plugin:segmentation:hysteresis_thresholding:start)
+[ImageJ Source](http://imagejdocu.tudor.lu/doku.php?id=plugin:segmentation:hysteresis_thresholding:start)
 
 ```{r, fig.cap="Bone Slice",fig.height=3}
 bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
@@ -240,6 +293,89 @@ ggplot(bone.df,aes(x=val))+
   theme_bw(20)
 ```
 
-- For some images a single threshold does not work
+
+More Complicated Images
+===
+As we briefly covered last time, many measurement types produce quite rich data.
+$$ I(x,y) = \hat{f}(x,y) $$
+```{r, fig.cap="",fig.height=3}
+nx<-4
+ny<-4
+n.pi<-4
+grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,
+                     y=c(-ny:ny)/ny*n.pi*pi)
+
+grad.im<-cbind(grad.im,
+               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(grad.im)),
+              a=with(grad.im,sqrt(2/(abs(x)+0.5))),
+               b=with(grad.im,0.5*sqrt(abs(x)+1)),
+              th=0.5*runif(nrow(grad.im)),
+              aiso=1,count=1)
+
+create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
+  if (is.null(b)) b<-a
+  th<-seq(0,th.max,length.out=pts)
+  data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
+             y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
+             id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
+}
+deform.ellipse.draw<-function(c.box) {
+  create.ellipse.points(x.off=c.box$x[1],
+                        y.off=c.box$y[1],
+                        a=c.box$a[1],
+                        b=c.box$b[1],
+                        th.off=c.box$th[1],
+                        col=c.box$col[1])                    
+}
+
+# normalize vector
+tens.im<-ddply(grad.im,.(x,y),deform.ellipse.draw)
+
+ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
+  geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
+  theme_bw(20)
+```
+Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
+
+***
+
+```{r, fig.cap="Variable distributions",fig.height=4}
+
+ggplot(grad.im)+
+  geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
+  geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
+  geom_histogram(aes(x=th,fill="Orientation"),alpha=0.7)+
+  geom_histogram(aes(x=col,fill="Color"),alpha=0.7)+
+  guides(color=F)+labs(fill="Variable")+
+  theme_bw(15)
+```
+
+```{r, fig.cap="With Threshold Overlay",fig.height=4}
+plot(grad.im[,c("a","b","th","col")])
+```
+
+K-Means Clustering / Classification
+===
+- Automatic clustering of multidimensional data into groups based on a distance metric
+- Fast and scalable to petabytes of data (Google, Facebook, Twitter, etc. use it regularly to classify customers, advertisements, queries)
+- Segementation / Thresholding is really a classification task: given the gray value classify the pixel as either bone or air
+
+K-Means Algorithm
+===
+type:alert
+We give as an initial parameter the number of groups we want to find and possible a criteria for removing groups that are too similar
+1. Randomly create center points (groups) in vector space
+1. Assigns group to data point by the “closest” center
+1. Recalculate centers from mean point in each group
+1. Go back to step 2 until the groups stop changing
+
+*** 
+
+What vector space to we have?
+- Sometimes represent physical locations (classify swiss people into cities)
+- Can include intensity or color (K-means can be used as a thresholding technique when you give it image intensity as the vector and tell it to find two groups)
+
+
 
 

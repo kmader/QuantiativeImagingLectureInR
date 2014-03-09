@@ -134,6 +134,14 @@ There are two different types of problems that we will run into.
 - Animal genomic imaging can have many huge datasets (1000s of 328GB datasets)
 
 
-
+Principles
+===
+### Disclosure : There are entire courses / PhD thesis about this, so this is just a scant introduction
+- Parallel and Distributed Computing
+- Threads
+- Shared-Memory
+- Race Conditions
+- Synchronization
+ - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
 
 
