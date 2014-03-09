@@ -378,4 +378,19 @@ What vector space to we have?
 
 
 
+Probabilistic Models of Segmentation
+===
+type:alert
+A more general approach is to use a probabilistic model to segmentation
+
+$$P(\{\vec{x} , f(\vec{x})\}  | \text{ph}) \propto P(\text{ph}) + P(f(\vec{x}) | \text{ph})+  P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \text{ph})  $$
+- $P(\{\vec{x} , f(\vec{x})\}  | \text{ph})$ the probability a given pixel is in phase ph given we know it's position and value
+- $P(\text{ph})$ probability of any pixel in an image being part of the phase (expected volume fraction of that phase)
+- $P(f(\vec{x}) | \text{ph})$ probability adjustment based on knowing the value of f at the given point
+- $P(f(\vec{x^{\prime}}) |  \text{ph})$ are the collective probability adjustments based on knowing the value of a pixels neighbors
+Fuzzy-Classification
+===
+
+A multitude of other techniques exist for classifying groups and courses in Artificial Intelligence go into much greater details
+
 
