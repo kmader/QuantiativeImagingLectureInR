@@ -1,0 +1,314 @@
+---
+title       : Introductory Material  Quiz
+subtitle    : Image Enhancement - Advanced Segmentation
+author      : Kevin Mader
+job         : Lecturer, ETH Zurich 
+license     : by-nc-sa
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : solarized_light      # 
+widgets     : [mathjax,quiz,bootstrap] #[mathjax, bootstrap, quiz, opencpu, popcornjs]
+mode        : selfcontained # {standalone, draft}
+github:
+  user: kmader
+  repo: AdvSegmentationQuiz
+---
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+require(knitr)
+# default settings, # settings for presentation version
+echo.val<-F
+fig.height<-5
+dpi<-150
+cache<-T
+fig.path<-"pres_figures/"
+cache.path<-"pres_cache/"
+
+if(exists("printed")) { # settings for printed version (if the variable exists)
+  echo.val<-T # show code
+  fig.height<-3
+  dpi<-150
+  cache<-T
+  fig.path<-"print_figures/"
+  cache.path<-"print_cache/"
+}
+
+
+opts_chunk$set(dpi=dpi,cache=cache,
+               cache.path=cache.path,results='hide',
+               warning=F,fig.align='center',echo=echo.val,
+               fig.path=fig.path,message=F) #dev="CairoPNG"
+
+knit_hooks$set(source = function(x, options){
+  if (!is.null(options$knitCode) && (options$knitCode)){
+    paste("<div><textarea class='knitCode' style='display:none;'>", x, 
+      "</textarea></div>", sep = '\n')
+  } else {
+    stringr::str_c("\n\n```", tolower(options$engine), "\n", x, "```\n\n")
+  }
+})
+knit_hooks$set(document = function(x){
+  gsub("```\n*```r*\n*", "", x)
+})
+```
+
+```{r script_setup,results='hide',cache=FALSE}
+require(ggplot2)
+require(plyr)
+require(grid) # contains the arrow function
+require(biOps)
+require(doMC) # for parallel code
+require(EBImage)
+## To install EBImage
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("EBImage")
+
+# start parallel environment
+registerDoMC()
+# functions for converting images back and forth
+im.to.df<-function(in.img) {
+    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+    out.im$val<-as.vector(in.img)
+    out.im
+}
+df.to.im<-function(in.df,val.col="val",inv=F) {
+  in.vals<-in.df[[val.col]]
+  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
+  if(inv) in.vals<-255-in.vals
+  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
+  attr(out.mat,"type")<-"grey"
+  out.mat
+}
+ddply.cutcols<-function(...,cols=1) {
+  # run standard ddply command
+  cur.table<-ddply(...)
+  cutlabel.fixer<-function(oVal) {
+    sapply(oVal,function(x) {
+      cnv<-as.character(x)
+      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
+    })
+  }
+  cutname.fixer<-function(c.str) {
+    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
+    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
+    paste(t.str[c(1:length(t.str)-1)],collapse=",")
+  }
+  for(i in c(1:cols)) {
+    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
+    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
+  }
+  cur.table
+}
+```
+
+## Enhancement and Segmentation Quiz
+
+The quiz is not graded but it will help you identify which areas to better review. It is also good preparation for the next section since the course builds on itself the better you understand the first lectures the easier the subsequent ones will be.
+
+
+--- &radio2
+## Choosing a threshold
+
+Based just on the distribution above which value would make the most sense for the threshold
+
+1. 0.5
+1. _1.0_
+1. 1.75
+
+*** =image
+```{r, fig.cap=""}
+nx<-10
+ny<-10
+cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+cross.im<-cbind(cross.im,
+               col=1.5*with(cross.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(cross.im)))
+bn.wid<-diff(range(cross.im$col))/20
+ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
+  labs(x="Intensity",title="Probability Density Function")+
+  theme_bw(20)
+```
+
+*** .explanation
+The value 1.0 lies best between the two peaks of the distribution
+
+
+--- &radio2
+## Morphological Operations
+
+Looking at the before and after images, which morphological operation was most-likely performed and what was the range
+
+1. Erosion, 3x3
+1. Dilation, 3x3
+1. Opening, 3x3
+1. Closing, 3x3
+1. Erosion, 11x11
+1. Dilation, 11x11
+1. Opening, 11x11
+1. _Closing, 11x11_
+
+*** =image
+```{r, fig.cap="Cortical Segment Morphology"}
+cortbone.im<-imagedata(t(png::readPNG("../ext-figures/bone.png")),"grey")
+cortbone.df<-im.to.df(cortbone.im)
+cortbone.close.im<-imgStdBinaryClosing(cortbone.im,dim=11)
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
+              aes(fill="after operation"),alpha=0.8)+
+  geom_raster(aes(fill="original image"),alpha=0.6)+
+  labs(fill="Image",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+*** .hint
+Pay attention to the edges of the image and the size of the features inside
+*** .explanation
+The operation can be seen by looking at the inside and edges. Since the inside is filled in, it must be either dilation or closing (the other operations typically only remove pixels). By examining the edges and seeing that the structure does not grow we can determine it is closing (dilation would have caused the borders to grow). 
+The size or neighborhood can be guessed by looking at the size of the holes filled which are clearly much larger than 3 pixels.
+
+--- &submitcompare2 rows:5
+## Morphological Kernels / Neighborhoods
+
+Looking at the before and after images, which neighborhood or kernel was used with the closing operation
+
+```{r, fig.cap="Cortical Segment Closing"}
+cortbone.im.sub<-cortbone.im[c(300:400),c(500:600)]
+kernel.list<-c("disc","box","diamond","line")
+im.kernels<-ldply(kernel.list,function(kernel.name,kernel.size=61) {
+  cbind(
+    subset(im.to.df(closing(cortbone.im.sub<1,
+                           makeBrush(kernel.size,kernel.name,angle=90))),val>0),
+    kernel.name=kernel.name
+    )
+})
+im.kernels$kernel.number<-as.numeric(im.kernels$kernel.name)
+ggplot(im.kernels,aes(x=x,y=600-y))+
+  geom_raster(data=subset(im.to.df(cortbone.im.sub),val<1),
+              aes(fill="original"),alpha=0.8)+
+  geom_raster(aes(fill="after dilation"),alpha=0.6)+
+  facet_wrap(~kernel.number)+
+  labs(fill="Image",y="x",x="y")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+*** .hint
+The possible kernel choices are box, diamond, line, and disc (circular)
+*** .explanation
+The images were dilated with the disc (circular), box (full), diamond, and line neighborhoods respectively. This can be seen by looking at the borders of the shape which are very boxy in 2 & 4 and very curved in 1. In 3 they are jagged indicative of a diamond shape. 2 is box because it extends in both x and y while 4 only extends along the y direction.
+
+*** =image
+
+
+
+
+--- &multitext
+## Question 1
+
+
+```{r echo = F}
+mu = 100
+sigma = 20
+n = 4
+x = 110
+z = (x - mu)/(sigma/sqrt(n))
+prob = pnorm(x, mu, sigma/sqrt(n), lower.tail = F)
+
+```
+
+A normally distributed population has a mean of $\mu = `r mu`$ and a standard deviation of $\sigma = `r sigma`$. Suppose we select a sample of size 4.
+
+1. What is the mean of the sampling distribution?
+2. What is the standard error of the sampling distribution?
+3. What is the probability that our selected sample has a mean greater than `r x`?
+
+*** .explanation
+
+1. <span class="answer">`r mu`</span>
+2. <span class="answer">`r sigma/sqrt(n)`</span>
+3. The sampling distribution of the sample mean, for samples of size 4 will be normal with mean `r mu` and standard deviation $\frac{`r sigma`}{\sqrt{`r n`}}$. Hence, the probability of selecting a sample with mean greater than `r x` is given by
+$$
+\begin{aligned}
+P(X > `r x`) & = P\left(Z > \frac{`r x` - `r mu`}{\sqrt{`r n`}}\right) \\
+             & = P\left(Z > `r z`\right) 
+\end{aligned}
+$$ 
+Either using the standard normal table, or by using the 68-95-99.7 rule, we can compute this probability to be <span class="answer">`r prob`</span>
+
+
+--- &radio
+## Automatic Thresholds
+
+
+Which is the best reason to use automatic threshold techniques on data
+
+1. Reduce noise
+2. _Compensate for changing illumination_
+3. Improve signal to noise ratio
+4. Segment difficult to separate phases
+
+*** .hint
+Check the "Where segmentation fails" slide
+
+*** .explanation
+Changing illumination will change the brightness of the pixels in the image but should not largely change their statistics or distribution making them ideal candidates for automated methods.
+```{r, fig.cap="Varying Illumination Images"}
+cellImage<-im.to.df(jpeg::readJPEG("../ext-figures/Cell_Colony.jpg"))
+il.vals<-runif(4,min=0.2,max=1/0.2)
+im.vals<-ldply(1:length(il.vals),function(il.idx,th.val=0.75)
+  cbind(cellImage[,c("x","y")],
+        val=cellImage$val*il.vals[il.idx],
+        in.thresh=ifelse(cellImage$val*il.vals[il.idx]<th.val,"Cells","Background"),
+        il.val=il.vals[il.idx],
+        th.val=th.val
+        ))
+im.vals$il.val<-as.numeric(factor(im.vals$il.val))
+ggplot(im.vals,aes(x=x,y=y,fill=val))+
+  geom_raster()+facet_wrap(~il.val)+
+  labs(fill="Intensity")+
+  theme_bw(20)+coord_equal()
+```
+```{r, fig.cap="Varying Illumination Histograms"}
+ggplot(im.vals,aes(x=val,color=as.factor(il.val)))+
+  geom_density()+
+  labs(x="Intensity",y="Frequency",color="Image")+
+  theme_bw(20)
+```
+Neither noise nor signal to noise ratio can be improved using automated segmentation. These are addressed soley in the "Image Enhancement" lecture of the course.
+While automatic techniques might make results more reliable in 4, difficult segmentations are just as difficult when using automated techniques
+
+
+--- &radio2
+## Selecting a threshold technique
+
+Based soley on the histogram above which automatic threshold technique is best suited?
+
+1. _Intermodes_
+1. Hysteresis Threshold
+1. K-Means
+
+*** =image
+```{r, fig.cap=""}
+nx<-10
+ny<-10
+cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+cross.im<-cbind(cross.im,
+               col=1.5*with(cross.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 0.5*runif(nrow(cross.im)))
+bn.wid<-diff(range(cross.im$col))/20
+ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
+  labs(x="Intensity",title="Probability Density Function")+
+  theme_bw(20)
+```
+
+*** .explanation
+Intermodes works best since the two phases are well characterized wiht the modes of the system and since their does not appear to be any bias or skew the method taking the value between them would work best. K-Means and Hysteresis might work as well but it is hard to know without seeing the image itself
+
+*** .hint
+See Advanced Segmentation Lecture
+
+--- &submitcompare2 rows:5
+## Segmentation Strategy
+
+
+
