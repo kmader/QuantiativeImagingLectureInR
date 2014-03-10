@@ -11,7 +11,7 @@ widgets     : [mathjax,quiz,bootstrap] #[mathjax, bootstrap, quiz, opencpu, popc
 mode        : selfcontained # {standalone, draft}
 github:
   user: kmader
-  repo: AdvSegmentationQuiz
+  repo: Quantitative-Big-Imaging-Course
 ---
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 require(knitr)
@@ -163,7 +163,9 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
 *** .hint
 Pay attention to the edges of the image and the size of the features inside
 *** .explanation
-The operation can be seen by looking at the inside and edges. Since the inside is filled in, it must be either dilation or closing (the other operations typically only remove pixels). By examining the edges and seeing that the structure does not grow we can determine it is closing (dilation would have caused the borders to grow). 
+### Kernel Shape
+The operation can be seen by looking at the inside and edges. Since the inside is filled in, it must be either dilation or closing (the other operations typically only remove pixels). By examining the edges and seeing that the structure does not grow we can determine it is closing (dilation would have caused the borders to grow).
+### Neighborhood
 The size or neighborhood can be guessed by looking at the size of the holes filled which are clearly much larger than 3 pixels.
 
 --- &submitcompare2 rows:5
@@ -200,40 +202,36 @@ The images were dilated with the disc (circular), box (full), diamond, and line 
 *** =image
 
 
+--- &submitcompare2 rows:5
+## Segmentation Strategy
 
 
---- &multitext
-## Question 1
+You measure the same cross 4 times and and get the following images as output. Estimate the signal to noise in the images and provide a strategy for how the data could be filtered and segmented.
 
+```{r, fig.cap="",fig.height=5}
+nx<-10
+ny<-10
+cross.im<-expand.grid(x=c(-nx:nx)/nx*2*pi,y=c(-ny:ny)/ny*2*pi)
+noise.levels<-c(0,0.5,3,0.25)
+cross.im.fn<-function(noise.idx) cbind(cross.im,
+               col=1.5*with(cross.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
+                 noise.levels[noise.idx]*runif(nrow(cross.im)),
+               noise.level=noise.levels[noise.idx],
+               noise.idx=noise.idx)
 
-```{r echo = F}
-mu = 100
-sigma = 20
-n = 4
-x = 110
-z = (x - mu)/(sigma/sqrt(n))
-prob = pnorm(x, mu, sigma/sqrt(n), lower.tail = F)
-
+ggplot(ldply(1:length(noise.levels),cross.im.fn),aes(x=x,y=y,fill=col))+
+  geom_raster()+facet_wrap(~noise.idx)+
+  labs(fill="Intensity",title="Input Images")+
+  scale_fill_gradientn(colours=c("red","green","blue"))+
+  theme_bw(20)#+guides()
 ```
 
-A normally distributed population has a mean of $\mu = `r mu`$ and a standard deviation of $\sigma = `r sigma`$. Suppose we select a sample of size 4.
-
-1. What is the mean of the sampling distribution?
-2. What is the standard error of the sampling distribution?
-3. What is the probability that our selected sample has a mean greater than `r x`?
-
 *** .explanation
+The signal to noise ratios for the image are very high (>3) in 1 and 4,  reasonable in 2, and completely unusable in 4. The images in 1,2 and 4 can be processed using a Gaussian filter and threshold while might have a tiny bit of information but would need to be heavily filtered and interpreted carefully. It is easiest therefore, to examine the histograms of the images first where 3 has a much broader peak (higher standard deviation) indicating it is noisier and skipping this image in the first place.
 
-1. <span class="answer">`r mu`</span>
-2. <span class="answer">`r sigma/sqrt(n)`</span>
-3. The sampling distribution of the sample mean, for samples of size 4 will be normal with mean `r mu` and standard deviation $\frac{`r sigma`}{\sqrt{`r n`}}$. Hence, the probability of selecting a sample with mean greater than `r x` is given by
-$$
-\begin{aligned}
-P(X > `r x`) & = P\left(Z > \frac{`r x` - `r mu`}{\sqrt{`r n`}}\right) \\
-             & = P\left(Z > `r z`\right) 
-\end{aligned}
-$$ 
-Either using the standard normal table, or by using the 68-95-99.7 rule, we can compute this probability to be <span class="answer">`r prob`</span>
+*** .hint
+See Enhancement and Segmentation, you do not need to keep all of the data.
+
 
 
 --- &radio
@@ -254,7 +252,7 @@ Check the "Where segmentation fails" slide
 Changing illumination will change the brightness of the pixels in the image but should not largely change their statistics or distribution making them ideal candidates for automated methods.
 ```{r, fig.cap="Varying Illumination Images"}
 cellImage<-im.to.df(jpeg::readJPEG("../ext-figures/Cell_Colony.jpg"))
-il.vals<-runif(4,min=0.2,max=1/0.2)
+il.vals<-runif(9,min=0.2,max=1/0.2)
 im.vals<-ldply(1:length(il.vals),function(il.idx,th.val=0.75)
   cbind(cellImage[,c("x","y")],
         val=cellImage$val*il.vals[il.idx],
@@ -273,6 +271,7 @@ ggplot(im.vals,aes(x=val,color=as.factor(il.val)))+
   geom_density()+
   labs(x="Intensity",y="Frequency",color="Image")+
   theme_bw(20)
+
 ```
 Neither noise nor signal to noise ratio can be improved using automated segmentation. These are addressed soley in the "Image Enhancement" lecture of the course.
 While automatic techniques might make results more reliable in 4, difficult segmentations are just as difficult when using automated techniques
@@ -302,13 +301,28 @@ ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
 ```
 
 *** .explanation
-Intermodes works best since the two phases are well characterized wiht the modes of the system and since their does not appear to be any bias or skew the method taking the value between them would work best. K-Means and Hysteresis might work as well but it is hard to know without seeing the image itself
+Intermodes works best since the two phases are well characterized wiht the modes of the system and since their does not appear to be any bias or skew the method taking the value between them would work best.
+### Wrong Answers
+K-Means and Hysteresis might work as well but it is hard to know without seeing the image itself
 
 *** .hint
 See Advanced Segmentation Lecture
 
---- &submitcompare2 rows:5
-## Segmentation Strategy
+--- &radio
+## K-Means Clustering
 
+Which statement best describes the limitations and shortcomings of using K-means clustering
 
+1. Since it is an iterative method it can take a long time to converge
+1. _The random seed start locations can influence the final result and running the analysis multiple times often results in multiple different answers_
+1. K-Means can only handle position information
+1. K-Means can only handle small imaging datasets
+1. K-Means is complicated and therefore not many programs support it.
 
+*** .hint
+Check the "K-Means" slides in the Advanced Segmentation presentation
+
+*** .explanation
+The start locations for the clusters in K-means are random and in many situations the start locations greatly influence the final groups (local-minima problem). The issue can be alleviated by running K-means many times on the same dataset but when different data is used it is always possible that the resulting classification is very different. The best way around this is to use K-means to establish a standard set of segmentation or thresholding criteria and then apply these criteria (which are now fixed and not subject to random cluster locations) to the new datasets rather than K-means itself. 
+### Wrong Answers
+While K-means is iterative, it has been optimized and can run very quickly even on massive datasets. K-means has been implemented on systems where handle enormous datasets (much larger than ImageJ or Matlab) and given its vector space formulation can handle nearly any kind of information associated to each point. Every major math or programming tool has support for K-means (Matlab, Java, Python, Octave, R, Paraview, even Excel with an Add-In) and it is very easy to implement.

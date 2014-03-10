@@ -121,22 +121,10 @@ Lesson Outline
 - Morphology
 - Applications
 
-To test a hypothesis
-========================================================
-- We perform an experiment bone to see how big the cells are inside the tissue
-$$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
-
-### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
-- Filtering and Preprocessing!  
-$$\downarrow$$
-- 20h of computer time later ...
-- 56GB of less noisy data
-- Way too much data, we need to reduce
-
-
 What we covered last time
 ========================================================
 
+- Understanding models and histograms
 - Selecting a threshold
 - Applying morphological operations
 - Partial Volume Effect Caution
@@ -146,9 +134,40 @@ Where segmentation fails: Inconsistent Illumination
 
 With inconsistent or every changing illumination it may not be possible to apply the same threshold to every image. 
 
+```{r, fig.cap="Cell Colony",fig.height=7}
+cellImage<-im.to.df(jpeg::readJPEG("ext-figures/Cell_Colony.jpg"))
+il.vals<-runif(4,min=0.2,max=1/0.2)
+im.vals<-ldply(1:length(il.vals),function(il.idx,th.val=0.75)
+  cbind(cellImage[,c("x","y")],
+        val=cellImage$val*il.vals[il.idx],
+        in.thresh=ifelse(cellImage$val*il.vals[il.idx]<th.val,"Cells","Background"),
+        il.val=il.vals[il.idx],
+        th.val=th.val
+        ))
+im.vals$il.val<-as.numeric(factor(im.vals$il.val))
+ggplot(im.vals,aes(x=x,y=y,fill=val))+
+  geom_raster()+facet_wrap(~il.val)+
+  labs(fill="Intensity")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+```{r, fig.cap="Cell Colony with thresholds",fig.height=7}
+ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
+  geom_raster()+facet_wrap(~il.val)+
+  labs(fill="Phase")+
+  theme_bw(20)+coord_equal()
+
+```
+
+
+
+
+
 Where segmentation fails: Canaliculi
 ========================================================
-![Bone Slice](bonegfiltslice.png)
+![Bone Slice](ext-figures/bonegfiltslice.png)
 Here is a bone slice
 1. Find the larger cellular structures (osteocyte lacunae)
 1. FInd the small channels which connect them together
@@ -384,7 +403,7 @@ K-Means Example
 ```{matlab}
 objColor=kmeans(indata,2);
 ```
-```{r, fig.cap="KMeans",fig.height=4}
+```{r, fig.cap="KMeans",fig.height=3}
 grad.im$km.cluster<-kmeans(grad.im,2)$cluster
 # normalize vector
 tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
@@ -396,19 +415,19 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
   geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
   theme_bw(20)
 ```
-```{r, fig.cap="Variable distributions",fig.height=3}
-splom(grad.im[,c("x","y","th","col")],groups=grad.im$km.cluster,pch=16)
+```{r, fig.cap="Variable distributions",fig.height=4}
+splom(grad.im[,c("x","y","th","aiso")],groups=grad.im$km.cluster,pch=16)
 ```
 
 ***
 
-Or just the anisotropy and orientation
+Or just the orientation
 ```{matlab}
 objColor=kmeans(indata(:,[aisoCol,thCol]),2);
 ```
 
-```{r, fig.cap="KMeans",fig.height=4}
-grad.im$km.cluster<-kmeans(grad.im[,c("th","aiso")],2)$cluster
+```{r, fig.cap="KMeans",fig.height=3}
+grad.im$km.cluster<-kmeans(grad.im[,c("th")],2)$cluster
 # normalize vector
 tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
                                                      km.cluster=c.data[1,"km.cluster"]
@@ -419,10 +438,15 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
   theme_bw(20)
 ```
 
-```{r, fig.cap="Variable distributions",fig.height=3}
-
-splom(grad.im[,c("x","y","th","col")],groups=grad.im$km.cluster,pch=16)
+```{r, fig.cap="Variable distributions",fig.height=4}
+splom(grad.im[,c("x","y","th","aiso")],
+      groups=grad.im$km.cluster,pch=16)
 ```
+
+K-Means on Spectral Data
+===
+type:alert
+
 
 Probabilistic Models of Segmentation
 ===

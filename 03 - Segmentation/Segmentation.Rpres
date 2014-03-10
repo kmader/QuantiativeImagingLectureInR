@@ -341,7 +341,7 @@ Segmenting Cells
 ========================================================
 
 ```{r, fig.cap="Cell Colony",fig.height=4}
-cellImage<-im.to.df(jpeg::readJPEG("Cell_Colony.jpg"))
+cellImage<-im.to.df(jpeg::readJPEG("ext-figures/Cell_Colony.jpg"))
 ggplot(cellImage,aes(x=x,y=y,fill=val))+
   geom_tile()+
   labs(fill="Intensity")+coord_equal()+
