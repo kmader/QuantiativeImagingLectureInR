@@ -17,7 +17,6 @@ if(exists("printed")) { # settings for printed version (if the variable exists)
   cache.path<-"print_cache/"
 }
 
-
 opts_chunk$set(dpi=dpi,cache=cache,
                cache.path=cache.path,results='hide',
                warning=F,fig.align='center',echo=echo.val,
@@ -162,15 +161,12 @@ ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
 ```
 
 
-
-
-
 Where segmentation fails: Canaliculi
 ========================================================
 ![Bone Slice](ext-figures/bonegfiltslice.png)
 Here is a bone slice
 1. Find the larger cellular structures (osteocyte lacunae)
-1. FInd the small channels which connect them together
+1. Find the small channels which connect them together
 
 ***
 
@@ -295,7 +291,7 @@ ggplot(bone.df,aes(x=val))+
 ***
 
 ```{r, fig.cap="Bone Slice",fig.height=3}
-thresh.fun<-function(x) {ifelse(x<0.05,"Air",ifelse(x<0.30,"Between","Bone"))}
+thresh.fun<-function(x) {ifelse(x<0.01,"Air",ifelse(x<0.30,"Between","Bone"))}
 bone.df$phase<-thresh.fun(bone.df$val)
 ggplot(bone.df,aes(x=x,y=y))+
   geom_raster(aes(fill=phase))+
@@ -313,11 +309,69 @@ ggplot(bone.df,aes(x=val))+
   theme_bw(20)
 ```
 
+Hysteresis Thresholding: Reducing Pixels
+========================================================
+
+Now we apply two important steps. The first is to remove the objects which are not cells (too small) using an opening operation.
+```{r, fig.cap="Bone Slice",fig.height=3}
+air.im<-df.to.im(cbind(bone.df,isair=bone.df$phase=="Air"),"isair")
+air.df<-im.to.df(opening(air.im,makeBrush(5,"disc")))
+names(air.df)[3]<-"stillair"
+nbone.df<-merge(air.df,bone.df)
+ggplot(nbone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=phase,alpha=stillair))+
+  labs(fill="Phase",y="y",x="x",title="After Opening")+
+  coord_equal()+guides(alpha=F)+
+  theme_bw(20)
+# if its air make sure its still air otherwise demote it to between, 
+# if its not air leave it alone
+nbone.df$phase<-ifelse(nbone.df$phase=="Air",
+       ifelse(nbone.df$stillair>0,"Air","Between"),
+       nbone.df$phase)
+```
+
+***
+
+The second step to keep the _between_ pixels which are connected (by looking again at a neighborhood $\textrm{N}$) to the _air_ voxels and ignore the other ones. This goes back to our original supposition that the smaller structures are connected to the larger structures
+
+```{r, fig.cap="Bone Slice",fig.height=3}
+# incredibly low performance implementation (please do not copy)
+bone.idf<-nbone.df
+bet.pts<-nbone.df
+# run while there is still new air being created
+while(nrow(subset(bet.pts,phase=="Air"))>0) {
+  air.pts<-subset(bone.idf,phase=="Air")[,c("x","y")]
+  bone.pts<-subset(bone.idf,phase=="Bone")[,c("x","y")]
+  bet.pts<-ddply(subset(bone.idf,phase=="Between"),.(x,y),function(in.pixel.lst) {
+    in.pixel<-in.pixel.lst[1,]
+    data.frame(phase=ifelse(min(with(air.pts,(in.pixel$x-x)^2+(in.pixel$y-y)^2))<=1,
+         "Air",
+         "Between"))
+  })
+  bone.idf<-rbind(bet.pts,
+                  cbind(air.pts,phase="Air"),
+                  cbind(bone.pts,phase="Bone"))
+  print(nrow(subset(bet.pts,phase=="Air")))
+}
+ggplot(bone.idf,aes(x=x,y=y))+
+  geom_raster(aes(fill=phase))+
+  labs(fill="Phase",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
 
 More Complicated Images
 ===
-As we briefly covered last time, many measurement types produce quite rich data.
+As we briefly covered last time, many measurement techniques produce quite rich data. 
+- Digital cameras produce 3 channels of color for each pixel (rather than just one intensity)
+- MRI produces dozens of pieces of information for every voxel which are used when examining different _contrasts_ in the system.
+- Raman-shift imaging produces an entire spectrum for each pixel
+- Coherent diffraction techniques produce 2- (sometimes 3) diffraction patterns for each point.
 $$ I(x,y) = \hat{f}(x,y) $$
+
+***
+
 ```{r, fig.cap="",fig.height=3}
 nx<-4
 ny<-4
@@ -355,23 +409,6 @@ tens.im<-ddply(grad.im,.(x,y),deform.ellipse.draw)
 ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
   geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
   theme_bw(20)
-```
-Once the variable count is above 2, individual density functions and a series of cross plots are easier to interpret than some multidimensional density hypervolume.
-
-***
-
-```{r, fig.cap="Variable distributions",fig.height=4}
-ggplot(grad.im)+
-  geom_histogram(aes(x=a,fill="Width"),alpha=0.7)+
-  geom_histogram(aes(x=b,fill="Height"),alpha=0.7)+
-  geom_histogram(aes(x=th,fill="Orientation"),alpha=0.7)+
-  geom_histogram(aes(x=col,fill="Color"),alpha=0.7)+
-  guides(color=F)+labs(x="Value",fill="Variable")+
-  theme_bw(15)
-```
-
-```{r, fig.cap="Intervariable correlation",fig.height=4}
-plot(grad.im[,c("a","b","th","col")])
 ```
 
 K-Means Clustering / Classification
@@ -489,5 +526,8 @@ Beyond
 - Additionally they usually require some degree of implementation (coding).
 
 
+Component Labeling
+===
+Once we have a clearly segmented image, it is often helpful to identify the sub-components of this image. The easist method for identifying these subcomponents is called component labeling which again uses the neighborhood $\textrm{N}$ as a criterion for connectivity.
 
 
