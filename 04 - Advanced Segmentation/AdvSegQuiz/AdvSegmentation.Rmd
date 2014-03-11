@@ -199,12 +199,8 @@ The possible kernel choices are box, diamond, line, and disc (circular)
 *** .explanation
 The images were dilated with the disc (circular), box (full), diamond, and line neighborhoods respectively. This can be seen by looking at the borders of the shape which are very boxy in 2 & 4 and very curved in 1. In 3 they are jagged indicative of a diamond shape. 2 is box because it extends in both x and y while 4 only extends along the y direction.
 
-*** =image
-
-
 --- &submitcompare2 rows:5
 ## Segmentation Strategy
-
 
 You measure the same cross 4 times and and get the following images as output. Estimate the signal to noise in the images and provide a strategy for how the data could be filtered and segmented.
 
@@ -232,11 +228,8 @@ The signal to noise ratios for the image are very high (>3) in 1 and 4,  reasona
 *** .hint
 See Enhancement and Segmentation, you do not need to keep all of the data.
 
-
-
 --- &radio
 ## Automatic Thresholds
-
 
 Which is the best reason to use automatic threshold techniques on data
 
@@ -308,6 +301,45 @@ K-Means and Hysteresis might work as well but it is hard to know without seeing 
 *** .hint
 See Advanced Segmentation Lecture
 
+
+--- &submitcompare1 rows:5
+## IsoData
+Explain how the IsoData method works for finding a threshold. To what kind of images to you think it would apply well?
+
+*** .hint
+It is not in the lectures you need to search online.
+
+*** .explanation
+IsoData works by picking a threshold $G$ and applying it to the image. The image is then divided into two groups $A$ is all points $\geq G$ and $B$ is all points $\leq G$. The average intensity value is calculated in $A$ and $B$ and a new $G = \frac{\mu_A+\mu_B}{2}$. 
+The method would work well for images with varying illumination or other issues and is in many cases more robust than intermodes since it does not require a smoothing step.
+
+
+--- &submitcompare2 rows:5
+## Applying Thresholds
+
+Can a threshold be applied to this image? Why or why not?
+```{r, fig.cap="",fig.height=4}
+cellImage<-im.to.df(jpeg::readJPEG("../ext-figures/Cell_Colony.jpg"))
+cellImage$ilval<-with(cellImage,val+sqrt((x-200)^2+(y-200)^2)/100)
+ggplot(cellImage,aes(x=x,y=y,fill=ilval))+
+  geom_raster()+
+  labs(fill="Intensity")+
+  theme_bw(20)+coord_equal()
+```
+```{r, fig.cap="",fig.height=2}
+
+ggplot(cellImage,aes(x=ilval))+
+  geom_density()+
+  labs(x="Intensity",y="Frequency")+
+  theme_bw(20)
+```
+
+*** .hint
+Try to divide the image into two regions cell and background
+
+*** .explanation
+A threshold cannot be applied to the image because there is significant structure in the background. The first step is to correct this structure and then apply a threshold. If this is not possible edge enhancement filters can be applied to improve the image and make the different phases easier to distinguish.
+
 --- &radio
 ## K-Means Clustering
 
@@ -326,3 +358,8 @@ Check the "K-Means" slides in the Advanced Segmentation presentation
 The start locations for the clusters in K-means are random and in many situations the start locations greatly influence the final groups (local-minima problem). The issue can be alleviated by running K-means many times on the same dataset but when different data is used it is always possible that the resulting classification is very different. The best way around this is to use K-means to establish a standard set of segmentation or thresholding criteria and then apply these criteria (which are now fixed and not subject to random cluster locations) to the new datasets rather than K-means itself. 
 ### Wrong Answers
 While K-means is iterative, it has been optimized and can run very quickly even on massive datasets. K-means has been implemented on systems where handle enormous datasets (much larger than ImageJ or Matlab) and given its vector space formulation can handle nearly any kind of information associated to each point. Every major math or programming tool has support for K-means (Matlab, Java, Python, Octave, R, Paraview, even Excel with an Add-In) and it is very easy to implement.
+
+
+
+
+

@@ -101,6 +101,7 @@ Course Outline
 
 Literature / Useful References
 ========================================================
+
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
@@ -110,6 +111,7 @@ Literature / Useful References
 
 Lesson Outline
 ========================================================
+
 - Motivation
  - Many Samples
  - Difficult Samples 
@@ -164,20 +166,25 @@ ggplot(im.vals,aes(x=x,y=y,fill=in.thresh))+
 Where segmentation fails: Canaliculi
 ========================================================
 ![Bone Slice](ext-figures/bonegfiltslice.png)
-Here is a bone slice
+
+### Here is a bone slice
+
 1. Find the larger cellular structures (osteocyte lacunae)
 1. Find the small channels which connect them together
 
 ***
 
-The first task is easy using a threshold and size criteria (we know how big the cells should be)
+### The first task 
+is easy using a threshold and size criteria (we know how big the cells should be)
 
-The second is much more difficult 
+### The second 
+is much more difficult because the small channels having radii on the same order of the pixel size are obscured by partial volume effects and noise.
 
 Where segmentation fails: Brain Cortex
 ========================================================
 - The cortex is barely visible to the human eye
 - Tiny structures hint at where cortex is located
+
 ```{r, fig.cap="Brain with Threshold",fig.height=5}
 alz.df<-im.to.df(t(png::readPNG("ext-figures/cortex.png")))
 ggplot(alz.df,aes(x=x,y=518-y))+
@@ -729,7 +736,7 @@ ggplot(im.iter.grow(cross.im,3),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
 
 ***
 
-The image very quickly converges and after 4 iterations the task is complete. For larger more complicated images with thousands of components this task can take longer, but there exist much more efficient methods for labeling components which alleviate this issue.
+The image very quickly converges and after 4 iterations the task is complete. For larger more complicated images with thousands of components this task can take longer, but there exist much more efficient [algorithms](https://www.cs.princeton.edu/~rs/AlgsDS07/01UnionFind.pdf) for labeling components which alleviate this issue.
 
 ```{r, fig.cap="One Growth Step",fig.height=6}
 ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
@@ -739,6 +746,51 @@ ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
 
 Component Labeling: Image Algorithm
 ===
+
+In reality the component labeling algorithms are usually implemented, but it is important to understand how they work and their relationship with neighborhood in order to interpret the results correctly.
+
+```{matlab}
+labImg=bwlabel(imName)
+```
+
+Component Labeling: Image Algorithm
+===
+
+
+```{r, fig.cap="Cell Colony",fig.height=4}
+cell.im<-jpeg::readJPEG("ext-figures/Cell_Colony.jpg")
+cell.lab.df<-im.to.df(bwlabel(cell.im<.6))
+ggplot(subset(cell.lab.df,val>0),aes(x=x,y=y,fill=val))+
+  geom_raster()+
+  labs(fill="Label",title="Labeled Image")+
+  theme_bw(20)+coord_equal()
+```
+
+```{r, fig.cap="Cell Colony",fig.height=4}
+size.histogram<-ddply(subset(cell.lab.df,val>0),.(val),function(c.label) data.frame(count=nrow(c.label)))
+keep.vals<-subset(size.histogram,count>25)
+ggplot(size.histogram,aes(x=count))+
+  geom_density(aes(color="Entire Labeled Images"))+
+  geom_density(data=keep.vals,aes(color="Larger Cells"))+
+  labs(x="Cell Volume",y="Frequency of Cells",title="Size Distribution",color="Distribution")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Cell Colony",fig.height=4}
+
+ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,fill=as.factor(val)))+
+  geom_raster()+
+  labs(fill="Intensity",title="Larger Cells (>25px)")+
+  theme_bw(20)+coord_equal()
+```
+
+
+Component Labeling: Image Algorithm
+===
+
 
 Now all the voxels which are connected have the same label. We can then perform simple metrics like
 - counting the number of voxels in each label to estimate volume.
