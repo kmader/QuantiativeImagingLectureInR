@@ -332,7 +332,7 @@ nbone.df$phase<-ifelse(nbone.df$phase=="Air",
 
 ***
 
-The second step to keep the _between_ pixels which are connected (by looking again at a neighborhood $\textrm{N}$) to the _air_ voxels and ignore the other ones. This goes back to our original supposition that the smaller structures are connected to the larger structures
+The second step to keep the _between_ pixels which are connected (by looking again at a neighborhood $\mathcal{N}$) to the _air_ voxels and ignore the other ones. This goes back to our original supposition that the smaller structures are connected to the larger structures
 
 ```{r, fig.cap="Bone Slice",fig.height=3}
 # incredibly low performance implementation (please do not copy)
@@ -490,7 +490,7 @@ Probabilistic Models of Segmentation
 type:alert
 A more general approach is to use a probabilistic model to segmentation. We start with our image $I(\vec{x}) \forall \vec{x}\in \mathbb{R}^N$ and we classify it into two phases $\alpha$ and $\beta$
 
-$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(f(\vec{x}) | \alpha)+  P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \alpha)$$
+$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(f(\vec{x}) | \alpha)+  P(\sum_{x^{\prime} \in \mathcal{N}} f(\vec{x^{\prime}}) |  \alpha)$$
 - $P(\{\vec{x} , f(\vec{x})\}  | \alpha)$ the probability a given pixel is in phase ph given we know it's position and value
 - $P(\alpha)$ probability of any pixel in an image being part of the phase (expected volume fraction of that phase)
 - $P(I(\vec{x}) | \alpha)$ probability adjustment based on knowing the value of f at the given point
@@ -503,14 +503,14 @@ Fuzzy classification based on [Fuzzy logic](http://en.wikipedia.org/wiki/Fuzzy_l
 ### Instead of
 
 $$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(f(\vec{x}) | \alpha)+$$
-$$P(\sum_{x^{\prime} \in \textrm{N}} f(\vec{x^{\prime}}) |  \alpha)$$
+$$P(\sum_{x^{\prime} \in \mathcal{N}} f(\vec{x^{\prime}}) |  \alpha)$$
 
 ***
 
 ### Clear simple rules
 which encompass aspects of filtering, thresholding, and morphological operations
 - __IF__ the intensity if dark ($<100$)
- - __AND__ a majority of the neighborhood ($\textrm{N}$) values are dark ($<100$)
+ - __AND__ a majority of the neighborhood ($\mathcal{N}$) values are dark ($<100$)
 - __THEN__ it is a cell
 
 
@@ -528,6 +528,222 @@ Beyond
 
 Component Labeling
 ===
-Once we have a clearly segmented image, it is often helpful to identify the sub-components of this image. The easist method for identifying these subcomponents is called component labeling which again uses the neighborhood $\textrm{N}$ as a criterion for connectivity.
+Once we have a clearly segmented image, it is often helpful to identify the sub-components of this image. The easist method for identifying these subcomponents is called component labeling which again uses the neighborhood $\mathcal{N}$ as a criterion for connectivity, resulting in pixels which are touching being part of the same object.
+
+
+In general, the approach works well since usually when different regions are touching, they are related. It runs into issues when you have multiple regions which agglomerate together, for example a continuous pore network (1 object) or a cluster of touching cells
+
+***
+
+The more general formulation of the problem is for networks (roads, computers, social). Are the points start and finish connected?
+
+```{r, fig.cap="Network connectivity",fig.height=6}
+nx<-5
+ny<-10
+cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
+max.nodes.fn<-function(x,y) 1+round(abs(x+y/2)) # non-homogenous network connectivity
+cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
+    out.df<-data.frame(xv=c(),yv=c())
+    max.nodes<-max.nodes.fn(in.pt[1,"x"],in.pt[1,"y"])
+    for(i in 1:round(runif(1,max=max.nodes))) {
+      c.angle<-runif(1,max=pi)
+      out.df<-rbind(out.df,data.frame(
+        xv=round(cos(c.angle)),
+        yv=round(sin(c.angle))
+        ))
+    }
+    out.df
+  })
+id.fn<-function(x,y) (y*100+x)
+cross.im$id<-with(cross.im,id.fn(x,y))
+
+cross.lab.im<-cbind(cross.im,label="Normal")
+cross.lab.im$label<-as.character(cross.lab.im$label)
+cross.lab.im[which(cross.lab.im$id==cross.lab.im[1,]$id),"label"]<-"Begin"
+cross.lab.im[which(cross.lab.im$id==cross.lab.im[nrow(cross.lab.im),]$id),"label"]<-"End"
+cross.lab.im$label<-as.factor(cross.lab.im$label)
+ggplot(cross.lab.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=label),size=5)+geom_segment()+
+  theme_bw(20)+labs(color="Goal")
+```
+
+
+Component Labeling: Algorithm
+===
+
+We start out with the network and we _grow_ __Begin__ to its connections. In a [brushfire](http://www.sciencedirect.com/science/article/pii/S0921889007000966)-style algorithm
+
+- For each point $(x,y)\in\{\text{Begin},\text{Pixels Grown}\}$
+ - For each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
+ - Set the label to _Pixels Grown_
+- Repeat until no more labels have been changed
+
+***
+
+```{r itergrow_code}
+# Network traversing algorithm
+iter.grow<-function(ncross.lab.im,iter.cnt=10,source.phase="Begin",target.phase=NA,grow.into.phase="Normal") {
+  if(is.na(target.phase)) target.phase<-source.phase
+  
+  for(iters in 1:iter.cnt) {
+    begin.pts<-subset(ncross.lab.im,label==source.phase | label==target.phase)
+    begin.ids<-unique(begin.pts$id)
+    begin.pts.term<-subset(ncross.lab.im,id.fn(x+xv,y+yv) %in% begin.ids)  
+    begin.pts<-rbind(begin.pts,
+                     begin.pts.term
+                     )
+    ncross.lab.im$label<-as.character(ncross.lab.im$label)
+    for(i in 1:nrow(begin.pts)) {
+      cur.pt<-begin.pts[i,]
+      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
+      switch.pixs<-which(ncross.lab.im$id==child.id & 
+                            ncross.lab.im$label == grow.into.phase)
+      if(length(switch.pixs)>1) ncross.lab.im[switch.pixs ,"label"]<-target.phase
+      }
+    switch.pixs<-which(ncross.lab.im$id %in% begin.pts.term$id &
+                          ncross.lab.im$label == grow.into.phase)
+    
+    if(length(switch.pixs)>1) ncross.lab.im[switch.pixs,"label"]<-target.phase
+    }
+  ncross.lab.im$label<-as.factor(ncross.lab.im$label)
+  ncross.lab.im
+  }
+```
+
+```{r, fig.cap="One Growth Step",fig.height=6}
+
+ggplot(iter.grow(cross.lab.im,1,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=label),size=5)+geom_segment()+
+  theme_bw(20)+labs(color="Type",title="1 Iteration from Begin")
+```
+
+
+Component Labeling: Algorithm Steps
+===
+
+```{r, fig.cap="10 Growth Steps",fig.height=4}
+
+ggplot(iter.grow(cross.lab.im,10,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
+  theme_bw(20)+labs(color="Type",title="10 iterations from Begin")
+```
+
+```{r, fig.cap="10 Growth Steps",fig.height=4}
+
+ggplot(iter.grow(cross.lab.im,10,source.phase="End",target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
+  theme_bw(20)+labs(color="Type",title="10 iterations from End")
+```
+
+
+***
+
+```{r, fig.cap="Diagonal Growth Steps",fig.height=8}
+
+ggplot(iter.grow(cross.lab.im,round(2*sqrt(20^2+10^2)),target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=label),size=5)+geom_segment()+coord_equal()+
+  theme_bw(20)+labs(color="Type",title="Diagonal iterations from Begin")
+```
+
+
+Component Labeling: Images Algorithm
+===
+Same as for networks but the neighborhood is defined with a kernel (circular, full, line, etc) and labels must be generate for the image
+
+- Assign a unique label to each point in the image
+$$ L(x,y) = y*\text{Im}_{width}+x $$
+
+- For each point $(x,y)$
+ - Check each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
+ - Set 
+ $$L(x,y)=\text{min}(L(x,y),L(x^{\prime},y^{\prime}))$$
+ $$L(x^{\prime},y^{\prime})=L(x,y)$$
+- Repeat until no more $L$ values are changed
+
+***
+
+```{r, fig.cap="Image as Network",fig.height=6}
+
+nx<-10
+ny<-5
+ang.vals<-seq(0,pi/2,length.out=2)
+cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
+cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
+    out.df<-data.frame(xv=c(),yv=c())
+    
+    for(i in 1:length(ang.vals)) {
+      c.angle<-ang.vals[i]
+      out.df<-rbind(out.df,data.frame(
+        xv=round(cos(c.angle)),
+        yv=round(sin(c.angle))
+        ))
+    }
+    out.df
+  })
+
+id.fn<-function(x,y) (y*100+x)
+cross.im$id<-with(cross.im,id.fn(x,y))
+cross.im<-subset(cross.im,x!=0 & y!=0)
+ggplot(cross.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+
+  theme_bw(20)+labs(color="Goal")
+```
+
+
+Component Labeling: Image Algorithm
+===
+
+```{r im_itergrow_code}
+# Component labeling algorithm
+im.iter.grow<-function(icross.im,iter.cnt=10) {
+  ncross.im<-icross.im
+  for(iters in 1:iter.cnt) {
+    
+    begin.pts<-ncross.im
+    for(i in 1:nrow(begin.pts)) {
+      cur.pt<-begin.pts[i,]
+      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
+      # fill into lower points
+      switch.pixs<-which(icross.im$id==child.id & 
+                            icross.im$id > cur.pt$id)
+      if(length(switch.pixs)>1) ncross.im[switch.pixs ,"id"]<-cur.pt$id
+      }
+    icross.im<-ncross.im
+    }
+  ncross.im
+  }
+```
+
+```{r, fig.cap="One Growth Step",fig.height=4}
+ggplot(im.iter.grow(cross.im,2),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+coord_equal()+
+  theme_bw(20)+labs(color="Type",title="2 Iterations")
+```
+
+```{r, fig.cap="One Growth Step",fig.height=4}
+ggplot(im.iter.grow(cross.im,3),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+
+  coord_equal()+
+  theme_bw(20)+labs(color="Type",title="3 Iterations")
+```
+
+***
+
+The image very quickly converges and after 4 iterations the task is complete. For larger more complicated images with thousands of components this task can take longer, but there exist much more efficient methods for labeling components which alleviate this issue.
+
+```{r, fig.cap="One Growth Step",fig.height=6}
+ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
+  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+coord_equal()+
+  theme_bw(20)+labs(color="Type",title="4 iterations")
+```
+
+Component Labeling: Image Algorithm
+===
+
+Now all the voxels which are connected have the same label. We can then perform simple metrics like
+- counting the number of voxels in each label to estimate volume.
+- looking at the change in volume during erosion or dilation to estimate surface area
+
+Next week we will cover how more detailed analysis can be performed on these data.
 
 
