@@ -116,18 +116,24 @@ Lesson Outline
  - Many Samples
  - Difficult Samples 
 - Thresholding
- - Other types of images
- - Selecting a good threshold
-- Implementation
-- Morphology
-- Applications
+ - Automated Methods
+ - Hysteresis Method
+ - K-Means Clustering
+ - Fuzzy Models
+ - Probabalistic Models
+- Working with Segmented Images
+ - Contouring
+ - Component Labeling
+
 
 What we covered last time
 ========================================================
 
-- Understanding models and histograms
-- Selecting a threshold
-- Applying morphological operations
+- Understanding models and interpreting histograms
+- Choosing a threshold
+ - Examining more complicated, multivariate data sets
+- Improving segementation with morphological operations
+ - Filling holes
 - Partial Volume Effect Caution
 
 Where segmentation fails: Inconsistent Illumination
@@ -209,12 +215,14 @@ ggplot(alz.df,aes(x=x,y=518-y))+
 
 Automated Threshold Selection
 ========================================================
-type:alert
 ![Many possible automated techniques](ext-figures/automaticthresh.png)
 
 ***
 
 Given that applying a threshold is such a common and signficant step, there have been many tools developed to automatically (unsupervised) perform it. A particularly important step in setups where images are rarely consistent such as outdoor imaging which has varying lighting (sun, clouds). The methods are based on several basic principles. 
+
+Automated Methods
+===
 
 ### Histogram-based methods
 Just like we visually inspect a histogram an algorithm can examine the histogram and find local minimums between two peaks, maximum / minimum entropy and other factors
@@ -271,7 +279,6 @@ Come up with the worst-case scenario (noise, misalignment, etc) and assess how i
 
 Hysteresis Thresholding
 ========================================================
-type:alert
 For some images a single threshold does not work
 - large structures are very clearly defined
 - smaller structures are difficult to differentiated (see [partial volume effect](http://bit.ly/1mW7kdP))
@@ -287,27 +294,19 @@ ggplot(bone.df,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-```{r, fig.cap="Bone Slice Histogram",fig.height=3}
+***
+
+```{r, fig.cap="Bone Slice Histogram",fig.height=4}
 ggplot(bone.df,aes(x=val))+
   geom_histogram(aes(y=..density..),alpha=0.5)+
-  geom_density()+
+  geom_density()+scale_y_sqrt()+
   labs(x="Calcification Dens")+
   theme_bw(20)
 ```
 
-***
-
-```{r, fig.cap="Bone Slice",fig.height=3}
+```{r, fig.cap="Bone Labeled Histogram",fig.height=4}
 thresh.fun<-function(x) {ifelse(x<0.01,"Air",ifelse(x<0.30,"Between","Bone"))}
 bone.df$phase<-thresh.fun(bone.df$val)
-ggplot(bone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=phase))+
-  labs(fill="Phase",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-```{r, fig.cap="Bone Labeled Histogram",fig.height=3}
 ggplot(bone.df,aes(x=val))+
   geom_histogram(aes(fill=phase),binwidth=0.02,alpha=0.5)+
   geom_density(aes(y=15000/1.5*..scaled..))+
@@ -315,6 +314,31 @@ ggplot(bone.df,aes(x=val))+
   scale_y_sqrt()+#(c(0,20))+
   theme_bw(20)
 ```
+
+
+Hysteresis Thresholding
+========================================================
+Comparing the original image with the three phases
+
+```{r, fig.cap="Bone Slice",fig.height=7}
+ggplot(bone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Calcification Dens",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Bone Slice",fig.height=8}
+ggplot(bone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=phase))+
+  labs(fill="Phase",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+
 
 Hysteresis Thresholding: Reducing Pixels
 ========================================================
@@ -531,6 +555,112 @@ Beyond
  - Because of their added complexity it is easier to manipulate these methods to get desired results from almost any dataset
  - But if the approach is based on a physical model of the images and the underyling system it is acceptable
 - Additionally they usually require some degree of implementation (coding).
+
+Contouring
+===
+Expanding on the hole filling issues examined before, a general problem in imaging is identifying regions of interest with in an image.
+
+Contouring: Automatic Methods
+===
+
+As mentioned before a few standard automated methods exist like the
+
+
+Convex Hull Approach
+===
+takes all of the points in a given slice or volume and finds the smallest convex 3D volume which encloses all of those points.
+```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
+cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
+cortbone.df<-im.to.df(cortbone.im)
+# calculate convex hull
+cortbone.chull<-chull(subset(cortbone.df,val<1)[,c("x","y")])
+cortbone.chull<-c(cortbone.chull,cortbone.chull[1])
+cortbone.chull<-subset(cortbone.df,val<1)[cortbone.chull,c("x","y")]
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_polygon(data=cortbone.chull,aes(fill="convex hull"),alpha=0.5)+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  labs(fill="Image",y="y",x="x",title="Convex Hull Creation")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+Rubber Band
+===
+```{r rubber_band_fcn}
+## the rubber band function to fit a boundary around the curve
+rubber.band.data<-function(raw.df,binning.pts=10,eval.fun=max) {
+  in.df<-raw.df
+  # calculate center of mass
+  com.val<-colMeans(in.df)
+  # add polar coordinates
+  in.df$r<-with(in.df,sqrt((x-com.val["x"])^2+(y-com.val["y"])^2))
+  in.df$theta<-with(in.df,atan2(y-com.val["y"],x-com.val["x"]))
+  # create a maximum path
+  outer.path<-ddply.cutcols(in.df,.(cut_interval(theta,binning.pts)),function(c.section) data.frame(r=eval.fun(c.section$r)))
+  outer.path$x<-with(outer.path,r*cos(theta)+com.val["x"])
+  outer.path$y<-with(outer.path,r*sin(theta)+com.val["y"])
+  outer.path
+}
+```
+Takes all of the points in a given slice and calculates the center of mass. It then calculates a piece-wise linear fit in polar coordinates.
+which encloses all of those points.
+```{r, fig.cap="First Rubber Bands",fig.height=7}
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),9),aes(fill="rubber band  9pts"),alpha=0.5)+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),36),aes(fill="rubber band  36pts"),alpha=0.5)+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  labs(fill="Image",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Better Rubber Bands",fig.height=4}
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90),aes(fill="rubber band  90pts"),alpha=0.5)+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),180),aes(fill="rubber band 180pts"),alpha=0.5)+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  labs(fill="Image",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+```{r, fig.cap="In Detail",fig.height=4}
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),180),aes(fill="rubber band 180pts"),alpha=0.5)+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),720),aes(fill="rubber band 720pts"),alpha=0.5)+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  labs(fill="Image",y="y",x="x")+
+  coord_equal()+xlim(50,150)+ylim(-100,50)+
+  theme_bw(20)
+```
+
+
+Rubber Band: More flexible constraints
+===
+
+If we use quartiles or the average instead of the maximum value we can make the method less sensitive to outlier pixels
+
+```{r, fig.cap="In Detail",fig.height=4}
+ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90,eval.fun=mean),
+               aes(fill="rubber band mean value"),alpha=0.5)+
+  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90,
+                                     eval.fun=function(x) quantile(x,0.99)),
+               aes(fill="rubber band upper 99%"),alpha=0.5)+
+
+  labs(fill="Image",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+Contouring: Guided Methods
+===
+type:alert
+[Active Contours / Snakes](http://link.springer.com/article/10.1007%2FBF00133570#page-1)
+
 
 
 Component Labeling
@@ -797,5 +927,8 @@ Now all the voxels which are connected have the same label. We can then perform 
 - looking at the change in volume during erosion or dilation to estimate surface area
 
 Next week we will cover how more detailed analysis can be performed on these data.
+
+
+
 
 
