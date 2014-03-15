@@ -76,12 +76,13 @@ ddply.cutcols<-function(...,cols=1) {
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 13 March 2014
+date: 20 March 2014
 width: 1440
 height: 900
 transition: rotate
+css: ../template.css
 
-## Advanced Segmentation and Labeling
+## Analysis of Single Objects
 
 
 Course Outline
@@ -89,8 +90,8 @@ Course Outline
 - 20th February - Introductory Lecture
 - 27th February - Filtering and Image Enhancement (A. Kaestner)
 - 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - **Advanced Segmentation**
-- 20th March - Analyzing Single Objects
+- 13th March - Advanced Segmentation
+- 20th March - **Analyzing Single Objects**
 - 27th March -  Analyzing Complex Objects
 - 3rd April -  Spatial Distribution
 - 10th April -  Statistics and Reproducibility
@@ -107,39 +108,42 @@ Literature / Useful References
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
-- [Markov Random Fields for Image Processing Lecture](https://www.youtube.com/watch?v=vRN_j2j-CC4)
-- [Markov Random Fields Chapter](http://www.cise.ufl.edu/~anand/pdf/bookchap.pdf)
-- [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing)
-- [Active Contours / Snakes](http://link.springer.com/article/10.1007%2FBF00133570#page-1)
 
-
-
-Lesson Outline
+Previously on QBI ...
 ========================================================
 
-- Motivation
- - Many Samples
- - Difficult Samples 
-- Thresholding
- - Automated Methods
- - Hysteresis Method
- - K-Means Clustering
- - Fuzzy Models
- - Probabalistic Models
-- Working with Segmented Images
- - Contouring
- - Component Labeling
+- Image Enhancment 
+ - Highlighting the contrast of interest in images
+ - Minimizing Noise
+- Segementation
+ - Understanding value histograms
+ - Dealing with multi-valued data
+ - Automatic Methods
+ - Hysteresis Method, K-Means Analysis
+- Regions of Interest
+ - Contouring 
+- Component Labeling
 
 
-What we covered last time
+Learning Objectives
 ========================================================
 
-- Understanding models and interpreting histograms
-- Choosing a threshold
- - Examining more complicated, multivariate data sets
-- Improving segementation with morphological operations
- - Filling holes
-- Partial Volume Effect Caution
+- Motivation (Why and How?)
+- Shape
+ - Volume
+ - Center and Extents
+ - Anisotropy
+ - Oblateness
+
+***
+
+- Shape Tensor
+ - Principal Component Analysis
+ - Ellipsoid Representation
+ - 
+
+
+
 
 Where segmentation fails: Inconsistent Illumination
 ========================================================

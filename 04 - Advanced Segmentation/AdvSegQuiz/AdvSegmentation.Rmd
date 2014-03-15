@@ -306,8 +306,8 @@ See Advanced Segmentation Lecture
 ## IsoData
 Explain how the IsoData method works for finding a threshold. To what kind of images to you think it would apply well?
 
-*** .hint
-It is not in the lectures you need to search online.
+### Hint
+It is not in the lecture, you need to search online a bit.
 
 *** .explanation
 IsoData works by picking a threshold $G$ and applying it to the image. The image is then divided into two groups $A$ is all points $\geq G$ and $B$ is all points $\leq G$. The average intensity value is calculated in $A$ and $B$ and a new $G = \frac{\mu_A+\mu_B}{2}$. 
