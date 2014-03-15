@@ -71,6 +71,8 @@ ddply.cutcols<-function(...,cols=1) {
   }
   cur.table
 }
+
+colMeans.df<-function(x,...) as.data.frame(t(colMeans(x,...)))
 ```
 
 Quantitative Big Imaging  
@@ -80,7 +82,7 @@ date: 20 March 2014
 width: 1440
 height: 900
 transition: rotate
-css: ../template.css
+
 
 ## Analysis of Single Objects
 
@@ -128,820 +130,136 @@ Previously on QBI ...
 Learning Objectives
 ========================================================
 
+### Motivation (Why and How?)
+- How do we quantify where and how big our objects are?
+- How can we say something about the shape?
+- How can we compare objects of different sizes?
+- How can we compare two images on the basis of the shape as calculated from the images?
+- How can we put objects into an finite element simulation? or make pretty renderings?
+
+
+Outline
+========================================================
+
 - Motivation (Why and How?)
-- Shape
+- Object Characterization
  - Volume
  - Center and Extents
  - Anisotropy
- - Oblateness
 
 ***
 
 - Shape Tensor
  - Principal Component Analysis
  - Ellipsoid Representation
- - 
+ - Scale-free metrics
+ - Anisotropy, Oblateness
+- Meshing
+ - Marching Cubes
+ - Isosurfaces
+ - Surface Area
+ 
+ 
+Motivation
+===
 
+We have dramatically simplified our data, but there is still too much.
 
+- We perform an experiment bone to see how big the cells are inside the tissue
+$$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
 
+### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
+- Filtering and Enhancement!  
+$$\downarrow$$
+- 56GB of less noisy data
+- __Segmentation__
+$$\downarrow$$
+### 2560 x 2560 x 2160 x 1 bit = 1.75GB / sample
+- Still an aweful lot of inpenetrable data
 
-Where segmentation fails: Inconsistent Illumination
+What did we want in the first place
 ========================================================
 
-With inconsistent or every changing illumination it may not be possible to apply the same threshold to every image. 
-
-```{r, fig.cap="Cell Colony with Different Illuminations",fig.height=7}
-cellImage<-im.to.df(jpeg::readJPEG("ext-figures/Cell_Colony.jpg"))
-max.il<-2.5
-il.vals<-runif(9,min=1/max.il,max=max.il)
-im.vals<-ldply(1:length(il.vals),function(il.idx,th.val=0.75)
-  cbind(cellImage[,c("x","y")],
-        val=cellImage$val*il.vals[il.idx],
-        in.thresh=ifelse(cellImage$val*il.vals[il.idx]<th.val,"Cells","Background"),
-        il.val=il.vals[il.idx],
-        th.val=th.val,
-        il.idx=il.idx
-        ))
-ggplot(im.vals,aes(x=x,y=y,fill=val))+
-  geom_raster()+facet_wrap(~il.idx)+
-  labs(fill="Intensity")+
-  theme_bw(15)+coord_equal()
-```
-
-***
-
-```{r, fig.cap="Different Illuminations with Constant Threshold",fig.height=8}
-
-ggplot(subset(im.vals,in.thresh=="Cells"),aes(x=x,y=y))+
-  geom_raster(fill="red")+facet_wrap(~il.idx)+
-  labs(fill="Phase",title="Cell Phase")+
-  theme_bw(20)+coord_equal()
-
-```
+### _Single number_:
+* volume fraction,
+* cell count,
+* average cell stretch,
+* cell volume variability
 
 
-Where segmentation fails: Canaliculi
-========================================================
-![Bone Slice](ext-figures/bonegfiltslice.png)
-
-### Here is a bone slice
-
-1. Find the larger cellular structures (osteocyte lacunae)
-1. Find the small channels which connect them together
-
-***
-
-### The first task 
-is easy using a threshold and size criteria (we know how big the cells should be)
-
-### The second 
-is much more difficult because the small channels having radii on the same order of the pixel size are obscured by partial volume effects and noise.
-
-Where segmentation fails: Brain Cortex
-========================================================
-- The cortex is barely visible to the human eye
-- Tiny structures hint at where cortex is located
-
-```{r, fig.cap="Brain with Threshold",fig.height=5}
-alz.df<-im.to.df(t(png::readPNG("ext-figures/cortex.png")))
-ggplot(alz.df,aes(x=x,y=518-y))+
-  geom_raster(aes(fill=val))+
-  labs(fill="Electron Density",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-***
-
-- A simple threshold is insufficient to finding the cortical structures
-- Other filtering techniques are unlikely to magicially fix this problem
-```{r, fig.cap="Brain with Threshold",fig.height=5}
-ggplot(alz.df,aes(x=x,y=518-y))+
-  geom_raster(aes(fill=cut_interval(val,4)))+
-  labs(fill="Segmented Phases",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-
-Automated Threshold Selection
-========================================================
-![Many possible automated techniques](ext-figures/automaticthresh.png)
-
-***
-
-Given that applying a threshold is such a common and signficant step, there have been many tools developed to automatically (unsupervised) perform it. A particularly important step in setups where images are rarely consistent such as outdoor imaging which has varying lighting (sun, clouds). The methods are based on several basic principles. 
-
-Automated Methods
+From the labels
 ===
 
-### Histogram-based methods
-Just like we visually inspect a histogram an algorithm can examine the histogram and find local minimums between two peaks, maximum / minimum entropy and other factors
-
-- Otsu, Isodata, Intermodes, etc
-
-### Image based Methods
-These look at the statistics of the thresheld image themselves (like entropy) to estimate the threshold  
-
-
-### Results-based Methods
-These search for a threshold which delivers the desired results in the final objects. For example if you know you have an image of cells and each cell is between 200-10000 pixels the algorithm runs thresholds until the objects are of the desired size
-- More specific requirements need to be implemented manually
-
-
-Fiji -> Adjust -> Auto Threshold
-========================================================
-There are many methods and they can be complicated to implement yourself. FIJI offers many of them as built in functions so you can automatically try all of them on your image
-![Many possible automated techniques](ext-figures/tryall.png)
-
-Pitfalls
-===
-While an incredibly useful tool, there are many potential pitfalls to these automated techniques. 
-
-### Histogram-based
-
-These methods are very sensitive to the distribution of pixels in your image and may work really well on images with equal amounts of each phase but work horribly on images which have very high amounts of one phase compared to the others
-
-### Image-based
-
-These methods are sensitive to noise and a large noise content in the image can change statistics like entropy significantly. 
-
-### Results-based
-
-These methods are inherently biased by the expectations you have. If you want to find objects between 200 and 1000 pixels you will, they just might not be anything meaningful.
-
-Realistic Approaches for Dealing with these Shortcomings
-===
-
-Imaging science rarely represents the ideal world and will never be 100% perfect. At some point we need to write our master's thesis, defend, or publish a paper. These are approaches for more qualitative assessment we will later cover how to do this a bit more robustly with quantitative approaches
-
-### Model-based
-
-One approach is to try and simulate everything (including noise) as well as possible and to apply these techniques to many realizations of the same image and qualitatively keep track of how many of the results accurately identify your phase or not. Hint: >95% seems to convince most biologists
-
-### Sample-based
-
-Apply the methods to each sample and keep track of which threshold was used for each one. Go back and apply each threshold to each sample in the image and keep track of how many of them are correct enough to be used for further study.
-
-### Worst-case Scenario
-
-Come up with the worst-case scenario (noise, misalignment, etc) and assess how inacceptable the results are. Then try to estimate the quartiles range (75% - 25% of images).
-
-
-Hysteresis Thresholding
-========================================================
-For some images a single threshold does not work
-- large structures are very clearly defined
-- smaller structures are difficult to differentiated (see [partial volume effect](http://bit.ly/1mW7kdP))
-
-[ImageJ Source](http://imagejdocu.tudor.lu/doku.php?id=plugin:segmentation:hysteresis_thresholding:start)
-
-```{r, fig.cap="Bone Slice",fig.height=3}
-bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
-ggplot(bone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=val))+
-  labs(fill="Calcification Dens",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-***
-
-```{r, fig.cap="Bone Slice Histogram",fig.height=4}
-ggplot(bone.df,aes(x=val))+
-  geom_histogram(aes(y=..density..),alpha=0.5)+
-  geom_density()+scale_y_sqrt()+
-  labs(x="Calcification Dens")+
-  theme_bw(20)
-```
-
-```{r, fig.cap="Bone Labeled Histogram",fig.height=4}
-thresh.fun<-function(x) {ifelse(x<0.01,"Air",ifelse(x<0.30,"Between","Bone"))}
-bone.df$phase<-thresh.fun(bone.df$val)
-ggplot(bone.df,aes(x=val))+
-  geom_histogram(aes(fill=phase),binwidth=0.02,alpha=0.5)+
-  geom_density(aes(y=15000/1.5*..scaled..))+
-  labs(x="Calcification Density (au)")+
-  scale_y_sqrt()+#(c(0,20))+
-  theme_bw(20)
-```
-
-
-Hysteresis Thresholding
-========================================================
-Comparing the original image with the three phases
-
-```{r, fig.cap="Bone Slice",fig.height=7}
-ggplot(bone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=val))+
-  labs(fill="Calcification Dens",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-***
-
-```{r, fig.cap="Bone Slice",fig.height=8}
-ggplot(bone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=phase))+
-  labs(fill="Phase",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-
-
-Hysteresis Thresholding: Reducing Pixels
-========================================================
-
-Now we apply two important steps. The first is to remove the objects which are not cells (too small) using an opening operation.
-```{r, fig.cap="Bone Slice",fig.height=7}
-air.im<-df.to.im(cbind(bone.df,isair=bone.df$phase=="Air"),"isair")
-air.df<-im.to.df(opening(air.im,makeBrush(5,"disc")))
-names(air.df)[3]<-"stillair"
-nbone.df<-merge(air.df,bone.df)
-ggplot(nbone.df,aes(x=x,y=y))+
-  geom_raster(aes(fill=phase,alpha=stillair))+
-  labs(fill="Phase",y="y",x="x",title="After Opening")+
-  coord_equal()+guides(alpha=F)+
-  theme_bw(20)
-# if its air make sure its still air otherwise demote it to between, 
-# if its not air leave it alone
-nbone.df$phase<-ifelse(nbone.df$phase=="Air",
-       ifelse(nbone.df$stillair>0,"Air","Between"),
-       nbone.df$phase)
-```
-
-***
-
-The second step to keep the _between_ pixels which are connected (by looking again at a neighborhood $\mathcal{N}$) to the _air_ voxels and ignore the other ones. This goes back to our original supposition that the smaller structures are connected to the larger structures
-
-```{r, fig.cap="Bone Slice",fig.height=5}
-# incredibly low performance implementation (please do not copy)
-bone.idf<-nbone.df
-bet.pts<-nbone.df
-# run while there is still new air being created
-while(nrow(subset(bet.pts,phase=="Air"))>0) {
-  air.pts<-subset(bone.idf,phase=="Air")[,c("x","y")]
-  bone.pts<-subset(bone.idf,phase=="Bone")[,c("x","y")]
-  bet.pts<-ddply(subset(bone.idf,phase=="Between"),.(x,y),function(in.pixel.lst) {
-    in.pixel<-in.pixel.lst[1,]
-    data.frame(phase=ifelse(min(with(air.pts,(in.pixel$x-x)^2+(in.pixel$y-y)^2))<=1,
-         "Air",
-         "Between"))
-  })
-  bone.idf<-rbind(bet.pts,
-                  cbind(air.pts,phase="Air"),
-                  cbind(bone.pts,phase="Bone"))
-  print(nrow(subset(bet.pts,phase=="Air")))
-}
-ggplot(bone.idf,aes(x=x,y=y))+
-  geom_raster(aes(fill=phase))+
-  labs(fill="Phase",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-
-More Complicated Images
-===
-As we briefly covered last time, many measurement techniques produce quite rich data. 
-- Digital cameras produce 3 channels of color for each pixel (rather than just one intensity)
-- MRI produces dozens of pieces of information for every voxel which are used when examining different _contrasts_ in the system.
-- Raman-shift imaging produces an entire spectrum for each pixel
-- Coherent diffraction techniques produce 2- (sometimes 3) diffraction patterns for each point.
-$$ I(x,y) = \hat{f}(x,y) $$
-
-***
-
-```{r, fig.cap="",fig.height=7}
-nx<-4
-ny<-4
-n.pi<-4
-grad.im<-expand.grid(x=c(-nx:nx)/nx*n.pi*pi,
-                     y=c(-ny:ny)/ny*n.pi*pi)
-
-grad.im<-cbind(grad.im,
-               col=1.5*with(grad.im,abs(cos(x*y))/(abs(x*y)+(3*pi/nx)))+
-                 0.5*runif(nrow(grad.im)),
-              a=with(grad.im,sqrt(2/(abs(x)+0.5))),
-               b=with(grad.im,0.5*sqrt(abs(x)+1)),
-              th=0.5*runif(nrow(grad.im)),
-              aiso=1,count=1)
-
-create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
-  if (is.null(b)) b<-a
-  th<-seq(0,th.max,length.out=pts)
-  data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
-             y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
-             id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
-}
-deform.ellipse.draw<-function(c.box) {
-  create.ellipse.points(x.off=c.box$x[1],
-                        y.off=c.box$y[1],
-                        a=c.box$a[1],
-                        b=c.box$b[1],
-                        th.off=c.box$th[1],
-                        col=c.box$col[1])                    
-}
-
-# normalize vector
-tens.im<-ddply(grad.im,.(x,y),deform.ellipse.draw)
-
-ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
-  geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
-  theme_bw(20)
-```
-
-K-Means Clustering / Classification
-===
-- Automatic clustering of multidimensional data into groups based on a distance metric
-- Fast and scalable to petabytes of data (Google, Facebook, Twitter, etc. use it regularly to classify customers, advertisements, queries)
-- Segementation / Thresholding is really a classification task: given the gray value classify the pixel as either bone or air
-
-K-Means Algorithm
-===
-We give as an initial parameter the number of groups we want to find and possible a criteria for removing groups that are too similar
-
-1. Randomly create center points (groups) in vector space
-1. Assigns group to data point by the “closest” center
-1. Recalculate centers from mean point in each group
-1. Go back to step 2 until the groups stop changing
-
-*** 
-
-What vector space to we have?
-- Sometimes represent physical locations (classify swiss people into cities)
-- Can include intensity or color (K-means can be used as a thresholding technique when you give it image intensity as the vector and tell it to find two or more groups)
-- Can also include orientation, shape, or in extreme cases full spectra (chemically sensitive imaging)
-
-#### Note:  If you look for 2 groups you will almost always find two groups, whether or not they make any sense
-
-K-Means Example
-===
-```{matlab}
-objColor=kmeans(indata,2);
-```
-```{r, fig.cap="KMeans",fig.height=3}
-grad.im$km.cluster<-kmeans(grad.im,2)$cluster
-# normalize vector
-tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
-                                                     km.cluster=c.data[1,"km.cluster"]
-                                                     )
-               )
-
-ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
-  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
-  theme_bw(20)
-```
-```{r, fig.cap="Variable distributions",fig.height=4}
-splom(grad.im[,c("x","y","th","aiso")],groups=grad.im$km.cluster,pch=16)
-```
-
-***
-
-Or just the orientation
-```{matlab}
-objColor=kmeans(indata(:,[aisoCol,thCol]),2);
-```
-
-```{r, fig.cap="KMeans",fig.height=3}
-grad.im$km.cluster<-kmeans(grad.im[,c("th")],2)$cluster
-# normalize vector
-tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
-                                                     km.cluster=c.data[1,"km.cluster"]
-                                                     )
-               )
-ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
-  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
-  theme_bw(20)
-```
-
-```{r, fig.cap="Variable distributions",fig.height=4}
-splom(grad.im[,c("x","y","th","aiso")],
-      groups=grad.im$km.cluster,pch=16)
-```
-
-Probabilistic Models of Segmentation
-===
-A more general approach is to use a probabilistic model to segmentation. We start with our image $I(\vec{x}) \forall \vec{x}\in \mathbb{R}^N$ and we classify it into two phases $\alpha$ and $\beta$
-
-$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(I(\vec{x}) | \alpha)+  P(\sum_{x^{\prime} \in \mathcal{N}} I(\vec{x^{\prime}}) |  \alpha)$$
-- $P(\{\vec{x} , f(\vec{x})\}  | \alpha)$ the probability a given pixel is in phase $\alpha$ given we know it's position and value (what we are trying to estimate)
-- $P(\alpha)$ probability of any pixel in an image being part of the phase (expected volume fraction of that phase)
-- $P(I(\vec{x}) | \alpha)$ probability adjustment based on knowing the value of $I$ at the given point (standard threshold)
-- $P(f(\vec{x^{\prime}}) |  \alpha)$ are the collective probability adjustments based on knowing the value of a pixels neighbors (very simple version of [Markov Random Field](http://en.wikipedia.org/wiki/Markov_random_field) approaches)
-
-Fuzzy Classification
-===
-Fuzzy classification based on [Fuzzy logic](http://en.wikipedia.org/wiki/Fuzzy_logic) and [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing) and is a general catagory for multi-value logic instead of simply __true__ and __false__ and can be used to build __IF__ and __THEN__ statements from our probabilistic models.
-
-### Instead of
-
-$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(I(\vec{x}) | \alpha)+$$
-$$P(\sum_{x^{\prime} \in \mathcal{N}} I(\vec{x^{\prime}}) |  \alpha)$$
-
-***
-
-### Clear simple rules
-which encompass aspects of filtering, thresholding, and morphological operations
-- __IF__ the intensity if dark ($<100$)
- - __AND__ a majority of the neighborhood ($\mathcal{N}$) values are dark ($<100$)
-- __THEN__ it is a cell
-
-
-![Cell Colony](ext-figures/Cell_Colony.jpg)
-
-
-Beyond
-===
-- A multitude of other techniques exist for classifying groups and courses in Data Science and Artificial Intelligence go into much greater details. 
-- These techniques are generally underused because they are complicated to explain and robustly test and can arouse suspicion from reviewers. 
- - Because of their added complexity it is easier to manipulate these methods to get desired results from almost any dataset
- - But if the approach is based on a physical model of the images and the underyling system it is acceptable
-- Additionally they usually require some degree of implementation (coding).
-
-Contouring
-===
-
-Expanding on the hole filling issues examined before, a general problem in imaging is identifying regions of interest with in an image. 
-
-- For samples like brains it is done to identify different regions of the brain which are responsible for different functions. 
-
-- In material science it might be done to identify a portion of the sample being heated or understress. 
-
-- There are a number of approaches depending on the clarity of the data and the 
-
-
-Convex Hull Approach
-===
-takes all of the points in a given slice or volume and finds the smallest convex 3D volume which encloses all of those points.
-```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
-cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
-cortbone.df<-im.to.df(cortbone.im)
-# calculate convex hull
-cortbone.chull<-chull(subset(cortbone.df,val<1)[,c("x","y")])
-cortbone.chull<-c(cortbone.chull,cortbone.chull[1])
-cortbone.chull<-subset(cortbone.df,val<1)[cortbone.chull,c("x","y")]
-ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
-  geom_polygon(data=cortbone.chull,aes(fill="convex hull"),alpha=0.5)+
-  geom_raster(aes(fill="original"),alpha=0.8)+
-  labs(fill="Image",y="y",x="x",title="Convex Hull Creation")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-Rubber Band
-===
-```{r rubber_band_fcn}
-## the rubber band function to fit a boundary around the curve
-rubber.band.data<-function(raw.df,binning.pts=10,eval.fun=max) {
-  in.df<-raw.df
-  # calculate center of mass
-  com.val<-colMeans(in.df)
-  # add polar coordinates
-  in.df$r<-with(in.df,sqrt((x-com.val["x"])^2+(y-com.val["y"])^2))
-  in.df$theta<-with(in.df,atan2(y-com.val["y"],x-com.val["x"]))
-  # create a maximum path
-  outer.path<-ddply.cutcols(in.df,.(cut_interval(theta,binning.pts)),function(c.section) data.frame(r=eval.fun(c.section$r)))
-  outer.path$x<-with(outer.path,r*cos(theta)+com.val["x"])
-  outer.path$y<-with(outer.path,r*sin(theta)+com.val["y"])
-  outer.path
-}
-```
-Useful for a variety of samples (needn't be radially symmetric) and offers more flexibility in step size, smoothing function etc than convex hull. 
-
-1. Calculates the center of mass.
-1. Transforms sample into Polar Coordinates 
-1. Calculates a piecewise linear fit $r=f(\theta)$
-
-```{r, fig.cap="First Rubber Bands",fig.height=5}
-ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),9),aes(fill="rubber band   9pts"),alpha=0.5)+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),36),aes(fill="rubber band  36pts"),alpha=0.5)+
-  geom_raster(aes(fill="original"),alpha=0.8)+
-  labs(fill="Image",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-***
-
-```{r, fig.cap="Better Rubber Bands",fig.height=4}
-ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90),aes(fill="rubber band  90pts"),alpha=0.5)+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),180),aes(fill="rubber band 180pts"),alpha=0.5)+
-  geom_raster(aes(fill="original"),alpha=0.8)+
-  labs(fill="Image",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-```{r, fig.cap="In Detail",fig.height=4}
-ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),180),aes(fill="rubber band 180pts"),alpha=0.5)+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),720),aes(fill="rubber band 720pts"),alpha=0.5)+
-  geom_raster(aes(fill="original"),alpha=0.8)+
-  labs(fill="Image",y="y",x="x")+
-  coord_equal()+xlim(50,150)+ylim(-100,50)+
-  theme_bw(20)
-```
-
-
-Rubber Band: More flexible constraints
-===
-
-If we use quartiles or the average instead of the maximum value we can make the method less sensitive to outlier pixels
-
-```{r, fig.cap="In Detail",fig.height=4}
-ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
-  geom_raster(aes(fill="original"),alpha=0.8)+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90,eval.fun=mean),
-               aes(fill="rubber band mean value"),alpha=0.5)+
-  geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90,
-                                     eval.fun=function(x) quantile(x,0.99)),
-               aes(fill="rubber band upper 99%"),alpha=0.5)+
-
-  labs(fill="Image",y="y",x="x")+
-  coord_equal()+
-  theme_bw(20)
-```
-
-Contouring: Guided Methods
-===
-
-Many forms of guided methods exist, the most popular is known simply as the _Magnetic Lasso_ in Adobe Photoshop ([video](http://people.ee.ethz.ch/~maderk/videos/MagneticLasso.swf)).
-
-The basic principal behind many of these methods is to optimize a set of user given points based on local edge-like information in the image. In the brain cortex example, this is the small gradients in the gray values which our eyes naturally seperate out as an edge but which have many gaps and discontinuities. 
-
-[Active Contours / Snakes](http://link.springer.com/article/10.1007%2FBF00133570#page-1)
-
-Component Labeling
-===
-Once we have a clearly segmented image, it is often helpful to identify the sub-components of this image. The easist method for identifying these subcomponents is called component labeling which again uses the neighborhood $\mathcal{N}$ as a criterion for connectivity, resulting in pixels which are touching being part of the same object.
-
-
-In general, the approach works well since usually when different regions are touching, they are related. It runs into issues when you have multiple regions which agglomerate together, for example a continuous pore network (1 object) or a cluster of touching cells
-
-***
-
-The more general formulation of the problem is for networks (roads, computers, social). Are the points start and finish connected?
-
-```{r, fig.cap="Network connectivity",fig.height=6}
-nx<-5
-ny<-10
-cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
-max.nodes.fn<-function(x,y) 1+round(abs(x+y/2)) # non-homogenous network connectivity
-cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
-    out.df<-data.frame(xv=c(),yv=c())
-    max.nodes<-max.nodes.fn(in.pt[1,"x"],in.pt[1,"y"])
-    for(i in 1:round(runif(1,max=max.nodes))) {
-      c.angle<-runif(1,max=pi)
-      out.df<-rbind(out.df,data.frame(
-        xv=round(cos(c.angle)),
-        yv=round(sin(c.angle))
-        ))
-    }
-    out.df
-  })
-id.fn<-function(x,y) (y*100+x)
-cross.im$id<-with(cross.im,id.fn(x,y))
-
-cross.lab.im<-cbind(cross.im,label="Normal")
-cross.lab.im$label<-as.character(cross.lab.im$label)
-cross.lab.im[which(cross.lab.im$id==cross.lab.im[1,]$id),"label"]<-"Begin"
-cross.lab.im[which(cross.lab.im$id==cross.lab.im[nrow(cross.lab.im),]$id),"label"]<-"End"
-cross.lab.im$label<-as.factor(cross.lab.im$label)
-ggplot(cross.lab.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Goal")
-```
-
-
-Component Labeling: Algorithm
-===
-
-We start out with the network and we _grow_ __Begin__ to its connections. In a [brushfire](http://www.sciencedirect.com/science/article/pii/S0921889007000966)-style algorithm
-
-- For each point $(x,y)\in\{\text{Begin},\text{Pixels Grown}\}$
- - For each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
- - Set the label to _Pixels Grown_
-- Repeat until no more labels have been changed
-
-***
-
-```{r itergrow_code}
-# Network traversing algorithm
-iter.grow<-function(ncross.lab.im,iter.cnt=10,source.phase="Begin",target.phase=NA,grow.into.phase="Normal") {
-  if(is.na(target.phase)) target.phase<-source.phase
-  
-  for(iters in 1:iter.cnt) {
-    begin.pts<-subset(ncross.lab.im,label==source.phase | label==target.phase)
-    begin.ids<-unique(begin.pts$id)
-    begin.pts.term<-subset(ncross.lab.im,id.fn(x+xv,y+yv) %in% begin.ids)  
-    begin.pts<-rbind(begin.pts,
-                     begin.pts.term
-                     )
-    ncross.lab.im$label<-as.character(ncross.lab.im$label)
-    for(i in 1:nrow(begin.pts)) {
-      cur.pt<-begin.pts[i,]
-      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
-      switch.pixs<-which(ncross.lab.im$id==child.id & 
-                            ncross.lab.im$label == grow.into.phase)
-      if(length(switch.pixs)>1) ncross.lab.im[switch.pixs ,"label"]<-target.phase
-      }
-    switch.pixs<-which(ncross.lab.im$id %in% begin.pts.term$id &
-                          ncross.lab.im$label == grow.into.phase)
-    
-    if(length(switch.pixs)>1) ncross.lab.im[switch.pixs,"label"]<-target.phase
-    }
-  ncross.lab.im$label<-as.factor(ncross.lab.im$label)
-  ncross.lab.im
-  }
-```
-
-```{r, fig.cap="One Growth Step",fig.height=6}
-
-ggplot(iter.grow(cross.lab.im,1,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Type",title="1 Iteration from Begin")
-```
-
-
-Component Labeling: Algorithm Steps
-===
-
-```{r, fig.cap="10 Growth Steps",fig.height=4}
-
-ggplot(iter.grow(cross.lab.im,10,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="10 iterations from Begin")
-```
-
-```{r, fig.cap="10 Growth Steps",fig.height=4}
-
-ggplot(iter.grow(cross.lab.im,10,source.phase="End",target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="10 iterations from End")
-```
-
-
-***
-
-```{r, fig.cap="Diagonal Growth Steps",fig.height=8}
-
-ggplot(iter.grow(cross.lab.im,round(2*sqrt(20^2+10^2)),target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="Diagonal iterations from Begin")
-```
-
-
-Component Labeling: Images Algorithm
-===
-Same as for networks but the neighborhood is defined with a kernel (circular, full, line, etc) and labels must be generate for the image
-
-- Assign a unique label to each point in the image
-$$ L(x,y) = y*\text{Im}_{width}+x $$
-
-- For each point $(x,y)$
- - Check each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
- - Set 
- $$L(x,y)=\text{min}(L(x,y),L(x^{\prime},y^{\prime}))$$
- $$L(x^{\prime},y^{\prime})=L(x,y)$$
-- Repeat until no more $L$ values are changed
-
-***
-
-```{r, fig.cap="Image as Network",fig.height=6}
-
-nx<-10
-ny<-5
-ang.vals<-seq(0,pi/2,length.out=2)
-cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
-cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
-    out.df<-data.frame(xv=c(),yv=c())
-    
-    for(i in 1:length(ang.vals)) {
-      c.angle<-ang.vals[i]
-      out.df<-rbind(out.df,data.frame(
-        xv=round(cos(c.angle)),
-        yv=round(sin(c.angle))
-        ))
-    }
-    out.df
-  })
-
-id.fn<-function(x,y) (y*100+x)
-cross.im$id<-with(cross.im,id.fn(x,y))
-cross.im<-subset(cross.im,x!=0 & y!=0)
-ggplot(cross.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Goal")
-```
-
-
-Component Labeling: Image Algorithm
-===
-
-```{r im_itergrow_code}
-# Component labeling algorithm
-im.iter.grow<-function(icross.im,iter.cnt=10) {
-  ncross.im<-icross.im
-  for(iters in 1:iter.cnt) {
-    
-    begin.pts<-ncross.im
-    for(i in 1:nrow(begin.pts)) {
-      cur.pt<-begin.pts[i,]
-      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
-      # fill into lower points
-      switch.pixs<-which(icross.im$id==child.id & 
-                            icross.im$id > cur.pt$id)
-      if(length(switch.pixs)>1) ncross.im[switch.pixs ,"id"]<-cur.pt$id
-      }
-    icross.im<-ncross.im
-    }
-  ncross.im
-  }
-```
-
-```{r, fig.cap="One Growth Step",fig.height=4}
-ggplot(im.iter.grow(cross.im,2),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="2 Iterations")
-```
-
-```{r, fig.cap="One Growth Step",fig.height=4}
-ggplot(im.iter.grow(cross.im,3),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+
-  coord_equal()+
-  theme_bw(20)+labs(color="Type",title="3 Iterations")
-```
-
-***
-
-The image very quickly converges and after 4 iterations the task is complete. For larger more complicated images with thousands of components this task can take longer, but there exist much more efficient [algorithms](https://www.cs.princeton.edu/~rs/AlgsDS07/01UnionFind.pdf) for labeling components which alleviate this issue.
-
-```{r, fig.cap="One Growth Step",fig.height=6}
-ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="4 iterations")
-```
-
-Component Labeling: Image Algorithm
-===
-
-In reality the component labeling algorithms are usually implemented, but it is important to understand how they work and their relationship with neighborhood in order to interpret the results correctly.
-
-```{matlab}
-labImg=bwlabel(imName)
-```
-
-Component Labeling: Image Algorithm
-===
-
-
-```{r, fig.cap="Cell Colony",fig.height=4}
+```{r, fig.cap="Cell Colony",fig.height=7}
 cell.im<-jpeg::readJPEG("ext-figures/Cell_Colony.jpg")
 cell.lab.df<-im.to.df(bwlabel(cell.im<.6))
-ggplot(subset(cell.lab.df,val>0),aes(x=x,y=y,fill=val))+
-  geom_raster()+
-  labs(fill="Label",title="Labeled Image")+
-  theme_bw(20)+coord_equal()
-```
-
-```{r, fig.cap="Cell Colony",fig.height=4}
 size.histogram<-ddply(subset(cell.lab.df,val>0),.(val),function(c.label) data.frame(count=nrow(c.label)))
 keep.vals<-subset(size.histogram,count>25)
-ggplot(size.histogram,aes(x=count))+
-  geom_density(aes(color="Entire Labeled Images"))+
-  geom_density(data=keep.vals,aes(color="Larger Cells"))+
-  labs(x="Cell Volume",y="Frequency of Cells",title="Size Distribution",color="Distribution")+
-  scale_y_sqrt()+
-  theme_bw(20)
+cur.cell.id<-subset(cell.lab.df,val %in% keep.vals$val)$val[1]
+cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
+ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,fill=as.numeric(as.factor(val))))+
+  geom_raster()+
+  geom_tile(data=cur.cell.df,fill="red",alpha=0.5)+
+  labs(fill="Label",title="Larger Cells (>25px)")+
+  theme_bw(20)+coord_equal()
 ```
 
 ***
 
-```{r, fig.cap="Cell Colony",fig.height=4}
+### What we would like to to do
 
-ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,fill=as.factor(val)))+
-  geom_raster()+
-  labs(fill="Intensity",title="Larger Cells (>25px)")+
-  theme_bw(20)+coord_equal()
+- Count the cells
+- Say something about the cells
+- Compare the cells in this image to another image
+- But where do we start?
+
+With a single object
+===
+$$ I_{id}(x,y) = 
+\begin{cases}
+1, & L(x,y) = id \\
+0, & \text{otherwise}
+\end{cases}$$
+
+```{r, fig.cap="Single Cell",fig.height=7}
+mean.df<-colMeans.df(cur.cell.df[,c("x","y")])
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_point(data=main.df,color="red",pch=3,size=20)+
+  labs(title="Single Cell")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
+***
 
-Component Labeling: Beyond
+### Define a center
+$$ \bar{x} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{i} $$
+$$ \bar{y} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{j} $$
+$$ \bar{z} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{k} $$
+
+
+With a single object
 ===
 
 
-Now all the voxels which are connected have the same label. We can then perform simple metrics like
-- counting the number of voxels in each label to estimate volume.
-- looking at the change in volume during erosion or dilation to estimate surface area
+```{r, fig.cap="Single Cell",fig.height=7}
+cell.extents<-data.frame(xmin=c(mean.df$x,min(cur.cell.df$x)),
+                         xmax=c(mean.df$x,max(cur.cell.df$x)),
+                         ymin=c(min(cur.cell.df$y),mean.df$y),
+                         ymax=c(max(cur.cell.df$y),mean.df$y))
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_segment(data=cell.extents,aes(x=xmin,y=ymax, xend=xmax,yend=ymax),color="red",size=1)+
+  labs(title="Single Cell")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
 
-Next week we will cover how more detailed analysis can be performed on these data.
+***
 
-
+### Define a center
+$$ \bar{x} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{i} $$
+$$ \bar{y} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{j} $$
+$$ \bar{z} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{k} $$
 
 
 
