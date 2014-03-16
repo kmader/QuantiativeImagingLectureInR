@@ -110,6 +110,9 @@ Literature / Useful References
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+- Principal Component Analysis
+ - Mardia, K. V., J. T. Kent and J. M. Bibby (1979). Multivariate Analysis, London: Academic Press.
+ - Venables, W. N. and B. D. Ripley (2002). Modern Applied Statistics with S, Springer-Verlag.
 
 Previously on QBI ...
 ========================================================
@@ -304,7 +307,7 @@ $$ \text{Ext}_y = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{j})-mi
 $$ \text{Ext}_z = \left\{ \forall \vec{}\in I_{id}: max(\vec{v}\cdot\vec{k})-min(\vec{v}\cdot\vec{k})  \right\} $$
 
 - Lots of information about each object now
-- But, I don't think a biologist has ever asked "How long is a cell in the $x$ direction?, how about $y$?"
+- But, I don't think a biologist has ever asked "How long is a cell in the $x$ direction? how about $y$?"
 
 Anisotropy: What is it?
 ===
@@ -315,13 +318,13 @@ By definition (New Oxford American): ~~varying in magnitude according to the dir
 
 ***
 
-Due to its very vague definition, it can be mathematically characterized in many different very much unequal ways
+Due to its very vague definition, it can be mathematically characterized in many different very much unequal ways (in all cases 0 represents a sphere)
 
-$$ Aiso1 = \frac{\text{Longest Side}}{\text{Shortest Side}} $$
+$$ Aiso1 = \frac{\text{Longest Side}}{\text{Shortest Side}} - 1 $$
 
 $$ Aiso2 = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Longest Side}} $$
 
-$$ Aiso3 = \frac{\text{Longest Side}}{\text{Average Side Length}} $$
+$$ Aiso3 = \frac{\text{Longest Side}}{\text{Average Side Length}} - 1 $$
 
 $$ Aiso4 = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Average Side Length}} $$
 
@@ -347,7 +350,7 @@ deform.ellipse.draw<-function(c.box) {
                         th.off=c.box$th[1],
                         col=c.box$col[1])                    
 }
-test.objs<-data.frame(x=0,y=0,th.off=0,a=c(0.01,0.5,1,2,5,7,10,15,20),b=5)
+test.objs<-data.frame(x=0,y=0,th.off=0,a=5,b=rev(c(1e-3,1e-2,1e-1,1,2,3,4,5)))
 test.objs$col<-1:nrow(test.objs)
 test.objs$x.extents<-2*test.objs$a
 test.objs$y.extents<-2*test.objs$b
@@ -355,23 +358,27 @@ ggplot(ddply(test.objs,.(col),deform.ellipse.draw),
        aes(x=x,y=y,group=as.factor(id)))+
   geom_polygon(color="black",fill="blue")+coord_equal()+
   facet_grid(col~.)+theme_bw(15)
+
 ```
 
 *** 
 
 ```{r, fig.cap="Anisotropy Formulas",results="asis"}
-s.aiso<-function(lside,sside) (lside/sside)
+
+s.aiso<-function(lside,sside) (lside/sside-1)
 aiso<-function(lside,sside) ((lside-sside)/lside)
-a.aiso<-function(lside,sside) (2*lside/(lside+sside))
+a.aiso<-function(lside,sside) (2*lside/(lside+sside)-1)
 as.aiso<-function(lside,sside) (2*(lside-sside)/(lside+sside))
 awrap<-function(c.fun) function(in.ell.dim) c.fun(pmax(2*in.ell.dim$a,2*in.ell.dim$b),pmin(2*in.ell.dim$a,2*in.ell.dim$b))
-
-aiso.table<-ddply(test.objs,.(x.extents,y.extents),function(c.ell) {
+aiso.table.fn<-function(in.objs) {
+  ddply(in.objs,.(col),function(c.ell) {
   data.frame(Aiso1=awrap(s.aiso)(c.ell),
              Aiso2=awrap(aiso)(c.ell),
              Aiso3=awrap(a.aiso)(c.ell),
              Aiso4=awrap(as.aiso)(c.ell))
 })
+}
+aiso.table<-aiso.table.fn(test.objs)
 
 kable(aiso.table,digits=2)
 ```
@@ -380,50 +387,64 @@ kable(aiso.table,digits=2)
 Anisotropy: Which definition makes sense?
 ===
 
-Plot the anisotropies
 ```{r, fig.cap="Sample Objects",fig.height=8}
 ggplot(ddply(test.objs,.(col),deform.ellipse.draw),
        aes(x=x,y=y,group=as.factor(id)))+
   geom_polygon(color="black",fill="blue")+coord_equal()+
-  facet_grid(col~.)+theme_bw(15)
+  facet_wrap(~col)+theme_bw(15)
 ```
 
 *** 
 
+### Anisotropy vs $x$ extents 
 ```{r, fig.cap="Anisotropy Formulas",fig.height=9}
-ggplot(aiso.table,aes(x=x.extents))+
+
+ggplot(aiso.table,aes(x=y.extents))+
   geom_line(aes(y=Aiso1,color="Aiso1"))+
   geom_line(aes(y=Aiso2,color="Aiso2"))+
   geom_line(aes(y=Aiso3,color="Aiso3"))+
   geom_line(aes(y=Aiso4,color="Aiso4"))+
   scale_y_log10()+
-  labs(x="X extents",y="Anisotropy",color="Metric")+
+  labs(x="Y extents",y="Anisotropy",color="Metric")+
   theme_bw(20)
 ```
 
-Distributions
+Distributions: Randomly Sized Objects
 ===
-
-```{r, fig.cap="Anisotropy Formulas",fig.height=9}
-
-ggplot(aiso.table)+
-  geom_density(aes(x=Aiso1,color="Aiso1"))+
-  geom_density(aes(x=Aiso2,color="Aiso2"))+
-  geom_density(aes(x=Aiso3,color="Aiso3"))+
-  geom_density(aes(x=Aiso4,color="Aiso4"))+
-  scale_x_log10()+
-  labs(x="X extents",y="Anisotropy",color="Metric")+
-  theme_bw(20)
+Objects with uniformally distributed, independent $x$ and $y$ extents 
+```{r, fig.cap="Sample Objects",fig.height=8}
+m.count<-5000
+many.objs<-data.frame(x=0,y=0,th.off=0,a=runif(m.count,0,20),b=runif(m.count,0,20))
+many.objs$col<-1:nrow(many.objs)
+many.objs$x.extents<-2*many.objs$a
+many.objs$y.extents<-2*many.objs$b
+maiso.table<-aiso.table.fn(many.objs)
+ggplot(ddply(subset(many.objs,col<17),.(col),deform.ellipse.draw),
+       aes(x=x,y=y,group=as.factor(id)))+
+  geom_polygon(color="black",fill="blue")+coord_equal()+
+  facet_wrap(~col)+theme_bw(15)
 ```
+
 
 ***
 
-```{r, fig.cap="Anisotropy Formulas",fig.height=9}
-splom(aiso.table[,c("Aiso1","Aiso2","Aiso3","Aiso4")],pch=16)
+```{r, fig.cap="Anisotropy Formulas",fig.height=5}
+splom(subset(maiso.table,Aiso1<10)[,c("Aiso1","Aiso2","Aiso3","Aiso4")],pch=16)
 ```
-Anisotropy: With a single object
-===
-From these extent values we can estimate 
+
+```{r, fig.cap="Anisotropy Formulas",fig.height=4}
+
+ggplot(maiso.table)+
+  geom_density(aes(x=Aiso1,color="Aiso1"),size=2)+
+  geom_density(aes(x=Aiso2,color="Aiso2"),fill="green",alpha=0.5)+
+  geom_density(aes(x=Aiso3,color="Aiso3"),size=2)+
+  geom_density(aes(x=Aiso4,color="Aiso4"),size=2)+
+  #scale_x_log10()+
+  labs(x="Anisotropy",color="Metric")+
+  xlim(0,2)+guides(fill=F)+
+  theme_bw(20)
+```
+ 
 
 
 
@@ -448,7 +469,6 @@ ggplot(cell.extents.all,aes(x=x,y=y))+
   labs(title="COM and Extents",color="Label")+
   theme_bw(20)#+coord_equal()
 ```
-
 
 
 COV and Extents: All Cells
@@ -487,7 +507,10 @@ bbox.fun<-function(in.df) {
     ymx<-emax(c.cell$y)
     out.df<-cbind(c.cell.mean,
                   data.frame(xi=c(xmn,xmn,xmx,xmx,xmn),
-                             yi=c(ymn,ymx,ymx,ymn,ymn)))
+                             yi=c(ymn,ymx,ymx,ymn,ymn),
+                             xw=xmx-xmn,
+                             yw=ymx-ymn
+                             ))
   })
 }
 cell.bbox.all<-bbox.fun(subset(cell.lab.df,val %in% keep.vals$val))
@@ -501,3 +524,139 @@ ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   theme_bw(15)+coord_equal()
 ```
 
+Sorted by Anisotropy
+===
+
+```{r, fig.cap="All Cells Bounding Box",fig.height=9,fig.width=16}
+cell.bbox.all$aiso<-with(cell.bbox.all,(pmax(xw,yw)-pmin(xw,yw))/pmax(xw,yw)+val/1e5)
+
+ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
+  #geom_raster(data=mean.sub.df,aes(x=x,y=y))+
+  geom_path(aes(x=xi-x,y=yi-y,group=val),
+               color="red")+
+  geom_point(color="red",size=2)+
+  facet_wrap(~aiso,ncol=14)+
+  labs(x="x - COM",y="y - COM")+
+  theme_bw(15)+coord_equal()
+```
+
+Bounding Box is a Poor Approximation
+===
+
+While easy to calculate, the bounding box / extents approach is a very rough approximation for most of the objects in our image. In particular objects which are not parallel to the $XY$-axes are misrepresented.
+
+### Possible Solutions
+
+- Orient the boxes so there is the least amount of empty space or it best fits the data
+- Assume the object is an ellipse and do some sort of curve fitting to find the object
+- Don't worry about height and width and focus instead on more general characteristics like curvature, thickness (next lecture)
+
+Useful Statistical Tools: Principal Component Analysis
+===
+While many of the topics covered in Linear Algebra and Statistics courses might not seem very applicable to real problems at first glance, at least a few of them come in handy for dealing distributions of pixels ~~(they will only be briefly covered, for more detailed review look at some of the suggested material)~~
+
+### Principal Component Analysis
+Similar to K-Means insofar as we start with a series of points in a vector space and want to condense the information. With PCA instead of searching for distinct groups, we try to find a linear combination of components which best explain the variance in the system.
+
+***
+As an example we will use a very simple example of corn and chicken prices vs time
+```{r, fig.cap="Corn and Chicken",fig.height=4}
+n.pts<-20
+test.pca<-data.frame(time=c(1:n.pts),
+                     corn.price=0.01*runif(n.pts)+0.05)
+test.pca$chicken.price<-with(test.pca,corn.price+0.01*runif(n.pts))
+ggplot(test.pca,aes(x=time))+
+  geom_line(aes(y=corn.price,color="Corn Price ($/kg)"))+
+  geom_line(aes(y=chicken.price,color="Chicken Price ($/g)"))+
+  labs(x="Time (days)",y="Price",color="Commodity")+
+  theme_bw(20)
+```
+```{r, fig.cap="PCA Example",fig.height=4}
+
+test.pca.princomp<-princomp(test.pca[,-1])
+test.pca$pca1<-test.pca.princomp$scores[,1]
+test.pca$pca2<-test.pca.princomp$scores[,2]
+ggplot(test.pca,aes(x=time))+
+  geom_line(aes(y=pca1,color="Principal Component #1"))+
+  geom_line(aes(y=pca2,color="Principal Component #2"))+
+  geom_line(aes(y=corn.price,color="Corn Price ($/kg)"))+
+  geom_line(aes(y=chicken.price,color="Chicken Price ($/g)"))+
+  labs(x="Time (days)",y="Price",color="Commodity")+
+  theme_bw(20)
+```
+
+Useful Statistical Tools: Principal Component Analysis
+===
+The first principal component condenses the correlated information in both the chicken and corn prices (perhaps the underlying cost of fuel) since it explains the most variance in the final table of corn and chicken prices.
+
+```{r, fig.cap="PCA Example",fig.height=4}
+ggplot(test.pca,aes(x=pca1))+
+  geom_point(aes(y=corn.price,color="Corn Price ($/kg)"))+
+  geom_point(aes(y=chicken.price,color="Chicken Price ($/g)"))+
+  labs(x="Principal Component #1",y="Price",color="Commodity")+
+  theme_bw(20)
+```
+
+***
+
+The second principal component is then related to the unique information seperating chicken from corn prices but neither indices directly themselves (maybe the cost of antibiotics)
+```{r, fig.cap="PCA Example",fig.height=4}
+ggplot(test.pca,aes(x=pca2))+
+  geom_point(aes(y=corn.price,color="Corn Price ($/kg)"))+
+  geom_point(aes(y=chicken.price,color="Chicken Price ($/g)"))+
+  geom_point(aes(y=5*(chicken.price-corn.price),color="Difference in Chicken-Corn"))+
+  labs(x="Principal Component #1",y="Price",color="Commodity")+
+  theme_bw(20)
+```
+
+
+Applied PCA: Shape Tensor
+===
+### How do these statistical analyses help us?
+Going back to a single cell, we have the a distribution of $x$ and $y$ values. The are not however completely independent and furthermore the greatest variance does not lie in either x nor y itself. A principal component analysis of the voxel positions, will calculate two new principal components (the components themselves are the relationships between the input variables and the scores are the final values.)
+
+***
+
+```{r, fig.cap="Single Cell",fig.height=8}
+# since the edge of the pixel is 0.5 away from the middle of the pixel
+pca.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.cov<-cov(c.cell[,c("x","y")])
+    c.cell.eigen<-eigen(c.cell.cov)
+    
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    out.df<-cbind(c.cell.mean,
+                  data.frame(vx=c.cell.eigen$vectors[1,],
+                             vy=c.cell.eigen$vectors[2,],
+                             vw=sqrt(c.cell.eigen$values),
+                             th.off=atan2(c.cell.eigen$vectors[2,],c.cell.eigen$vectors[1,]))
+                  )
+  })
+}
+
+cur.cell.id<-subset(cell.lab.df,val %in% keep.vals$val)$val[100]
+cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
+
+cell.pca<-pca.fun(cur.cell.df)
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_segment(data=cell.pca,aes(x=x,y=y,xend=x+5*vx*vw/2,yend=y+5*vy*vw/2),
+               arrow=arrow(length = unit(0.3,"cm")),size=2)+
+  labs(title="Single Cell")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+
+How did we calculate that?
+===
+We start off by calculating the covariance matrix from the list of $x$, $y$, and $z$ points that make up our object of interest.
+
+$$ COV(I_{id}) = 
+
+Define extents as the minimum and maximum values along the projection of the shape in each direction
+$$ \text{Ext}_x = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{i})-min(\vec{v}\cdot\vec{i})  \right\} $$
+$$ \text{Ext}_y = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{j})-min(\vec{v}\cdot\vec{j})  \right\} $$
+$$ \text{Ext}_z = \left\{ \forall \vec{}\in I_{id}: max(\vec{v}\cdot\vec{k})-min(\vec{v}\cdot\vec{k})  \right\} $$
+
+- Lots of information about each object now
+- But, I don't think a biologist has ever asked "How long is a cell in the $x$ direction?, how about $y$?"
