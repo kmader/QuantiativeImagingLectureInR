@@ -75,17 +75,17 @@ ddply.cutcols<-function(...,cols=1) {
 colMeans.df<-function(x,...) as.data.frame(t(colMeans(x,...)))
 ```
 
-Quantitative Big Imaging  
+Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
 date: 20 March 2014
 width: 1440
 height: 900
+css: ../template.css
 transition: rotate
 
-
-## Analysis of Single Objects
-
+ETHZ: 227-0966-00L
+# Analysis of Single Objects
 
 Course Outline
 ========================================================
@@ -187,6 +187,7 @@ What did we want in the first place
 * cell volume variability
 
 
+
 From the labels
 ===
 
@@ -213,7 +214,7 @@ ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,fill=as.numeric(as
 - Compare the cells in this image to another image
 - But where do we start?
 
-With a single object
+COV: With a single object
 ===
 $$ I_{id}(x,y) = 
 \begin{cases}
@@ -225,7 +226,7 @@ $$ I_{id}(x,y) =
 mean.df<-colMeans.df(cur.cell.df[,c("x","y")])
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
-  geom_point(data=main.df,color="red",pch=3,size=20)+
+  geom_point(data=mean.df,color="red",pch=3,size=20)+
   labs(title="Single Cell")+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
@@ -233,33 +234,270 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 ***
 
 ### Define a center
-$$ \bar{x} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{i} $$
-$$ \bar{y} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{j} $$
-$$ \bar{z} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{k} $$
+$$ \bar{x} = \frac{1}{N} \sum_{\vec{v}\in I_{id}} \vec{v}\cdot\vec{i} $$
+$$ \bar{y} = \frac{1}{N} \sum_{\vec{v}\in I_{id}} \vec{v}\cdot\vec{j} $$
+$$ \bar{z} = \frac{1}{N} \sum_{\vec{v}\in I_{id}} \vec{v}\cdot\vec{k} $$
 
-
-With a single object
+COM: With a single object
 ===
-
+If the gray values are kept (or other meaningful ones are used), this can be seen as a weighted center of volume or center of mass (using $I_{gy}$ to distinguish it from the labels)
 
 ```{r, fig.cap="Single Cell",fig.height=7}
-cell.extents<-data.frame(xmin=c(mean.df$x,min(cur.cell.df$x)),
-                         xmax=c(mean.df$x,max(cur.cell.df$x)),
-                         ymin=c(min(cur.cell.df$y),mean.df$y),
-                         ymax=c(max(cur.cell.df$y),mean.df$y))
+commean.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+  weight.sum<-sum(c.cell$weight)
+  data.frame(xv=mean(c.cell$x),
+             yv=mean(c.cell$y),
+             xm=with(c.cell,sum(x*weight)/weight.sum),
+             ym=with(c.cell,sum(y*weight)/weight.sum)
+             )
+  })
+}
+cur.cell.df.weight<-cbind(cur.cell.df,weight=with(cur.cell.df,(x-17)^2+(y-9)^2))
+commean.df<-commean.fun(cur.cell.df.weight)
+ggplot(cur.cell.df.weight,aes(x=x,y=y))+
+  geom_tile(aes(fill=weight),color="black")+
+  geom_point(data=commean.df,aes(x=xv,y=yv,color="COV"),pch=16,size=20)+
+  geom_point(data=commean.df,aes(x=xm,y=ym,color="COM"),pch=16,size=20)+
+  labs(title="Single Cell",color="Center",fill="Igy")+
+  theme_bw(20)+coord_equal()#+guides(fill=T)
+```
+
+***
+
+### Define a center
+$$ \Sigma I_{gy} = \frac{1}{N} \sum_{\vec{v}\in I_{id}} I_{gy}(\vec{v}) $$
+$$ \bar{x} = \frac{1}{\Sigma I_{gy}} \sum_{\vec{v}\in I_{id}} (\vec{v}\cdot\vec{i}) I_{gy}(\vec{v}) $$
+$$ \bar{y} = \frac{1}{\Sigma I_{gy}} \sum_{\vec{v}\in I_{id}} (\vec{v}\cdot\vec{j}) I_{gy}(\vec{v}) $$
+$$ \bar{z} = \frac{1}{\Sigma I_{gy}} \sum_{\vec{v}\in I_{id}} (\vec{v}\cdot\vec{k}) I_{gy}(\vec{v}) $$
+
+
+Extents: With a single object
+===
+Exents or caliper lenghts are the size of the object in a given direction. Since the coordinates of our image our $x$ and $y$ the extents are calculated in these directions
+```{r, fig.cap="Single Cell",fig.height=7}
+# since the edge of the pixel is 0.5 away from the middle of the pixel
+emin<-function(...) min(...)-0.5
+emax<-function(...) max(...)+0.5
+extents.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    out.df<-cbind(c.cell.mean,data.frame(xmin=c(c.cell.mean$x,emin(c.cell$x)),
+                         xmax=c(c.cell.mean$x,emax(c.cell$x)),
+                         ymin=c(emin(c.cell$y),c.cell.mean$y),
+                         ymax=c(emax(c.cell$y),c.cell.mean$y)))
+  })
+}
+cell.extents<-extents.fun(cur.cell.df)
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
-  geom_segment(data=cell.extents,aes(x=xmin,y=ymax, xend=xmax,yend=ymax),color="red",size=1)+
+  geom_segment(data=cell.extents,aes(x=xmin,y=ymin, xend=xmax,yend=ymax),color="red",size=2,lineend="square")+
   labs(title="Single Cell")+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
 ***
 
-### Define a center
-$$ \bar{x} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{i} $$
-$$ \bar{y} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{j} $$
-$$ \bar{z} = \frac{1}{N} \sum_{\vec{x}\in I_{id}} \vec{x}\cdot\vec{k} $$
+Define extents as the minimum and maximum values along the projection of the shape in each direction
+$$ \text{Ext}_x = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{i})-min(\vec{v}\cdot\vec{i})  \right\} $$
+$$ \text{Ext}_y = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{j})-min(\vec{v}\cdot\vec{j})  \right\} $$
+$$ \text{Ext}_z = \left\{ \forall \vec{}\in I_{id}: max(\vec{v}\cdot\vec{k})-min(\vec{v}\cdot\vec{k})  \right\} $$
+
+- Lots of information about each object now
+- But, I don't think a biologist has ever asked "How long is a cell in the $x$ direction?, how about $y$?"
+
+Anisotropy: What is it?
+===
+By definition (New Oxford American): ~~varying in magnitude according to the direction of measurement.~~
+
+- It allows us to define metrics in respect to one another and thereby characterize shape.
+- Is it tall and skinny, short and fat, or perfectly round
+
+***
+
+Due to its very vague definition, it can be mathematically characterized in many different very much unequal ways
+
+$$ Aiso1 = \frac{\text{Longest Side}}{\text{Shortest Side}} $$
+
+$$ Aiso2 = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Longest Side}} $$
+
+$$ Aiso3 = \frac{\text{Longest Side}}{\text{Average Side Length}} $$
+
+$$ Aiso4 = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Average Side Length}} $$
+
+$$ \cdots \rightarrow \text{ ad nauseum} / \infty $$
+
+Anisotropy: Which definition makes sense?
+===
+
+Let's take some sample objects
+```{r, fig.cap="Sample Objects",fig.height=8}
+create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
+  if (is.null(b)) b<-a
+  th<-seq(0,th.max,length.out=pts)
+  data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
+             y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
+             id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
+}
+deform.ellipse.draw<-function(c.box) {
+  create.ellipse.points(x.off=c.box$x[1],
+                        y.off=c.box$y[1],
+                        a=c.box$a[1],
+                        b=c.box$b[1],
+                        th.off=c.box$th[1],
+                        col=c.box$col[1])                    
+}
+test.objs<-data.frame(x=0,y=0,th.off=0,a=c(0.01,0.5,1,2,5,7,10,15,20),b=5)
+test.objs$col<-1:nrow(test.objs)
+test.objs$x.extents<-2*test.objs$a
+test.objs$y.extents<-2*test.objs$b
+ggplot(ddply(test.objs,.(col),deform.ellipse.draw),
+       aes(x=x,y=y,group=as.factor(id)))+
+  geom_polygon(color="black",fill="blue")+coord_equal()+
+  facet_grid(col~.)+theme_bw(15)
+```
+
+*** 
+
+```{r, fig.cap="Anisotropy Formulas",results="asis"}
+s.aiso<-function(lside,sside) (lside/sside)
+aiso<-function(lside,sside) ((lside-sside)/lside)
+a.aiso<-function(lside,sside) (2*lside/(lside+sside))
+as.aiso<-function(lside,sside) (2*(lside-sside)/(lside+sside))
+awrap<-function(c.fun) function(in.ell.dim) c.fun(pmax(2*in.ell.dim$a,2*in.ell.dim$b),pmin(2*in.ell.dim$a,2*in.ell.dim$b))
+
+aiso.table<-ddply(test.objs,.(x.extents,y.extents),function(c.ell) {
+  data.frame(Aiso1=awrap(s.aiso)(c.ell),
+             Aiso2=awrap(aiso)(c.ell),
+             Aiso3=awrap(a.aiso)(c.ell),
+             Aiso4=awrap(as.aiso)(c.ell))
+})
+
+kable(aiso.table,digits=2)
+```
 
 
+Anisotropy: Which definition makes sense?
+===
+
+Plot the anisotropies
+```{r, fig.cap="Sample Objects",fig.height=8}
+ggplot(ddply(test.objs,.(col),deform.ellipse.draw),
+       aes(x=x,y=y,group=as.factor(id)))+
+  geom_polygon(color="black",fill="blue")+coord_equal()+
+  facet_grid(col~.)+theme_bw(15)
+```
+
+*** 
+
+```{r, fig.cap="Anisotropy Formulas",fig.height=9}
+ggplot(aiso.table,aes(x=x.extents))+
+  geom_line(aes(y=Aiso1,color="Aiso1"))+
+  geom_line(aes(y=Aiso2,color="Aiso2"))+
+  geom_line(aes(y=Aiso3,color="Aiso3"))+
+  geom_line(aes(y=Aiso4,color="Aiso4"))+
+  scale_y_log10()+
+  labs(x="X extents",y="Anisotropy",color="Metric")+
+  theme_bw(20)
+```
+
+Distributions
+===
+
+```{r, fig.cap="Anisotropy Formulas",fig.height=9}
+
+ggplot(aiso.table)+
+  geom_density(aes(x=Aiso1,color="Aiso1"))+
+  geom_density(aes(x=Aiso2,color="Aiso2"))+
+  geom_density(aes(x=Aiso3,color="Aiso3"))+
+  geom_density(aes(x=Aiso4,color="Aiso4"))+
+  scale_x_log10()+
+  labs(x="X extents",y="Anisotropy",color="Metric")+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Anisotropy Formulas",fig.height=9}
+splom(aiso.table[,c("Aiso1","Aiso2","Aiso3","Aiso4")],pch=16)
+```
+Anisotropy: With a single object
+===
+From these extent values we can estimate 
+
+
+
+Extents: With all objects
+===
+```{r, fig.cap="All Cells Labeled",fig.height=9}
+ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,
+                                                      fill=as.numeric(as.factor(val))))+
+  geom_raster()+
+  geom_tile(data=cur.cell.df,fill="red",alpha=0.5)+
+  labs(fill="Label",title="Labeled Cells")+
+  theme_bw(20)#+coord_equal()
+```
+
+***
+
+```{r, fig.cap="All Cells",fig.height=9}
+cell.extents.all<-extents.fun(subset(cell.lab.df,val %in% keep.vals$val))
+ggplot(cell.extents.all,aes(x=x,y=y))+
+  geom_segment(aes(x=xmin,y=ymin, xend=xmax,yend=ymax),color="red",lineend="square")+
+  geom_point(aes(color=as.numeric(as.factor(val))),size=2)+
+  labs(title="COM and Extents",color="Label")+
+  theme_bw(20)#+coord_equal()
+```
+
+
+
+COV and Extents: All Cells
+===
+
+```{r, fig.cap="All Cells",fig.height=9,fig.width=16}
+mean.pos.subfun<-function(in.df) {
+  ddply(in.df,.(val),function(c.cell) {
+    c.mean<-colMeans.df(c.cell)
+    data.frame(x=c.cell$x-c.mean$x,y=c.cell$y-c.mean$y)
+  })
+}
+mean.sub.df<-mean.pos.subfun(subset(cell.lab.df,val %in% keep.vals$val))
+
+ggplot(cell.extents.all,aes(x=x-x,y=y-y))+
+  geom_raster(data=mean.sub.df,aes(x=x,y=y))+
+  geom_segment(aes(x=xmin-x,y=ymin-y, xend=xmax-x,yend=ymax-y),
+               color="red")+
+  geom_point(color="red",size=2)+
+  facet_wrap(~val,ncol=14)+
+  labs(x="x - COM",y="y - COM")+
+  theme_bw(15)+coord_equal()
+```
+
+Bounding Box: All Cells
+===
+
+```{r, fig.cap="All Cells Bounding Box",fig.height=9,fig.width=16}
+
+bbox.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    xmn<-emin(c.cell$x)
+    xmx<-emax(c.cell$x)
+    ymn<-emin(c.cell$y)
+    ymx<-emax(c.cell$y)
+    out.df<-cbind(c.cell.mean,
+                  data.frame(xi=c(xmn,xmn,xmx,xmx,xmn),
+                             yi=c(ymn,ymx,ymx,ymn,ymn)))
+  })
+}
+cell.bbox.all<-bbox.fun(subset(cell.lab.df,val %in% keep.vals$val))
+ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
+  geom_raster(data=mean.sub.df,aes(x=x,y=y))+
+  geom_path(aes(x=xi-x,y=yi-y),
+               color="red")+
+  geom_point(color="red",size=2)+
+  facet_wrap(~val,ncol=14)+
+  labs(x="x - COM",y="y - COM")+
+  theme_bw(15)+coord_equal()
+```
 

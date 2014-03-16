@@ -1,14 +1,12 @@
 .section .reveal .state-background {
-    background: white;}
-.section .reveal h1,
-.section .reveal p {
-    color: black;
-    position: relative;
-    top: 4%;}
+  background-image:url('../background.jpg');
+} 
+.headerslide .reveal .state-background {
+  background-image:url('../background.jpg');
+} 
 
-.reveal h3{
-   position: relative;
-   top: 0%;
-   left: 0%;}
-.reveal .slideContent h3{
-   left: 0%;}
+.headerslide .reveal h1,
+.headerslide .reveal h2,
+.headerslide .reveal p {
+  color: white;
+}
