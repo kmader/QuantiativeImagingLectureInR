@@ -335,6 +335,8 @@ Anisotropy: Which definition makes sense?
 
 Let's take some sample objects
 ```{r, fig.cap="Sample Objects",fig.height=8}
+# test function for ellipse generation
+# ggplot(ldply(seq(-pi,pi,length.out=100),function(th) create.ellipse.points(a=1,b=2,th.off=th,th.val=th)),aes(x=x,y=y))+geom_path()+facet_wrap(~th.val)+coord_equal()
 create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
   if (is.null(b)) b<-a
   th<-seq(0,th.max,length.out=pts)
@@ -638,6 +640,7 @@ pca.fun<-function(in.df) {
   }
 
 cur.cell.id<-subset(cell.lab.df,val %in% keep.vals$val)$val[100]
+cur.cell.id<-58
 cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
 
 cell.pca<-pca.fun(cur.cell.df)
@@ -692,7 +695,7 @@ While the eigenvalues and eigenvectors are in their own right useful
 ### Ellipsoidal Representation
 1. Center of Volume is calculated normally
 1. Eigenvectors represent the unit vectors for the semiaxes of the ellipsoid
-1. $\sqrt{\text{Eigenvalues}}$ is proportional to the length of the semiaxis ($\mathcal{l}=\frac{5\sqrt{\lambda_i}}{2}$)
+1. $\sqrt{\text{Eigenvalues}}$ is proportional to the length of the semiaxis ($\mathcal{l}=\sqrt{5\lambda_i}$)
 
 ***
 
@@ -700,10 +703,13 @@ While the eigenvalues and eigenvectors are in their own right useful
 vec.to.ellipse<-function(pca.df) {
   ddply(pca.df,.(val),function(cur.pca) {
     # assume there are two vectors now
+    lon.ax<-max(cur.pca$vw)
+    sho.ax<-max(cur.pca$vw)
     create.ellipse.points(x.off=cur.pca[1,"x"],y.off=cur.pca[1,"y"],
-                          a=5*cur.pca[2,"vw"]/2,b=5*cur.pca[1,"vw"]/2,
-                          th.off=atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
-                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"])
+                          b=sqrt(5)*cur.pca[1,"vw"],a=sqrt(5)*cur.pca[2,"vw"],
+                          th.off=pi/2-atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
+                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"],
+                          e.aiso=(lon.ax-sho.ax)/lon.ax)
   })
 }
 
@@ -739,6 +745,7 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 
 Elliptical Model for All Samples
 ===
+% http://number-none.com/blow/inertia/
 ```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
 cell.pca.all<-pca.fun(subset(cell.lab.df,val %in% keep.vals$val))
 cell.ell.all<-vec.to.ellipse(cell.pca.all)
@@ -753,4 +760,10 @@ ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   facet_wrap(~val,ncol=14)+
   labs(x="x - COM",y="y - COM")+
   theme_bw(15)+coord_equal()
+```
+
+Comparison between Anisotropy for both models
+===
+```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
+ggplot(cbind(cell.ell.all,cell.box.all),)
 ```
