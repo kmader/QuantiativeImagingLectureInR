@@ -892,7 +892,7 @@ If any of the voxels in the neigbhorhood are 1/true then the voxel will be set t
 Applied Erosion and Dilation
 ========================================================
 
-### Erosion
+### Dilation
 Taking an image of the cross at a too-high threshold, we show how dilation can be used to recover some of the missing pixels
 ```{r, fig.cap="Dilation Example",fig.height=3}
 cross.im$thresh<-cross.im$col>1.75
@@ -917,7 +917,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 
 ***
 
-### Dilation
+### Erosion
 Taking an image of the cross at a too-low threshold, we show how erosion can be used to remove some of the extra pixels
 ```{r, fig.cap="Erosion Example",fig.height=3}
 cross.im$thresh<-cross.im$col>0.4

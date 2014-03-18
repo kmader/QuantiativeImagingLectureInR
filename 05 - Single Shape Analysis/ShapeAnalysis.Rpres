@@ -15,7 +15,7 @@ if(exists("printed")) { # settings for printed version (if the variable exists)
   cache<-T
   fig.path<-"print_figures/"
   cache.path<-"print_cache/"
-}
+  }
 
 opts_chunk$set(dpi=dpi,cache=cache,
                cache.path=cache.path,results='hide',
@@ -39,10 +39,10 @@ require(EBImage)
 registerDoMC()
 # functions for converting images back and forth
 im.to.df<-function(in.img) {
-    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-    out.im$val<-as.vector(in.img)
-    out.im
-}
+  out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+  out.im$val<-as.vector(in.img)
+  out.im
+  }
 df.to.im<-function(in.df,val.col="val",inv=F) {
   in.vals<-in.df[[val.col]]
   if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
@@ -50,7 +50,7 @@ df.to.im<-function(in.df,val.col="val",inv=F) {
   out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
   attr(out.mat,"type")<-"grey"
   out.mat
-}
+  }
 ddply.cutcols<-function(...,cols=1) {
   # run standard ddply command
   cur.table<-ddply(...)
@@ -58,19 +58,19 @@ ddply.cutcols<-function(...,cols=1) {
     sapply(oVal,function(x) {
       cnv<-as.character(x)
       mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
-    })
-  }
+      })
+    }
   cutname.fixer<-function(c.str) {
     s.str<-strsplit(c.str,"(",fixed=T)[[1]]
     t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
     paste(t.str[c(1:length(t.str)-1)],collapse=",")
-  }
+    }
   for(i in c(1:cols)) {
     cur.table[,i]<-cutlabel.fixer(cur.table[,i])
     names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
-  }
+    }
   cur.table
-}
+  }
 
 colMeans.df<-function(x,...) as.data.frame(t(colMeans(x,...)))
 ```
@@ -106,27 +106,27 @@ Literature / Useful References
 ========================================================
 
 - Jean Claude, Morphometry with R
- - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
- - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
+- [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+- [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
- - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+- Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 - Principal Component Analysis
- - Mardia, K. V., J. T. Kent and J. M. Bibby (1979). Multivariate Analysis, London: Academic Press.
- - Venables, W. N. and B. D. Ripley (2002). Modern Applied Statistics with S, Springer-Verlag.
+- Mardia, K. V., J. T. Kent and J. M. Bibby (1979). Multivariate Analysis, London: Academic Press.
+- Venables, W. N. and B. D. Ripley (2002). Modern Applied Statistics with S, Springer-Verlag.
 
 Previously on QBI ...
 ========================================================
 
 - Image Enhancment 
- - Highlighting the contrast of interest in images
- - Minimizing Noise
+- Highlighting the contrast of interest in images
+- Minimizing Noise
 - Segementation
- - Understanding value histograms
- - Dealing with multi-valued data
- - Automatic Methods
- - Hysteresis Method, K-Means Analysis
+- Understanding value histograms
+- Dealing with multi-valued data
+- Automatic Methods
+- Hysteresis Method, K-Means Analysis
 - Regions of Interest
- - Contouring 
+- Contouring 
 - Component Labeling
 
 
@@ -146,23 +146,23 @@ Outline
 
 - Motivation (Why and How?)
 - Object Characterization
- - Volume
- - Center and Extents
- - Anisotropy
+- Volume
+- Center and Extents
+- Anisotropy
 
 ***
 
 - Shape Tensor
- - Principal Component Analysis
- - Ellipsoid Representation
- - Scale-free metrics
- - Anisotropy, Oblateness
+- Principal Component Analysis
+- Ellipsoid Representation
+- Scale-free metrics
+- Anisotropy, Oblateness
 - Meshing
- - Marching Cubes
- - Isosurfaces
- - Surface Area
- 
- 
+- Marching Cubes
+- Isosurfaces
+- Surface Area
+
+
 Motivation
 ===
 
@@ -248,14 +248,14 @@ If the gray values are kept (or other meaningful ones are used), this can be see
 ```{r, fig.cap="Single Cell",fig.height=7}
 commean.fun<-function(in.df) {
   ddply(in.df,.(val), function(c.cell) {
-  weight.sum<-sum(c.cell$weight)
-  data.frame(xv=mean(c.cell$x),
-             yv=mean(c.cell$y),
-             xm=with(c.cell,sum(x*weight)/weight.sum),
-             ym=with(c.cell,sum(y*weight)/weight.sum)
-             )
-  })
-}
+    weight.sum<-sum(c.cell$weight)
+    data.frame(xv=mean(c.cell$x),
+               yv=mean(c.cell$y),
+               xm=with(c.cell,sum(x*weight)/weight.sum),
+               ym=with(c.cell,sum(y*weight)/weight.sum)
+               )
+    })
+  }
 cur.cell.df.weight<-cbind(cur.cell.df,weight=with(cur.cell.df,(x-17)^2+(y-9)^2))
 commean.df<-commean.fun(cur.cell.df.weight)
 ggplot(cur.cell.df.weight,aes(x=x,y=y))+
@@ -286,11 +286,11 @@ extents.fun<-function(in.df) {
   ddply(in.df,.(val), function(c.cell) {
     c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
     out.df<-cbind(c.cell.mean,data.frame(xmin=c(c.cell.mean$x,emin(c.cell$x)),
-                         xmax=c(c.cell.mean$x,emax(c.cell$x)),
-                         ymin=c(emin(c.cell$y),c.cell.mean$y),
-                         ymax=c(emax(c.cell$y),c.cell.mean$y)))
-  })
-}
+                                         xmax=c(c.cell.mean$x,emax(c.cell$x)),
+                                         ymin=c(emin(c.cell$y),c.cell.mean$y),
+                                         ymax=c(emax(c.cell$y),c.cell.mean$y)))
+    })
+  }
 cell.extents<-extents.fun(cur.cell.df)
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
@@ -341,7 +341,7 @@ create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,
   data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
              y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
              id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
-}
+  }
 deform.ellipse.draw<-function(c.box) {
   create.ellipse.points(x.off=c.box$x[1],
                         y.off=c.box$y[1],
@@ -349,7 +349,7 @@ deform.ellipse.draw<-function(c.box) {
                         b=c.box$b[1],
                         th.off=c.box$th[1],
                         col=c.box$col[1])                    
-}
+  }
 test.objs<-data.frame(x=0,y=0,th.off=0,a=5,b=rev(c(1e-3,1e-2,1e-1,1,2,3,4,5)))
 test.objs$col<-1:nrow(test.objs)
 test.objs$x.extents<-2*test.objs$a
@@ -372,12 +372,12 @@ as.aiso<-function(lside,sside) (2*(lside-sside)/(lside+sside))
 awrap<-function(c.fun) function(in.ell.dim) c.fun(pmax(2*in.ell.dim$a,2*in.ell.dim$b),pmin(2*in.ell.dim$a,2*in.ell.dim$b))
 aiso.table.fn<-function(in.objs) {
   ddply(in.objs,.(col),function(c.ell) {
-  data.frame(Aiso1=awrap(s.aiso)(c.ell),
-             Aiso2=awrap(aiso)(c.ell),
-             Aiso3=awrap(a.aiso)(c.ell),
-             Aiso4=awrap(as.aiso)(c.ell))
-})
-}
+    data.frame(Aiso1=awrap(s.aiso)(c.ell),
+               Aiso2=awrap(aiso)(c.ell),
+               Aiso3=awrap(a.aiso)(c.ell),
+               Aiso4=awrap(as.aiso)(c.ell))
+    })
+  }
 aiso.table<-aiso.table.fn(test.objs)
 
 kable(aiso.table,digits=2)
@@ -444,7 +444,7 @@ ggplot(maiso.table)+
   xlim(0,2)+guides(fill=F)+
   theme_bw(20)
 ```
- 
+
 
 
 
@@ -479,8 +479,8 @@ mean.pos.subfun<-function(in.df) {
   ddply(in.df,.(val),function(c.cell) {
     c.mean<-colMeans.df(c.cell)
     data.frame(x=c.cell$x-c.mean$x,y=c.cell$y-c.mean$y)
-  })
-}
+    })
+  }
 mean.sub.df<-mean.pos.subfun(subset(cell.lab.df,val %in% keep.vals$val))
 
 ggplot(cell.extents.all,aes(x=x-x,y=y-y))+
@@ -511,13 +511,13 @@ bbox.fun<-function(in.df) {
                              xw=xmx-xmn,
                              yw=ymx-ymn
                              ))
-  })
-}
+    })
+  }
 cell.bbox.all<-bbox.fun(subset(cell.lab.df,val %in% keep.vals$val))
 ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   geom_raster(data=mean.sub.df,aes(x=x,y=y))+
   geom_path(aes(x=xi-x,y=yi-y),
-               color="red")+
+            color="red")+
   geom_point(color="red",size=2)+
   facet_wrap(~val,ncol=14)+
   labs(x="x - COM",y="y - COM")+
@@ -533,7 +533,7 @@ cell.bbox.all$aiso<-with(cell.bbox.all,(pmax(xw,yw)-pmin(xw,yw))/pmax(xw,yw)+val
 ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   #geom_raster(data=mean.sub.df,aes(x=x,y=y))+
   geom_path(aes(x=xi-x,y=yi-y,group=val),
-               color="red")+
+            color="red")+
   geom_point(color="red",size=2)+
   facet_wrap(~aiso,ncol=14)+
   labs(x="x - COM",y="y - COM")+
@@ -605,7 +605,7 @@ ggplot(test.pca,aes(x=pca2))+
   geom_point(aes(y=corn.price,color="Corn Price ($/kg)"))+
   geom_point(aes(y=chicken.price,color="Chicken Price ($/g)"))+
   geom_point(aes(y=5*(chicken.price-corn.price),color="Difference in Chicken-Corn"))+
-  labs(x="Principal Component #1",y="Price",color="Commodity")+
+  labs(x="Principal Component #2",y="Price",color="Commodity")+
   theme_bw(20)
 ```
 
@@ -613,12 +613,15 @@ ggplot(test.pca,aes(x=pca2))+
 Applied PCA: Shape Tensor
 ===
 ### How do these statistical analyses help us?
-Going back to a single cell, we have the a distribution of $x$ and $y$ values. The are not however completely independent and furthermore the greatest variance does not lie in either x nor y itself. A principal component analysis of the voxel positions, will calculate two new principal components (the components themselves are the relationships between the input variables and the scores are the final values.)
+Going back to a single cell, we have the a distribution of $x$ and $y$ values.
+- are not however completely independent
+- greatest variance does not lie in either x nor y itself. 
+
+A principal component analysis of the voxel positions, will calculate two new principal components (the components themselves are the relationships between the input variables and the scores are the final values.)
 
 ***
 
 ```{r, fig.cap="Single Cell",fig.height=8}
-# since the edge of the pixel is 0.5 away from the middle of the pixel
 pca.fun<-function(in.df) {
   ddply(in.df,.(val), function(c.cell) {
     c.cell.cov<-cov(c.cell[,c("x","y")])
@@ -631,8 +634,8 @@ pca.fun<-function(in.df) {
                              vw=sqrt(c.cell.eigen$values),
                              th.off=atan2(c.cell.eigen$vectors[2,],c.cell.eigen$vectors[1,]))
                   )
-  })
-}
+    })
+  }
 
 cur.cell.id<-subset(cell.lab.df,val %in% keep.vals$val)$val[100]
 cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
@@ -640,9 +643,10 @@ cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
 cell.pca<-pca.fun(cur.cell.df)
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
-  geom_segment(data=cell.pca,aes(x=x,y=y,xend=x+5*vx*vw/2,yend=y+5*vy*vw/2),
+  geom_segment(data=cell.pca,aes(x=x,y=y,xend=x+vx*vw,yend=y+vy*vw,
+                                 color=as.factor(round(vw*10)/10)),
                arrow=arrow(length = unit(0.3,"cm")),size=2)+
-  labs(title="Single Cell")+
+  labs(title="Single Cell",color="Score /\nEigenvalue")+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
@@ -651,12 +655,102 @@ How did we calculate that?
 ===
 We start off by calculating the covariance matrix from the list of $x$, $y$, and $z$ points that make up our object of interest.
 
-$$ COV(I_{id}) = 
+$$ COV(I_{id}) = \frac{1}{N} \sum_{\forall\vec{v}\in I_{id}} \begin{bmatrix}
+\vec{v}_x\vec{v}_x & \vec{v}_x\vec{v}_y & \vec{v}_x\vec{v}_z\\
+\vec{v}_y\vec{v}_x & \vec{v}_y\vec{v}_y & \vec{v}_y\vec{v}_z\\
+\vec{v}_z\vec{v}_x & \vec{v}_z\vec{v}_y & \vec{v}_z\vec{v}_z
+\end{bmatrix} $$
 
-Define extents as the minimum and maximum values along the projection of the shape in each direction
-$$ \text{Ext}_x = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{i})-min(\vec{v}\cdot\vec{i})  \right\} $$
-$$ \text{Ext}_y = \left\{ \forall \vec{v}\in I_{id}: max(\vec{v}\cdot\vec{j})-min(\vec{v}\cdot\vec{j})  \right\} $$
-$$ \text{Ext}_z = \left\{ \forall \vec{}\in I_{id}: max(\vec{v}\cdot\vec{k})-min(\vec{v}\cdot\vec{k})  \right\} $$
+We then take the eigentransform of this array to obtain the eigenvectors (principal components, $\vec{\Lambda}_{1\cdots 3}$) and eigenvalues (scores, $\lambda_{1\cdots 3}$)
 
-- Lots of information about each object now
-- But, I don't think a biologist has ever asked "How long is a cell in the $x$ direction?, how about $y$?"
+$$ COV(I_{id}) \rightarrow \begin{bmatrix}
+\vec{\Lambda}_{1x} & \vec{\Lambda}_{1y} & \vec{\Lambda}_{1z} \\
+\vec{\Lambda}_{2x} & \vec{\Lambda}_{2y} & \vec{\Lambda}_{2z} \\
+\vec{\Lambda}_{3x} & \vec{\Lambda}_{3y} & \vec{\Lambda}_{3z} 
+\end{bmatrix} * \begin{bmatrix} 
+\lambda_1 \\ 
+\lambda_2 \\
+\lambda_3
+\end{bmatrix} $$
+The principal components tell us about the orientation of the object and the scores tell us about the corresponding magnitude (or length) in that direction.
+
+
+Principal Component Analysis: Take home message
+===
+- We calculate the statistical distribution individually for $x$, $y$, and $z$ and the 'correlations' between them.
+- From these values we can estimate the orientation in the direction of largest variance
+- We can also estimate magnitude
+- These functions are implemented as ```princomp``` or ```pca``` in various languages and scale well to very large datasets.
+
+Principal Component Analysis: Elliptical Model
+===
+
+While the eigenvalues and eigenvectors are in their own right useful
+- Not obvious how to visually represent these tensor objects
+- Ellipsoidal (Ellipse in 2D) representation alleviates this issue
+
+### Ellipsoidal Representation
+1. Center of Volume is calculated normally
+1. Eigenvectors represent the unit vectors for the semiaxes of the ellipsoid
+1. $\sqrt{\text{Eigenvalues}}$ is proportional to the length of the semiaxis ($\mathcal{l}=\frac{5\sqrt{\lambda_i}}{2}$)
+
+***
+
+```{r, fig.cap="Single Cell",fig.height=8}
+vec.to.ellipse<-function(pca.df) {
+  ddply(pca.df,.(val),function(cur.pca) {
+    # assume there are two vectors now
+    create.ellipse.points(x.off=cur.pca[1,"x"],y.off=cur.pca[1,"y"],
+                          a=5*cur.pca[2,"vw"]/2,b=5*cur.pca[1,"vw"]/2,
+                          th.off=atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
+                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"])
+  })
+}
+
+cell.ellipse<-vec.to.ellipse(cell.pca)
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_segment(data=cell.pca,aes(x=x,y=y,xend=x+vx*vw,yend=y+vy*vw,
+                                 color=as.factor(round(vw*10)/10)),
+               arrow=arrow(length = unit(0.3,"cm")),size=2)+
+  geom_path(data=cell.ellipse)+
+  labs(title="Single Cell",color="Score /\nEigenvalue")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+Elliptical Model vs Bounding Box
+===
+```{r, fig.cap="Single Cell",fig.height=8}
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=bbox.fun(cur.cell.df),aes(x=xi,y=yi,color="Bounding\nBox"))+
+  geom_path(data=cell.ellipse,aes(color="Ellipse"))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+***
+
+- The bounding box matches boundaries better
+- The ellipse captures the dimensions and shape better
+- Extents can be calculated from either method
+- Anisotropy can also be calculated from either method
+
+
+Elliptical Model for All Samples
+===
+```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
+cell.pca.all<-pca.fun(subset(cell.lab.df,val %in% keep.vals$val))
+cell.ell.all<-vec.to.ellipse(cell.pca.all)
+ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
+  geom_raster(data=mean.sub.df,aes(x=x,y=y))+
+  #geom_path(aes(x=xi-x,y=yi-y),color="red")+
+  geom_path(data=cell.ell.all,aes(x=x-x.cent,y=y-y.cent),color="red")+
+  geom_point(color="red",size=2)+
+  geom_segment(data=cell.pca.all,aes(xend=vx*vw,yend=vy*vw,
+                                 color=as.factor(round(vw*10)/10)),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_wrap(~val,ncol=14)+
+  labs(x="x - COM",y="y - COM")+
+  theme_bw(15)+coord_equal()
+```
