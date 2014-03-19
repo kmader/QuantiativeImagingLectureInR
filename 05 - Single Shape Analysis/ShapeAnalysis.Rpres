@@ -171,14 +171,22 @@ We have dramatically simplified our data, but there is still too much.
 - We perform an experiment bone to see how big the cells are inside the tissue
 $$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
 
-### 2560 x 2560 x 2160 x 32 bit = 56GB / sample
+### 2560 x 2560 x 2160 x 32 bit
+_56GB / sample_
 - Filtering and Enhancement!  
 $$\downarrow$$
 - 56GB of less noisy data
+
+***
+
 - __Segmentation__
+
 $$\downarrow$$
-### 2560 x 2560 x 2160 x 1 bit = 1.75GB / sample
-- Still an aweful lot of inpenetrable data
+
+### 2560 x 2560 x 2160 x 1 bit
+(1.75GB / sample)
+
+- Still an aweful lot of data
 
 What did we want in the first place
 ========================================================
@@ -373,7 +381,7 @@ a.aiso<-function(lside,sside) (2*lside/(lside+sside)-1)
 as.aiso<-function(lside,sside) (2*(lside-sside)/(lside+sside))
 awrap<-function(c.fun) function(in.ell.dim) c.fun(pmax(2*in.ell.dim$a,2*in.ell.dim$b),pmin(2*in.ell.dim$a,2*in.ell.dim$b))
 aiso.table.fn<-function(in.objs) {
-  ddply(in.objs,.(col),function(c.ell) {
+  ddply(in.objs,.(b),function(c.ell) {
     data.frame(Aiso1=awrap(s.aiso)(c.ell),
                Aiso2=awrap(aiso)(c.ell),
                Aiso3=awrap(a.aiso)(c.ell),
@@ -381,7 +389,7 @@ aiso.table.fn<-function(in.objs) {
     })
   }
 aiso.table<-aiso.table.fn(test.objs)
-
+names(aiso.table)[1]<-"Y Extent"
 kable(aiso.table,digits=2)
 ```
 
@@ -400,8 +408,8 @@ ggplot(ddply(test.objs,.(col),deform.ellipse.draw),
 
 ### Anisotropy vs $x$ extents 
 ```{r, fig.cap="Anisotropy Formulas",fig.height=9}
-
-ggplot(aiso.table,aes(x=y.extents))+
+names(aiso.table)[1]<-"y.extent"
+ggplot(aiso.table,aes(x=y.extent))+
   geom_line(aes(y=Aiso1,color="Aiso1"))+
   geom_line(aes(y=Aiso2,color="Aiso2"))+
   geom_line(aes(y=Aiso3,color="Aiso3"))+
@@ -446,8 +454,6 @@ ggplot(maiso.table)+
   xlim(0,2)+guides(fill=F)+
   theme_bw(20)
 ```
-
-
 
 
 Extents: With all objects
@@ -695,7 +701,7 @@ While the eigenvalues and eigenvectors are in their own right useful
 ### Ellipsoidal Representation
 1. Center of Volume is calculated normally
 1. Eigenvectors represent the unit vectors for the semiaxes of the ellipsoid
-1. $\sqrt{\text{Eigenvalues}}$ is proportional to the length of the semiaxis ($\mathcal{l}=\sqrt{5\lambda_i}$)
+1. $\sqrt{\text{Eigenvalues}}$ is proportional to the length of the semiaxis ($\mathcal{l}=\sqrt{5\lambda_i}$), derivation similar to moment of inertia tensor for ellipsoids.
 
 ***
 
@@ -742,7 +748,6 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 
 Elliptical Model for All Samples
 ===
-% http://number-none.com/blow/inertia/
 ```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
 cell.pca.all<-pca.fun(subset(cell.lab.df,val %in% keep.vals$val))
 cell.ell.all<-vec.to.ellipse(cell.pca.all)
@@ -751,9 +756,8 @@ ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   #geom_path(aes(x=xi-x,y=yi-y),color="red")+
   geom_path(data=cell.ell.all,aes(x=x-x.cent,y=y-y.cent),color="red")+
   geom_point(color="red",size=2)+
-  geom_segment(data=cell.pca.all,aes(xend=vx*vw,yend=vy*vw,
-                                 color=as.factor(round(vw*10)/10)),
-               arrow=arrow(length = unit(0.3,"cm")))+
+  geom_segment(data=cell.pca.all,aes(xend=vx*vw,yend=vy*vw),
+               arrow=arrow(length = unit(0.3,"cm")),color="red")+
   facet_wrap(~val,ncol=14)+
   labs(x="x - COM",y="y - COM")+
   theme_bw(15)+coord_equal()
@@ -761,33 +765,167 @@ ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
 
 Comparison between Anisotropy for both models
 ===
-```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
+```{r, fig.cap="All Cells Elliptical Model",fig.height=8}
 
 pca.aiso.all<-ddply(cell.pca.all,.(val),function(cur.pca) {
   lon.ax<-max(cur.pca$vw)
   sho.ax<-min(cur.pca$vw)
   data.frame(e.aiso=(lon.ax-sho.ax)/lon.ax)
 })
-ggplot(merge(pca.aiso.all,cell.bbox.all,by="val"),aes(x=aiso,y=e.aiso))+
+both.aiso<-merge(pca.aiso.all,cell.bbox.all,by="val")
+no.aiso.vals<-subset(both.aiso,aiso<0.01 & e.aiso>0.2)$val
+ggplot(both.aiso,aes(x=aiso,y=e.aiso))+
   geom_point(aes(color=ifelse(aiso<0.01,"lost information","normal")))+geom_smooth()+
   labs(x="Extents / BB Anisotropy",y="Elliptical Anisotropy",color="Points")+
   coord_equal()+theme_bw(20)
 ```
 
+***
+
+We see that there seems to be a general, albeit weak, correlation between the two measures. The most concerning portion is however the left side where the extents or bounding box method reports 0 anisotropy and the elliptical method reports substancial amounts of it.
+
+```{r, fig.cap="All Cells Elliptical Model",fig.height=6}
+ggplot(subset(cell.bbox.all,val %in% no.aiso.vals),aes(x=x-x,y=y-y))+
+  geom_raster(data=subset(mean.sub.df,val %in% no.aiso.vals),aes(x=x,y=y))+
+  geom_path(aes(x=xi-x,y=yi-y,color="BB"))+
+  geom_path(data=subset(cell.ell.all,val %in% no.aiso.vals),
+            aes(x=x-x.cent,y=y-y.cent,color="Ellipse"))+
+  geom_point(color="red",size=2)+
+  geom_segment(data=subset(cell.pca.all,val %in% no.aiso.vals),
+               aes(xend=vx*vw,yend=vy*vw),
+               arrow=arrow(length = unit(0.3,"cm")),color="red")+
+  facet_wrap(~val)+
+  labs(x="x - COM",y="y - COM")+
+  theme_bw(15)+coord_equal()
+```
+
+
 3D Shape Analysis
 ===
 
-Oblateness (Pancakeness)
+The models we have done are all applicable to both 2D and 3D images. The primary difference is when looking at 3D images there is an extra dimension to consider. 
+
+```{r, fig.cap="3D Ellipse",fig.height=6}
+xg<-seq(-10,10,length.out=41)
+make.ellipse.3d<-function(a,b,c,xg) {
+  ell.3d<-expand.grid(x=xg,y=xg,z=xg)
+  ell.3d$val<-with(ell.3d,(x/a)^2+(y/b)^2+(z/c)^2 < 1)
+  ell.3d
+}
+cloud(z~x*y,data=subset(make.ellipse.3d(9,3,10,xg),val),xlim=c(-10,10),ylim=c(-10,10),zlim=c(-10,10))
+```
+
+*** 
+
+It can also be shown as a series of 2D slices.
+
+```{r, fig.cap="3D Ellipse",fig.height=6}
+ggplot(subset(make.ellipse.3d(9,3,10,xg),val),aes(x=x,y=y))+
+  geom_tile(color="blue")+
+  facet_wrap(~z)+
+  coord_equal()+
+  xlim(c(-10,10))+ylim(c(-10,10))+
+  theme_bw(10)
+```
+
+Anisotropy applies to these samples as well but it only gives us information about the shortest and the longest dimensions. Is that enough?
+
+Pancakeness
+===
+Each of these images has the exact same anisotropy because the shortest semiaxis length remains 
+```{r, fig.cap="Oblateness",fig.height=6}
+xg<-seq(-10,10,length.out=41)
+b.vals<-seq(3,10,length.out=4)
+cloud(z~x*y | as.factor(b), data=ldply(b.vals,function(b) 
+  cbind(subset(make.ellipse.3d(b,10,3,xg),val),b=b)),
+      xlim=c(-10,10),ylim=c(-10,10),zlim=c(-10,10))
+```
+
+***
+
+If we take a slice through the image we can image the final shape looking like a very small thin rod in the case where the second dimension is equal to 3 (short in two directions and long in the other) and a pankcake (short in one direction and long in the other two).
+
+```{r, fig.cap="Oblateness Slices",fig.height=6}
+ggplot(ldply(rev(b.vals),function(b) 
+  cbind(subset(make.ellipse.3d(b,10,3,xg),val & z==0),b=b)),
+  aes(x=x,y=y))+
+  geom_tile(aes(fill=as.factor(round(b*10)/10)),alpha=1)+
+  facet_wrap(~z)+
+  coord_equal()+
+  xlim(c(-10,10))+ylim(c(-10,10))+
+  labs(title="Profile Cut-through of Ellipse",fill="Second\nDimension\nLength")+
+  theme_bw(20)
+```
+
+
+Oblateness
 ===
 
-Isosurfaces
+We can thus introduce a new metric for assessing the second-degree anisotropy in the object and this we shall somewhat more formally call __Oblateness__.
+
+$$ \textrm{Ob} = 2\frac{\lambda_{2}-\lambda_{1}}{\lambda_{3}-\lambda_{1}}-1 $$
+
+The value like in anisotropy is bound between -1 and 1.
+- -1 indicates the middle semiaxis is the same length of the shortest semiaxis $\lambda_2=\lambda_1$ and thus the structure is rod-like $\rightarrow$ __prolate__
+- +1 indicates the middle axis is the same length as the longest semiaxis $\lambda_2=\lambda_3$ and thus the structure is pancake-like $\rightarrow$ __oblate__
+
+***
+
+```{r, fig.cap="Oblateness Slices",fig.height=4}
+ggplot(ldply(rev(b.vals),function(b) 
+  cbind(subset(make.ellipse.3d(b,10,3,xg),val & z==0),b=b)),
+  aes(x=x,y=y))+
+  geom_tile(aes(fill=as.factor(round(b*10)/10)),alpha=1)+
+  facet_wrap(~z)+
+  coord_equal()+
+  xlim(c(-10,10))+ylim(c(-10,10))+
+  labs(title="Profile Cut-through of Ellipse",fill="Second\nDimension\nLength")+
+  theme_bw(20)
+```
+```{r, fig.cap="Oblateness Slices",fig.height=3}
+ob.vals<-data.frame(b=b.vals,obl=2*(b.vals-3)/(10-3)-1
+                      )
+ggplot(ob.vals,aes(x=b,y=obl))+
+  geom_line()+
+  labs(x="Second Dimension Length",y="Oblateness")+
+  theme_bw(20)
+```
+
+Interfaces / Surfaces
 ===
+
+Many physical and chemical processes occur at surfaces and interfaces and consequently these structures are important in material science and biology. For this lecture surface and interface will be used interchangebly and refers to the boundary between two different materials (calcified bone and soft tissue, magma and water, liquid and gas) Through segmentation we have identified the unique phases in the sample under investigation. 
+
+- Segmentation identifying volumes (3D) or areas (2D)
+- Interfaces are one dimension lower corresponding to surface area (3D) or perimeter (2D)
+- Interfaces are important for 
+ - connectivity of cell networks, particularly neurons
+ - material science processes like coarsening or rheological behavior
+ - chemical processes (surface-bound diffusion, catalyst action)
+
 
 Meshing
 ===
 
+Since we uses voxels to image and identify the volume we can use the voxels themselves as an approimation for the surface of the structure. 
+- Each 'exposed' face of a voxel belongs to the surface
+
+From this we can create a mesh by 
+
+- adding each exposed voxel face to a list of surface squares. 
+- adding connectivity information for the different squares (shared edges and vertices)
+
+A wide variety of methods of which we will only graze the surface (http://en.wikipedia.org/wiki/Image-based_meshing)
+
 Marching Cubes
 ===
+### Why
+Voxels are very poor approximations for the surface and are very rough (they are either normal to the x, y, or z axis and nothing between). Because of their inherently orthogonal surface normals, any analysis which utilizes the surface normal to calculate another value (growth, curvature, etc) is going to be very inaccurate at best and very wrong at worst.
+
+### [How](http://en.wikipedia.org/wiki/Marching_cubes)
+The image is processed one voxel at a time and the neighborhood (not quite the same is the morphological definition) is checked at every voxel. From this configuration of values, faces are added to the mesh to incorporate the simplist surface which would explain the values. 
+
+[Marching tetrahedra](http://en.wikipedia.org/wiki/Marching_tetrahedra) is for some applications a better suited approach
 
 Meshes and their Simplification
 ===
