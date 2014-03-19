@@ -703,13 +703,10 @@ While the eigenvalues and eigenvectors are in their own right useful
 vec.to.ellipse<-function(pca.df) {
   ddply(pca.df,.(val),function(cur.pca) {
     # assume there are two vectors now
-    lon.ax<-max(cur.pca$vw)
-    sho.ax<-max(cur.pca$vw)
     create.ellipse.points(x.off=cur.pca[1,"x"],y.off=cur.pca[1,"y"],
                           b=sqrt(5)*cur.pca[1,"vw"],a=sqrt(5)*cur.pca[2,"vw"],
                           th.off=pi/2-atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
-                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"],
-                          e.aiso=(lon.ax-sho.ax)/lon.ax)
+                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"])
   })
 }
 
@@ -765,5 +762,32 @@ ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
 Comparison between Anisotropy for both models
 ===
 ```{r, fig.cap="All Cells Elliptical Model",fig.height=9,fig.width=16}
-ggplot(cbind(cell.ell.all,cell.box.all),)
+
+pca.aiso.all<-ddply(cell.pca.all,.(val),function(cur.pca) {
+  lon.ax<-max(cur.pca$vw)
+  sho.ax<-min(cur.pca$vw)
+  data.frame(e.aiso=(lon.ax-sho.ax)/lon.ax)
+})
+ggplot(merge(pca.aiso.all,cell.bbox.all,by="val"),aes(x=aiso,y=e.aiso))+
+  geom_point(aes(color=ifelse(aiso<0.01,"lost information","normal")))+geom_smooth()+
+  labs(x="Extents / BB Anisotropy",y="Elliptical Anisotropy",color="Points")+
+  coord_equal()+theme_bw(20)
 ```
+
+3D Shape Analysis
+===
+
+Oblateness (Pancakeness)
+===
+
+Isosurfaces
+===
+
+Meshing
+===
+
+Marching Cubes
+===
+
+Meshes and their Simplification
+===
