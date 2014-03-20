@@ -111,8 +111,11 @@ Literature / Useful References
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
 - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 - Principal Component Analysis
-- Mardia, K. V., J. T. Kent and J. M. Bibby (1979). Multivariate Analysis, London: Academic Press.
-- Venables, W. N. and B. D. Ripley (2002). Modern Applied Statistics with S, Springer-Verlag.
+- Venables, W. N. and B. D. Ripley (2002). Modern Applied Statistics with S, Springer-Verlag
+- Shape Tensors
+- http://www.cs.utah.edu/~gk/papers/vissym04/
+- Doube, M.,et al. (2010). BoneJ: Free and extensible bone image analysis in ImageJ. Bone, 47, 1076–9. doi:10.1016/j.bone.2010.08.023
+- Mader, K. , et al. (2013). A quantitative framework for the 3D characterization of the osteocyte lacunar system. Bone, 57(1), 142–154. doi:10.1016/j.bone.2013.06.026
 
 Previously on QBI ...
 ========================================================
@@ -124,9 +127,9 @@ Previously on QBI ...
 - Understanding value histograms
 - Dealing with multi-valued data
 - Automatic Methods
-- Hysteresis Method, K-Means Analysis
+ - Hysteresis Method, K-Means Analysis
 - Regions of Interest
-- Contouring 
+ - Contouring 
 - Component Labeling
 
 
@@ -158,8 +161,8 @@ Outline
 - Scale-free metrics
 - Anisotropy, Oblateness
 - Meshing
-- Marching Cubes
-- Isosurfaces
+ - Marching Cubes
+ - Isosurfaces
 - Surface Area
 
 
@@ -336,7 +339,7 @@ $$ Aiso3 = \frac{\text{Longest Side}}{\text{Average Side Length}} - 1 $$
 
 $$ Aiso4 = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Average Side Length}} $$
 
-$$ \cdots \rightarrow \text{ ad nauseum} / \infty $$
+$$ \cdots \rightarrow \text{ ad nauseum} $$
 
 Anisotropy: Which definition makes sense?
 ===
@@ -422,19 +425,31 @@ ggplot(aiso.table,aes(x=y.extent))+
 Distributions: Randomly Sized Objects
 ===
 Objects with uniformally distributed, independent $x$ and $y$ extents 
-```{r, fig.cap="Sample Objects",fig.height=8}
+
+```{r, fig.cap="Sample Objects",fig.height=4}
 m.count<-5000
 many.objs<-data.frame(x=0,y=0,th.off=0,a=runif(m.count,0,20),b=runif(m.count,0,20))
 many.objs$col<-1:nrow(many.objs)
 many.objs$x.extents<-2*many.objs$a
 many.objs$y.extents<-2*many.objs$b
 maiso.table<-aiso.table.fn(many.objs)
-ggplot(ddply(subset(many.objs,col<17),.(col),deform.ellipse.draw),
+ggplot(ddply(subset(many.objs,col<16),.(col),deform.ellipse.draw),
        aes(x=x,y=y,group=as.factor(id)))+
   geom_polygon(color="black",fill="blue")+coord_equal()+
-  facet_wrap(~col)+theme_bw(15)
+  facet_wrap(~col,ncol=5)+theme_bw(15)
 ```
 
+```{r, fig.cap="Anisotropy Formulas",fig.height=4}
+
+ggplot(many.objs)+
+  geom_density(aes(x=x.extents,color="X"),size=2)+
+  geom_density(aes(x=y.extents,color="Y"),size=2)+
+  #scale_x_log10()+
+  labs(x="Extent Length (pixels)",color="Axis")+
+  guides(fill=F)+
+  xlim(0,80)+
+  theme_bw(20)
+```
 
 ***
 
@@ -672,15 +687,19 @@ $$ COV(I_{id}) = \frac{1}{N} \sum_{\forall\vec{v}\in I_{id}} \begin{bmatrix}
 
 We then take the eigentransform of this array to obtain the eigenvectors (principal components, $\vec{\Lambda}_{1\cdots 3}$) and eigenvalues (scores, $\lambda_{1\cdots 3}$)
 
-$$ COV(I_{id}) \rightarrow \begin{bmatrix}
+$$ COV(I_{id}) \longrightarrow \underbrace{\begin{bmatrix}
 \vec{\Lambda}_{1x} & \vec{\Lambda}_{1y} & \vec{\Lambda}_{1z} \\
 \vec{\Lambda}_{2x} & \vec{\Lambda}_{2y} & \vec{\Lambda}_{2z} \\
 \vec{\Lambda}_{3x} & \vec{\Lambda}_{3y} & \vec{\Lambda}_{3z} 
-\end{bmatrix} * \begin{bmatrix} 
-\lambda_1 \\ 
-\lambda_2 \\
-\lambda_3
-\end{bmatrix} $$
+\end{bmatrix}}_{\textrm{Eigenvectors}} * \underbrace{\begin{bmatrix} 
+\lambda_1 & 0 & 0 \\ 
+0 & \lambda_2 & 0 \\
+0 & 0 & \lambda_3
+\end{bmatrix}}_{\textrm{Eigenvalues}} * \underbrace{\begin{bmatrix}
+\vec{\Lambda}_{1x} & \vec{\Lambda}_{1y} & \vec{\Lambda}_{1z} \\
+\vec{\Lambda}_{2x} & \vec{\Lambda}_{2y} & \vec{\Lambda}_{2z} \\
+\vec{\Lambda}_{3x} & \vec{\Lambda}_{3y} & \vec{\Lambda}_{3z} 
+\end{bmatrix}^{T}}_{\textrm{Eigenvectors}} $$
 The principal components tell us about the orientation of the object and the scores tell us about the corresponding magnitude (or length) in that direction.
 
 
@@ -713,8 +732,8 @@ vec.to.ellipse<-function(pca.df) {
                           b=sqrt(5)*cur.pca[1,"vw"],a=sqrt(5)*cur.pca[2,"vw"],
                           th.off=pi/2-atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
                           x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"])
-  })
-}
+    })
+  }
 
 cell.ellipse<-vec.to.ellipse(cell.pca)
 ggplot(cur.cell.df,aes(x=x,y=y))+
@@ -753,7 +772,6 @@ cell.pca.all<-pca.fun(subset(cell.lab.df,val %in% keep.vals$val))
 cell.ell.all<-vec.to.ellipse(cell.pca.all)
 ggplot(cell.bbox.all,aes(x=x-x,y=y-y))+
   geom_raster(data=mean.sub.df,aes(x=x,y=y))+
-  #geom_path(aes(x=xi-x,y=yi-y),color="red")+
   geom_path(data=cell.ell.all,aes(x=x-x.cent,y=y-y.cent),color="red")+
   geom_point(color="red",size=2)+
   geom_segment(data=cell.pca.all,aes(xend=vx*vw,yend=vy*vw),
@@ -771,11 +789,12 @@ pca.aiso.all<-ddply(cell.pca.all,.(val),function(cur.pca) {
   lon.ax<-max(cur.pca$vw)
   sho.ax<-min(cur.pca$vw)
   data.frame(e.aiso=(lon.ax-sho.ax)/lon.ax)
-})
+  })
 both.aiso<-merge(pca.aiso.all,cell.bbox.all,by="val")
 no.aiso.vals<-subset(both.aiso,aiso<0.01 & e.aiso>0.2)$val
 ggplot(both.aiso,aes(x=aiso,y=e.aiso))+
-  geom_point(aes(color=ifelse(aiso<0.01,"lost information","normal")))+geom_smooth()+
+  geom_point(aes(color=ifelse(aiso<0.01,"lost information","normal")))+
+  geom_smooth()+
   labs(x="Extents / BB Anisotropy",y="Elliptical Anisotropy",color="Points")+
   coord_equal()+theme_bw(20)
 ```
@@ -795,7 +814,7 @@ ggplot(subset(cell.bbox.all,val %in% no.aiso.vals),aes(x=x-x,y=y-y))+
                aes(xend=vx*vw,yend=vy*vw),
                arrow=arrow(length = unit(0.3,"cm")),color="red")+
   facet_wrap(~val)+
-  labs(x="x - COM",y="y - COM")+
+  labs(x="x - COM",y="y - COM",color="Model")+
   theme_bw(15)+coord_equal()
 ```
 
@@ -811,7 +830,7 @@ make.ellipse.3d<-function(a,b,c,xg) {
   ell.3d<-expand.grid(x=xg,y=xg,z=xg)
   ell.3d$val<-with(ell.3d,(x/a)^2+(y/b)^2+(z/c)^2 < 1)
   ell.3d
-}
+  }
 cloud(z~x*y,data=subset(make.ellipse.3d(9,3,10,xg),val),xlim=c(-10,10),ylim=c(-10,10),zlim=c(-10,10))
 ```
 
@@ -838,7 +857,7 @@ xg<-seq(-10,10,length.out=41)
 b.vals<-seq(3,10,length.out=4)
 cloud(z~x*y | as.factor(b), data=ldply(b.vals,function(b) 
   cbind(subset(make.ellipse.3d(b,10,3,xg),val),b=b)),
-      xlim=c(-10,10),ylim=c(-10,10),zlim=c(-10,10))
+  xlim=c(-10,10),ylim=c(-10,10),zlim=c(-10,10))
 ```
 
 ***
@@ -884,7 +903,7 @@ ggplot(ldply(rev(b.vals),function(b)
 ```
 ```{r, fig.cap="Oblateness Slices",fig.height=3}
 ob.vals<-data.frame(b=b.vals,obl=2*(b.vals-3)/(10-3)-1
-                      )
+                    )
 ggplot(ob.vals,aes(x=b,y=obl))+
   geom_line()+
   labs(x="Second Dimension Length",y="Oblateness")+
@@ -902,6 +921,130 @@ Many physical and chemical processes occur at surfaces and interfaces and conseq
  - connectivity of cell networks, particularly neurons
  - material science processes like coarsening or rheological behavior
  - chemical processes (surface-bound diffusion, catalyst action)
+
+Surface Area / Perimeter
+========================================================
+
+We see that the dilation and erosion affects are strongly related to the surface area of an object: the more surface area the larger the affect of a single dilation or erosion step. 
+
+```{r, fig.cap="Surface Area Estimation",fig.height=5}
+make.circle<-function(nx,r,nscale=1) {
+  ny<-nx
+  grad.im<-expand.grid(x=c(-nx:nx)/nscale,y=c(-ny:ny)/nscale)
+  grad.im$val<-with(grad.im,(x^2+y^2)<r^2)
+  grad.im$nx<-nx
+  grad.im$r<-r
+  grad.im
+}
+r.list<-seq(0.5,5,length.out=9)
+ggplot(ldply(r.list,function(r) make.circle(10,r)),aes(x=x,y=y,fill=val))+
+  geom_raster()+scale_fill_grey()+facet_wrap(~r)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Attenuation to Intensity",fig.height=8}
+calc.eros.cnt<-function(nx,r,nscale=1,im.fun=make.circle) {
+  in.cir<-im.fun(nx,r,nscale=nscale)
+  cir.im<-df.to.im(in.cir)
+  data.frame(nx=nx,r=r,nscale=nscale,
+             dvolume=sum(dilate(cir.im>0,makeBrush(3,"diamond"))>0),
+             evolume=sum(erode(cir.im>0,makeBrush(3,"diamond"))>0),
+             volume=sum(cir.im>0)
+             )
+}
+max.rad<-20
+r.list<-seq(0.2,max.rad,length.out=20)
+r.table<-ldply(r.list,function(r) calc.eros.cnt(max.rad+1,r,1))
+r.table$model.perimeter<-with(r.table,2*pi*r)
+r.table$estimated.perimeter<-with(r.table,
+                                  ((dvolume-volume)+(volume-evolume))/2)
+ggplot(r.table,aes(x=r))+
+  geom_line(aes(y=estimated.perimeter,color="Morphological Estimation"))+
+  geom_line(aes(y=model.perimeter,color="Model Circumference"))+
+  labs(x="Radius",y="Perimeter",color="Source")+
+  theme_bw(20)
+```
+
+Meshing
+===
+
+Constructing a mesh for an image provides very different information than the image data itself. Most crucially this comes when looking at physical processes like deformation.
+
+While the images are helpful for visualizing we rarely have models for quantifying how difficult it is to turn a pixel __off__
+
+```{r, fig.cap="Deformation in Pixels",fig.height=4}
+base.grid<-expand.grid(x=c(-10:10),y=c(-10:10))
+base.shape.undef<-cbind(base.grid,val=with(base.grid,abs(x)<6 & abs(y)<6))
+def.grid<-rbind(
+  cbind(base.shape.undef,type="Before"),
+  cbind(base.grid,val=with(base.grid,abs(x)<10 & abs(y)<4),type="After")
+  )
+ggplot(def.grid,
+       aes(x=x,y=y,fill=ifelse(val,"on","off")))+
+  geom_tile(alpha=0.80,color="black")+
+  coord_equal()+facet_wrap(~type)+
+  xlim(c(-10,10))+ylim(c(-10,10))+
+  labs(title="Pixel-based Deformation",fill="Value")+
+  theme_bw(20)
+```
+
+***
+
+If the image is turned into a mesh we now have a list of vertices and edges. For these vertices and edges we can define forces. For example when looking at stress-strain relationships in mechanics using Hooke's Model 
+$$ \vec{F}=k (\vec{x}_0-\vec{x}) $$ 
+the force needed to stretch one of these edges is proportional to how far it is stretched. 
+
+```{r, fig.cap="Deformation with Meshes",fig.height=4}
+df.to.mesh<-function(in.df,d.size.x=0.5,d.size.y=0.5,make.seg=F) {
+  corner.pts<-expand.grid(dx=c(-d.size.x,d.size.x),dy=c(-d.size.y,d.size.y))
+  min.x<-min(in.df$x)
+  max.x<-max(in.df$x)
+  min.y<-min(in.df$y)
+  max.y<-max(in.df$y)
+  mesh.pts<-ddply(in.df,.(x,y),function(cur.df) {
+    xy.cols<-c("x","y")
+    pos.data<-cur.df[1,xy.cols]
+    n.data<-cur.df[,!(names(cur.df) %in% xy.cols)]
+    ddply(corner.pts,.(dx,dy),function(c.offset) {
+      cbind(x=pos.data$x+c.offset$dx[1],y=pos.data$y+c.offset$dy[1],n.data)
+      })
+    })
+  if(make.seg) {
+    grid.pts<-expand.grid(dx=c(-d.size.x,0,d.size.x),dy=c(-d.size.y,0,d.size.y))
+    grid.pts$seg.len<-with(grid.pts,sqrt(dx^2+dy^2))
+    
+    subset(
+      ddply(subset(grid.pts,((abs(dx)==0) + (abs(dy)==0))==1),.(dx,dy,seg.len),
+            function(c.offset) {
+              cbind(xend=mesh.pts$x+c.offset$dx[1],yend=mesh.pts$y+c.offset$dy[1],
+                    mesh.pts)
+              }),
+      xend<max.x & xend>min.x & yend<max.y & yend>min.y)
+    } else {
+      mesh.pts
+      }
+  }
+undef.mesh<-df.to.mesh(subset(base.shape.undef,val),make.seg=T)
+base.shape.def<-base.shape.undef
+base.shape.def$x<-base.shape.def$x*10/6
+base.shape.def$y<-base.shape.def$y*4/6
+def.mesh<-df.to.mesh(subset(base.shape.def,val),
+                     d.size.x=0.5*10/6,d.size.y=0.5*4/6,make.seg=T)
+
+ggplot(rbind(cbind(undef.mesh,type="Before"),
+             cbind(def.mesh,type="After")),
+       aes(x=x,y=y))+
+  
+  geom_segment(aes(xend=xend,yend=yend,color=sign(seg.len-0.5)),size=2)+
+  geom_point(size=2,color="green",pch=20)+
+  coord_equal()+facet_wrap(~type)+
+  scale_color_gradient2(mid="black",low="red",high="blue",space="Lab")+
+  #xlim(c(-10,10))+ylim(c(-10,10))+
+  labs(title="Mesh-based Deformation",color="(x-x0)")+
+  theme_bw(20)
+```
 
 
 Meshing
@@ -923,9 +1066,37 @@ Marching Cubes
 Voxels are very poor approximations for the surface and are very rough (they are either normal to the x, y, or z axis and nothing between). Because of their inherently orthogonal surface normals, any analysis which utilizes the surface normal to calculate another value (growth, curvature, etc) is going to be very inaccurate at best and very wrong at worst.
 
 ### [How](http://en.wikipedia.org/wiki/Marching_cubes)
-The image is processed one voxel at a time and the neighborhood (not quite the same is the morphological definition) is checked at every voxel. From this configuration of values, faces are added to the mesh to incorporate the simplist surface which would explain the values. 
+The image is processed one voxel at a time and the neighborhood (not quite the same is the morphological definition) is checked at every voxel. From this configuration of values, faces are added to the mesh to incorporate the most simple surface which would explain the values. 
 
 [Marching tetrahedra](http://en.wikipedia.org/wiki/Marching_tetrahedra) is for some applications a better suited approach
 
-Meshes and their Simplification
+Next Time on QBI
 ===
+
+So while bounding box and ellipse-based models are useful for many object and cells, they do a very poor job with the sample below.
+
+```{r, fig.cap="Single Cell",fig.height=6}
+cur.cell.df<-subset(cell.lab.df,val==155)
+cell.pca<-pca.fun(cur.cell.df)
+cell.ellipse<-vec.to.ellipse(cell.pca)
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=bbox.fun(cur.cell.df),aes(x=xi,y=yi,color="Bounding\nBox"))+
+  geom_path(data=cell.ellipse,aes(color="Ellipse"))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+***
+### Why
+- We assume an entity consists of connected pixels (wrong)
+- We assume the objects are well modeled by an ellipse (also wrong)
+
+### What to do?
+
+- Is it 3 connected objects which should all be analzed seperately?
+- If we could __divide it__, we could then analyze each spart as an ellipse
+- Is it one network of objects and we want to know about the constrictions?
+- Is it a cell or organelle with docking sites for cell?
+- Neither extents nor anisotropy are very meaningful, we need a __more specific metric__ which can characterize
+

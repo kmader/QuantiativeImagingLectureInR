@@ -76,11 +76,11 @@ ddply.cutcols<-function(...,cols=1) {
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 13 March 2014
+date: 8 May 2014
 width: 1440
 height: 900
 transition: rotate
-
+css: ../template.css
 ## Big Data
 ### Scaling to larger datasets
 
@@ -115,6 +115,8 @@ Lesson Outline
   - Paraview
   - Matlab Distributed Toolbox
   - Sun Grid Engine
+  - OpenMPI
+- Next Generation Tools
   - Hadoop / Spark
 
 Motivation
@@ -124,19 +126,33 @@ There are two different types of problems that we will run into.
 - Several copies of the dataset need to be in memory for processing
 - Computers with more 256GB are expensive and difficult to find
 - Even they have 16 cores so still 16GB per CPU, limit becomes drivespeed
-- If it crashes you lose everything
+- If it crashes you __lose__ everything
 
 ***
 
 ### Many datasets
 - For genome-scale studies 1000s of samples need to be analyzed identically
 - Dynamic experiments can have hundreds of measurements 
-- Animal genomic imaging can have many huge datasets (1000s of 328GB datasets)
+- Animal phenotyping can have many huge datasets (1000s of 328GB datasets)
+
+What is parallellism?
+===
+Parallelism is when you can divide a task into separate pieces. Some tasks are easy to parallelize while others are very difficult. Rather than focusing on programming, real-life examples are good indicators of difficultly.
+
+1. You have 10 friends who collectively know all the capital cities of the world.
+ - To find the capital of a single country you just yell the country and wait for someone to respond (+++)
+ - To find who knows the most countries, each yells out how many countries they know and you select the highest (++)
+ 
+***
+
+1. Each friend has some money with them
+ - To find the total amount of money you tell each person to tell you how much money they have and you add it together (+)
+ - To find the __median__ coin value, you ask each friend to tell you you all the coins they have and you make one master list and then find the median coin (-)
 
 
 Principles
 ===
-### Disclosure : There are entire courses / PhD thesis about this, so this is just a scant introduction
+### Disclosure : There are entire courses / PhD thesises / Companies about this, so this is just a scant introduction
 - Parallel and Distributed Computing
 - Threads
 - Shared-Memory
@@ -145,3 +161,6 @@ Principles
  - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
 
 
+Spark Preview
+===
+<iframe src='ext-figures/FilterTest - Spark Stages.html' width='100%' height='500'></iframe>
