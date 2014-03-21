@@ -141,13 +141,19 @@ Parallelism is when you can divide a task into separate pieces. Some tasks are e
 
 1. You have 10 friends who collectively know all the capital cities of the world.
  - To find the capital of a single country you just yell the country and wait for someone to respond (+++)
- - To find who knows the most countries, each yells out how many countries they know and you select the highest (++)
+ - To find who knows the most countries, each, in turn, yells out how many countries they know and you select the highest (++)
  
 ***
 
 1. Each friend has some money with them
  - To find the total amount of money you tell each person to tell you how much money they have and you add it together (+)
  - To find the __median__ coin value, you ask each friend to tell you you all the coins they have and you make one master list and then find the median coin (-)
+
+What is distributed computing?
+===
+Distributed computing is very similar to parallel computing, but a bit more particular. Parallel means you process many tasks at the same time, while distributed means you are no longer on the same CPU, process, or even on the same machine.
+
+The distributed has some important implications since once you are no longer on the same machine the number of variables like network delay, file system issues, and other users becomes a major problem.
 
 
 Principles
@@ -160,7 +166,221 @@ Principles
 - Synchronization
  - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
 
+Parallel Problems
+===
+
+### Coordination
+Parallel computing requires a significant of coordinating between computers for non-easily parallelizable tasks.
+
+### Mutability
+The second major issue is mutability, if you have two computers trying to write the same information at the same it doesn't work.
+
+### Blocking
+The simple act of taking turns and waiting for every indepdent process to take it's turn can completely negate the benefits of parallel computing
+
+Distributed Problems
+===
+type:alert
+
+Inherits all of the problems of parellel programming with a whole variety of new issues.
+
+### Sending Instructions / Data Afar
+
+### Fault Tolerance
+If you have 1000 computers working on solving a problem and one fails, you do not want your whole job to crash
+
+### Data Storage
+
+How can you access and process data from many different computers quickly without very expensive infrastructure
+
+
+General Problems
+===
+
+### Implementation
+Each parallel library requires different tools with different constraints CUDA, OpenCL, OpenMPI, Matlab Distributed Toolbox, KORUS, .NET Concurrent Framework, Python Multiprocessing
+
+Most of these tools mean learning many very specific code bases, and __managing__ the logistics of organizing this mess by yourself. Almost none of them are flexible allowing extra-processing power to "jump" in intense complications when it is needed and none are fault-tolerant out of the box. Transitioning from one code-base to another is at best nightmarish
+
+The Solution: Spark + Hadoop
+===
+
+- Distributed, parallel computing without __logistics__, libraries, or compiling
+- Declarative rather than imperative
+ - Apply operation $f$ to each image
+ - __NOT__ tell computer 3 to wait for an image from computer 2 to and perform operation $f$ and send it to computer 1
+ - Even scheduling is handled automatically
+ 
+Hadoop / MapReduce
+===
+
+Hadoop is the underlying infrastructure and filesystem that handles storing and distributing data so each machine stores some of the data locally and processing jobs run where the data is stored. 
+- No expensive Infini-Band required. Non-local data is copied over the network. 
+- Storage is automatically expanded with processing power.
+- It's how Google, Amazon, Microsoft, Yahoo, Facebook, ... deal with exabytes of data
+
+Starting Spark
+===
+[Spin up your own cluster in an hour](https://amplab.cs.berkeley.edu/2013/10/23/got-a-minute-spin-up-a-spark-cluster-on-your-laptop-with-docker/)
+
+1. Start a master node ```start-master.sh``` 
+1. Start several worker nodes 
+
+```start-worker.sh spark://master-ip:7077 -c #CORES -m #MEM```
+
+1. Start the Spark-Shell ```spark-shell.sh```
+1. Write code in Scala, Java, Python, or R
+
+Perform a threshold
+===
+
+```
+val threshVal=127
+val labelImg=inImg.filter(_._2>threshVal)
+```
+
+- Runs on 1 core on your laptop or 1000 cores in the cloud or on Merlin or the beamline.
+- If one computer crashes or disconnects it __automatically__ continues on another one. 
+- If one part of the computation is taking too long it will be sent to other computers to finish
+- If a computer runs out of memory it writes to disk and continues running
+
+Region of Interest
+===
+Take a region of interest between 0 and 100 in X,Y, and Z
+```
+def roiFunc(pvec: ((Int,Int,Int),Double)) = 
+ {pvec._1._1>=0 & pvec._1._2>=0 & pvec._1._3>=0 &
+  pvec._1._1<100 & pvec._1._2<100 & pvec._1._3<100}
+rImg.filter(roiFunc)
+```
+
+Perform a 3x3x3 box filter
+===
+```
+def spread_voxels(pvec: ((Int,Int,Int),Double), windSize: Int = 1) = {
+  val wind=(-windSize to windSize)
+  val pos=pvec._1
+  val scalevalue=pvec._2/(wind.length**3)
+  for(x<-wind; y<-wind; z<-wind) 
+    yield ((pos._1+x,pos._2+y,pos._3+z),scalevalue)
+}
+
+val filtImg=roiImg.
+      flatMap(cvec => spread_voxels(cvec)).
+      filter(roiFun).reduceByKey(_ + _)
+```
+
+Perform component labeling
+===
+```{, size="tiny"}
+var groupList=Array((0L,0))
+var running=true
+var iterations=0
+while (running) {
+  val newLabels=labelImg.
+  flatMap(spread_voxels(_,1)).
+    reduceByKey((a,b) => (math.min(a._1,b._1),(a._2 | b._2))).
+    filter(_._2._2). // keep only voxels which contain original pixels
+    map(pvec => (pvec._1,pvec._2._1))
+  // make a list of each label and how many voxels are in it
+  val curGroupList=newLabels.map(pvec => (pvec._2,1)).
+    reduceByKey(_ + _).sortByKey(true).collect
+  // if the list isn't the same as before, continue running since we need to wait for swaps to stop
+  running = (curGroupList.deep!=groupList.deep)
+  groupList=curGroupList
+  labelImg=newLabels
+  iterations+=1
+  print("Iter #"+iterations+":"+groupList.mkString(","))
+}
+groupList
+```
+
+Lazy evaluation
+===
+```
+val outThresh=inImg.map(threshFunc)
+val outLabels=runCL(outThresh)
+outLabels.filter(roiFunc).saveImage('test.tif')
+```
+
+- No execution starts until you save the file or require output
+- Spark automatically deconstructs the pipeline and optimizes the jobs to run so computation is not wasted outside of the region of interest (even though we did it last)
+
+
+Other Tasks: Statistical Analysis
+===
+
+Exploring phenotypes of 55 million cells. Standard approach was to divide into groups and average the results.
+
+```{r load_data}
+data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/iwbbio2014"
+pd<-function(...,sep="") paste(data.dir,...,sep="/")
+# read and correct the coordinate system
+# Routine for Connecting to the Database
+raw.summary<-read.csv(pd("summary.csv"))
+# fix column names
+raw.names<-names(raw.summary)
+names(raw.summary)<-sapply(raw.names,function(x) gsub("[.]1","_SD",x))
+raw.summary<-subset(raw.summary,VOLUME>0 & VOLUME<1000 & count<100000 & count>10000) # filter out the corrupt files
+```
+
+```{r, results='asis'}
+mean.nona<-function(...) mean(...,na.rm=T)
+sd.nona<-function(...) sd(...,na.rm=T)
+imp.phenotypes<-names(raw.summary)[c(9:11,15,19,23,24:30,35,38,42)]
+imp.phenotypes<-names(raw.summary)[c(15,19,23,29,35,38,42,44,45)]
+var.pheno<-function(in.df,in.col) {
+  sd.col<-paste(in.col,"_SD",sep="")
+  mean.vals<-in.df[,in.col]
+  sd.vals<-in.df[,sd.col]
+  ie.var<-c(sd.nona(mean.vals)/mean.nona(abs(mean.vals)))*100
+  ia.var<-c(mean.nona(sd.vals)/mean.nona(abs(mean.vals)))*100
+  data.frame(Phenotype=c(in.col),
+             Within.Sample.CV=ia.var,
+             Between.Sample.CV=ie.var,
+             Ratio=ia.var/ie.var*100)   
+}
+out.table<-ldply(imp.phenotypes,function(col.name) var.pheno(raw.summary,col.name))
+names(out.table)<-c("Phenotype","Within","Between","Ratio (%)")
+out.table$Phenotype<-c("Length","Width","Height","Volume","Nearest Canal Distance","Density (Lc.Te.V)","Nearest Neighbors (Lc.DN)","Stretch (Lc.St)","Oblateness (Lc.Ob)")
+kable(out.table)
+```
+The results in the table show the within and between sample variation for selected phenotypes in the first two columns and the ratio of the within and between sample numbers (all as percentages). For differentiating samples the lower the better and 100% for the third column would indicate the differences between samples are the same magnitude as the differences within a sample.
+
+Visualizing the Variation
+===
+```{r, fig.cap="Partial Volume Effect",fig.height=4}
+ggplot(raw.summary,aes(x=as.numeric(as.factor(VOLUME)),y=VOLUME,ymin=1e9*VOLUME-1e9*VOLUME_SD,ymax=1e9*VOLUME+1e9*VOLUME_SD))+geom_errorbar()+geom_point()+theme_bw(25)+labs(x="Sample",y=expression(paste("Volume (",um^3,")")))
+```
+
+
+
+Spark's Tools
+===
+Tools built for table-like data datastructures and much better adapted to it. 
+[K-Means](https://github.com/apache/incubator-spark/blob/master/examples/src/main/scala/org/apache/spark/examples/SparkKMeans.scala), [Correlation](https://github.com/freeman-lab/thunder/blob/master/python/thunder/sigprocessing/localcorr.py), [PCA](https://github.com/freeman-lab/thunder/blob/master/python/thunder/factorization/pca.py)
+
+
+
+
+Beyond: Streaming
+===
+
+### Post-processing goals
+- Analysis done in weeks instead of months
+- Some realtime analysis and statistics
+
+### Streaming
+Can handle static data or live data coming in from a 'streaming' device like a camera to do real-time analysis.
+The exact same code can be used for real-time analysis and static code
+
+### Scalability
+
+##### Connect more computers. 
+#### Start workers on these computer (~~Full Stop~~).
+
 
 Spark Preview
 ===
+
 <iframe src='ext-figures/FilterTest - Spark Stages.html' width='100%' height='500'></iframe>
