@@ -341,6 +341,75 @@ outLabels.filter(roiFunc).saveImage('test.tif')
 - Spark automatically deconstructs the pipeline and optimizes the jobs to run so computation is not wasted outside of the region of interest (even though we did it last)
 
 
+TOMCAT Goals
+===
+
+### Needs
+- Scale up to 1000GVx samples (eventually)
+- Analyze standard measurements 14GVx regularly in a day
+- Analyze as fast as we usually measure 15 minutes / scan
+
+### Would be nice
+
+- Analyze scans as fast as we measure now (1 scan / minute)
+- Analyze scans as fast as we could measure with gigafrost (10 scans / minute)
+
+***
+
+```{r, fig.cap="Tomcat Goals",fig.height=4}
+map.data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/MapReduce3D/ext-data"
+pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
+ read.fcn<-function(filename) {
+  in.table<-read.csv(filename,header=F)
+  col.names<-c("Type","Master","iters","x","y","z","MapTime","RunTime")
+  if(ncol(in.table)>10) col.names<-c(col.names,"mapsteps","nodes","persist","compress")
+  names(in.table)<-col.names
+  ext.nodes<-function(x) as.numeric(substr(x,7,nchar(x)-1))
+  if(ncol(in.table)<10) {
+    in.table$nodes<-sapply(as.character(in.table$Master),ext.nodes)
+    in.table$persist<-0
+    in.table$compress<-F
+  }
+  in.table$storage<-sapply(in.table$persist,function(x) 
+    switch(x+1,"Memory","Memory (S)","Memory-Disk","Memory-Disk (S)","Only Disk")
+  )
+  in.table$compress<-as.logical(in.table$compress)
+  in.table$compression<-ifelse(in.table$compress,"compressed","uncompressed")
+  fc<-function(x,width=4,...) formatC(x,width=width,...)
+  in.table$dim<-with(in.table,paste(fc(x),fc(y),fc(z),sep=","))
+  in.table
+}
+distfilter.csv<-read.fcn(pmd("dist_filter.csv"))
+fit.data<-distfilter.csv
+fit.data$voxpersec<-with(fit.data,iters*as.numeric(x)*y*z/(RunTime/1000))
+filter.lm<-lm(voxpersec~(nodes),data=fit.data)
+predict.table<-data.frame(name=c("Kevin's Laptop","GWS-3","Beamline Standard","Beamline Full","Merlin Full","CSCS Monte Rosa"),nodes=c(2,20,60,12*6+20,30*12+16,47872),exp="Filter")
+predict.table$est.voxpersec<-predict(filter.lm,predict.table)
+
+goal.table<-data.frame(name=c("1","10","0.001\n15 min/scan","0.0002\n20 scans/day"),
+                       gvph=(2560*2560*2160)/1e9*c(3600,10*3600,4,20/24),
+                       x.start=min(predict.table$nodes),x.end=max(predict.table$nodes))
+ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
+       )+
+  geom_segment(data=goal.table,aes(color=name,x=x.start,xend=x.end,y=gvph,yend=gvph),alpha=0.8,size=2)+
+  geom_line(color="black")+
+  geom_point(aes(shape=name),size=5)+
+  
+  labs(x="Nodes Used",y="Gigavoxels per hour",shape="Cluster",color="Goal\nOperations per Second",title="Log-Log")+
+  scale_y_log10()+scale_x_log10()+theme_bw(15)
+```
+
+```{r, fig.cap="Tomcat Goals",fig.height=4}
+ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
+       )+
+  geom_segment(data=goal.table,aes(color=name,x=0,xend=376,y=gvph,yend=gvph),alpha=0.8,size=2)+
+  geom_line(color="black")+
+  geom_point(aes(shape=name),size=5)+
+  labs(x="Nodes Used",y="Gigavoxels per hour",shape="Cluster",color="Goal\nOperations per Second",title="Standard Scale")+
+  xlim(0,400)+ylim(0,200)+theme_bw(15)
+```
+
+
 Other Tasks: Statistical Analysis
 ===
 
