@@ -128,12 +128,46 @@ There are two different types of problems that we will run into.
 - Even they have 16 cores so still 16GB per CPU, limit becomes drivespeed
 - If it crashes you __lose__ everything
 
+
 ***
 
 ### Many datasets
 - For genome-scale studies 1000s of samples need to be analyzed identically
 - Dynamic experiments can have hundreds of measurements 
 - Animal phenotyping can have many huge datasets (1000s of 328GB datasets)
+
+Specific Projects
+===
+
+### Zebrafish Phenotyping Project
+<small>Collaboration with Keith Cheng, Ian Foster, Xuying Xin, Patrick La Raviere, Steve Wang</small>
+
+1000s of samples of full adult animals, imaged at 0.74 $\mu m$ resolution: Images
+11500 x 2800 x 628 $\longrightarrow$ 20GVx data per sample
+
+***
+
+### Brain Project
+<small>Collaboration with Alberto Astolfo, Bruno Weber</small>
+
+1 $cm^3$  scanned at 1 $\mu m$ resolution: Images $\longrightarrow$ 1000 GVx per sample
+
+- Registration
+- Network Analysis and Connectivity
+
+But Kevin you've already done big data!
+===
+- Umm, __no__.
+- My samples were sized 1024 x 1024 x 1024 $\approx$ 1 GVx.
+- They had two nice phases
+- They were analyzed on single computers using 4-6 cores and took 12-24 hours for the full analysis.
+- Zebrafish Project
+ - need computers with at least 20X as much memory (400GB, hmmm)
+ - it would take 240 hours per sample...
+- Brain Project
+ - need computers with 1000X as much memory (20TB.)
+ - it would take 16 months per sample...
+
 
 What is parallellism?
 ===
