@@ -543,7 +543,7 @@ ggplot(test.mesh.dist,aes(x=x,y=y,fill=dist))+
 
 By using the laplacian filter as an approximate for the derivative operator which finds the values which high local gradients.
 
-$$ \nabla I_{d}(x,y) = \frac{\delta^2 I_d}{\delta x^2 I_d}+\frac{\delta^2}{\delta y^2} \approx = \underbrace{\begin{bmatrix}
+$$ \nabla I_{d}(x,y) = \frac{\delta^2 I_d}{\delta x^2 I_d}+\frac{\delta^2}{\delta y^2} \approx \underbrace{\begin{bmatrix}
 -1 & -1 & -1 \\
 -1 & 8 & -1 \\
 -1 & -1 & -1

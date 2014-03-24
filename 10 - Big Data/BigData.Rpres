@@ -73,7 +73,7 @@ ddply.cutcols<-function(...,cols=1) {
 }
 ```
 
-Quantitative Big Imaging  
+Tomcat Progress Report
 ========================================================
 author: Kevin Mader
 date: 8 May 2014
@@ -81,43 +81,19 @@ width: 1440
 height: 900
 transition: rotate
 css: ../template.css
-## Big Data
-### Scaling to larger datasets
+## Scalability
 
 
-Course Outline
-========================================================
-- 20th February - Introductory Lecture
-- 27th February - Filtering and Image Enhancement (A. Kaestner)
-- 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - Advanced Segmentation
-- 20th March - Analyzing Single Objects
-- 27th March -  Analyzing Complex Objects
-- 3rd April -  Spatial Distribution
-- 10th April -  Statistics and Reproducibility
-- 17th April - Dynamic Experiments
-- 8th May - **Big Data**
-- 15th May - Guest Lecture - Applications in Material Science
-- 22th May - Project Presentations
 
-Literature / Useful References
-========================================================
-- [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
- - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
-- [Scalable Systems Course](https://courses.cs.washington.edu/courses/cse490h/08au/)
-- [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
 
-Lesson Outline
+Outline
 ========================================================
 - Motivation
-- Principles
-- Available Tools
-  - Paraview
-  - Matlab Distributed Toolbox
-  - Sun Grid Engine
-  - OpenMPI
-- Next Generation Tools
-  - Hadoop / Spark
+- Key Projects
+- Parallel and Distributed Computing
+- Scaling Imaging
+- Scaling Post-processing
+
 
 Motivation
 ===
@@ -145,6 +121,11 @@ Specific Projects
 1000s of samples of full adult animals, imaged at 0.74 $\mu m$ resolution: Images
 11500 x 2800 x 628 $\longrightarrow$ 20GVx data per sample
 
+<video controls>
+  <source src="ext-figures/fish-scanthrough.mov" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+
 ***
 
 ### Brain Project
@@ -155,15 +136,30 @@ Specific Projects
 - Registration
 - Network Analysis and Connectivity
 
+Big Data
+===
+### Velocity, Volume, Variety
+When a ton of heterogenous is coming in fast.
+
+__Performant, scalable, and flexible__
+
+### When scaling isn't scary
+10X, 100X, 1000X is the same amount of effort
+
+### When you are starving for enough data
+Director of AMPLab said their rate limiting factor is always enough interesting data
+
 But Kevin you've already done big data!
 ===
+incremental: true
 - Umm, __no__.
 - My samples were sized 1024 x 1024 x 1024 $\approx$ 1 GVx.
 - They had two nice phases
 - They were analyzed on single computers using 4-6 cores and took 12-24 hours for the full analysis.
 - Zebrafish Project
- - need computers with at least 20X as much memory (400GB, hmmm)
+ - need computers with at least 20X as much memory (400GB, is alot...)
  - it would take 240 hours per sample...
+ - best case scenario GWS-3 consumed 100% for 3 days
 - Brain Project
  - need computers with 1000X as much memory (20TB.)
  - it would take 16 months per sample...
@@ -171,6 +167,7 @@ But Kevin you've already done big data!
 
 What is parallellism?
 ===
+
 Parallelism is when you can divide a task into separate pieces. Some tasks are easy to parallelize while others are very difficult. Rather than focusing on programming, real-life examples are good indicators of difficultly.
 
 1. You have 10 friends who collectively know all the capital cities of the world.
@@ -189,16 +186,28 @@ Distributed computing is very similar to parallel computing, but a bit more part
 
 The distributed has some important implications since once you are no longer on the same machine the number of variables like network delay, file system issues, and other users becomes a major problem.
 
-
-Principles
+Approaches
 ===
-### Disclosure : There are entire courses / PhD thesises / Companies about this, so this is just a scant introduction
-- Parallel and Distributed Computing
-- Threads
-- Shared-Memory
-- Race Conditions
-- Synchronization
- - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+
+### Imperative 
+- Languages like C, C++, Java, Matlab
+- Exact orders are given
+- Data management is manually controlled
+- Job and task scheduling is manual
+- Potential to tweak and optimize perforance
+- No fault-tolerance
+
+
+***
+
+### Declarative 
+- Languages like SQL, Erlang, Haskell, Scala, Python, R
+- Goals are stated rather than specific details
+- Data is automatically managed and copied
+- Scheduling is automatic
+- Fault-tolerant frameworks can be used
+
+
 
 Parallel Problems
 ===
@@ -232,18 +241,31 @@ General Problems
 ===
 
 ### Implementation
-Each parallel library requires different tools with different constraints CUDA, OpenCL, OpenMPI, Matlab Distributed Toolbox, KORUS, .NET Concurrent Framework, Python Multiprocessing
+Each parallel library requires different tools with different constraints CUDA, OpenCL, OpenMPI, Matlab Distributed Toolbox, KORUS, .NET Concurrent Framework, Python Multiprocessing, Hadoop, Storm, Impala, Redshift
 
 Most of these tools mean learning many very specific code bases, and __managing__ the logistics of organizing this mess by yourself. Almost none of them are flexible allowing extra-processing power to "jump" in intense complications when it is needed and none are fault-tolerant out of the box. Transitioning from one code-base to another is at best nightmarish
 
-The Solution: Spark + Hadoop
+The Solution: Spark / Resiliant Distributed Datasets
 ===
 
+### Technical Specifications
+
+- Developed by the Algorithms, Machines, and People Lab at UC Berkeley
+- General tool for all Directed Acyclical Graph (DAG) workflows
+- Course-grained processing $\rightarrow$ simple operations applied to entire sets
+ - Map, reduce, join, group by, fold, foreach
+- In-memory cacheing
+
+<small>Zaharia, M., et. al (2012). Resilient distributed datasets: a fault-tolerant abstraction for in-memory cluster computing</small>
+***
+
+### Practical Specification
 - Distributed, parallel computing without __logistics__, libraries, or compiling
 - Declarative rather than imperative
  - Apply operation $f$ to each image
  - __NOT__ tell computer 3 to wait for an image from computer 2 to and perform operation $f$ and send it to computer 1
  - Even scheduling is handled automatically
+- Results can be stored in memory, on disk, redunant or not
  
 Hadoop / MapReduce
 ===
@@ -281,10 +303,12 @@ val labelImg=inImg.filter(_._2>threshVal)
 Region of Interest
 ===
 Take a region of interest between 0 and 100 in X,Y, and Z
-```
+```{java}
 def roiFunc(pvec: ((Int,Int,Int),Double)) = 
- {pvec._1._1>=0 & pvec._1._2>=0 & pvec._1._3>=0 &
-  pvec._1._1<100 & pvec._1._2<100 & pvec._1._3<100}
+ {pvec._1._1>=0 & pvec._1._1<100 & // X
+  pvec._1._2>=0 & pvec._1._2<100 & //Y
+  pvec._1._3>=0 & pvec._1._3<100} // Z
+  
 rImg.filter(roiFunc)
 ```
 
@@ -341,21 +365,8 @@ outLabels.filter(roiFunc).saveImage('test.tif')
 - Spark automatically deconstructs the pipeline and optimizes the jobs to run so computation is not wasted outside of the region of interest (even though we did it last)
 
 
-TOMCAT Goals
+Real Spark Performance
 ===
-
-### Needs
-- Scale up to 1000GVx samples (eventually)
-- Analyze standard measurements 14GVx regularly in a day
-- Analyze as fast as we usually measure 15 minutes / scan
-
-### Would be nice
-
-- Analyze scans as fast as we measure now (1 scan / minute)
-- Analyze scans as fast as we could measure with gigafrost (10 scans / minute)
-
-***
-
 ```{r, fig.cap="Tomcat Goals",fig.height=4}
 map.data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/MapReduce3D/ext-data"
 pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
@@ -379,14 +390,43 @@ pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
   in.table$dim<-with(in.table,paste(fc(x),fc(y),fc(z),sep=","))
   in.table
 }
+fit.data<-rbind(cbind(read.fcn(pmd("dist_filter.csv")),source="Distributed"),
+                cbind(read.fcn(pmd("merlinl02_filter.csv")),source="Single",mapsteps=-1))
+
+fit.data$voxpersec<-with(fit.data,iters*as.numeric(x)*y*z/(RunTime/1000))
+ggplot(fit.data,aes(x=nodes,y=voxpersec
+                    )
+       )+
+  geom_point(aes(color=as.factor(paste(formatC(round(as.numeric(x)*y*z/1e9),width=5)," GVx"))))+
+  geom_smooth()+
+  labs(x="Cores",y="Voxels per Second",color="Data Size")+theme_bw(20)
+```
+
+TOMCAT Imaging Goals
+===
+
+### Needs
+- Scale up to 1000GVx samples (eventually)
+- Analyze standard measurements 14GVx regularly in a day
+- Analyze as fast as we usually measure 15 minutes / scan
+
+### Would be nice
+
+- Analyze scans as fast as we measure now (1 scan / minute)
+- Analyze scans as fast as we could measure with gigafrost (10 scans / minute)
+
+***
+
+```{r, fig.cap="Tomcat Goals",fig.height=4}
 distfilter.csv<-read.fcn(pmd("dist_filter.csv"))
 fit.data<-distfilter.csv
 fit.data$voxpersec<-with(fit.data,iters*as.numeric(x)*y*z/(RunTime/1000))
+
 filter.lm<-lm(voxpersec~(nodes),data=fit.data)
 predict.table<-data.frame(name=c("Kevin's Laptop","GWS-3","Beamline Standard","Beamline Full","Merlin Full","CSCS Monte Rosa"),nodes=c(2,20,60,12*6+20,30*12+16,47872),exp="Filter")
 predict.table$est.voxpersec<-predict(filter.lm,predict.table)
 
-goal.table<-data.frame(name=c("1","10","0.001\n15 min/scan","0.0002\n20 scans/day"),
+goal.table<-data.frame(name=c("1","10\n Gigafrost","0.001\n15 min/scan\n","0.0002\n20 scans/day\n"),
                        gvph=(2560*2560*2160)/1e9*c(3600,10*3600,4,20/24),
                        x.start=min(predict.table$nodes),x.end=max(predict.table$nodes))
 ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
@@ -405,7 +445,7 @@ ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
   geom_segment(data=goal.table,aes(color=name,x=0,xend=376,y=gvph,yend=gvph),alpha=0.8,size=2)+
   geom_line(color="black")+
   geom_point(aes(shape=name),size=5)+
-  labs(x="Nodes Used",y="Gigavoxels per hour",shape="Cluster",color="Goal\nOperations per Second",title="Standard Scale")+
+  labs(x="Nodes Used",y="Gigavoxels per hour",shape="Cluster",color="Goal\nOperations per Second",title="Linear Scale")+
   xlim(0,400)+ylim(0,200)+theme_bw(15)
 ```
 
@@ -413,7 +453,16 @@ ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
 Other Tasks: Statistical Analysis
 ===
 
-Exploring phenotypes of 55 million cells. Standard approach was to divide into groups and average the results.
+- Exploring phenotypes of 55 million cells. 
+- Our current approach has been either
+- Group and divide then average the results.
+ - Average Cell Volume, etc.
+ - Average density or connectivity
+- Detailed analysis of individual samples
+ - K-means clustering for different regions in bone / layers
+ - Principal component analysis for phenotypes
+ 
+***
 
 ```{r load_data}
 data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/iwbbio2014"
@@ -448,21 +497,47 @@ names(out.table)<-c("Phenotype","Within","Between","Ratio (%)")
 out.table$Phenotype<-c("Length","Width","Height","Volume","Nearest Canal Distance","Density (Lc.Te.V)","Nearest Neighbors (Lc.DN)","Stretch (Lc.St)","Oblateness (Lc.Ob)")
 kable(out.table)
 ```
-The results in the table show the within and between sample variation for selected phenotypes in the first two columns and the ratio of the within and between sample numbers (all as percentages). For differentiating samples the lower the better and 100% for the third column would indicate the differences between samples are the same magnitude as the differences within a sample.
+<small>The results in the table show the within and between sample variation for selected phenotypes in the first two columns and the ratio of the within and between sample numbers (all as percentages). For differentiating samples the lower the better and 100% for the third column would indicate the differences between samples are the same magnitude as the differences within a sample.</small>
 
 Visualizing the Variation
 ===
+How does this result look visually? Each line shows the mean $\pm$ standard deviation for sample. The range within a single sample is clearly much larger than between
 ```{r, fig.cap="Partial Volume Effect",fig.height=4}
 ggplot(raw.summary,aes(x=as.numeric(as.factor(VOLUME)),y=VOLUME,ymin=1e9*VOLUME-1e9*VOLUME_SD,ymax=1e9*VOLUME+1e9*VOLUME_SD))+geom_errorbar()+geom_point()+theme_bw(25)+labs(x="Sample",y=expression(paste("Volume (",um^3,")")))
 ```
 
-
-
-Spark's Tools
+Do not condense
 ===
+With the ability to scale to millions of samples there is no need to condense. We can analyze the entire dataset in real-time and try and identify groups or trends within the whole data instead of just precalculated views of it.
+
+### Practical
+1276 comma seperated text files with 56 columns of data and 15-60K rows
+
+```{r, results='asis'}
+results.df<-data.frame(Task=c("Load and Preprocess","Single Column Average","1 K-means iterations 4 vars"),
+                       Single.Time=c("360 minutes","4.6s","2 minutes"),
+                       Spark.Time=c("10 minutes","400ms","1s"))
+names(results.df)[2]<-"Single Core Time"
+names(results.df)[3]<-"Spark Time (40 cores)"
+kable(results.df)
+```
+
+
+Rich, heavily developed platform
+===
+
+### Available Tools
 Tools built for table-like data datastructures and much better adapted to it. 
 [K-Means](https://github.com/apache/incubator-spark/blob/master/examples/src/main/scala/org/apache/spark/examples/SparkKMeans.scala), [Correlation](https://github.com/freeman-lab/thunder/blob/master/python/thunder/sigprocessing/localcorr.py), [PCA](https://github.com/freeman-lab/thunder/blob/master/python/thunder/factorization/pca.py)
 
+### Commercial Support
+Dozens of major companies (Apple, Google, Facebook, Cisco, ...) donate $30M a year to development of Spark and the Berkeley Analytics Frameworks
+- 2 startups in the last 6 months with seed-funding in excess of $15M each
+
+### Academic Support
+- All source code is available on GitHub
+- No patents or restrictions on usage
+- ETHZ Machine Learning Course next semester based on Spark
 
 
 
@@ -482,8 +557,73 @@ The exact same code can be used for real-time analysis and static code
 ##### Connect more computers. 
 #### Start workers on these computer (~~Full Stop~~).
 
+Beyond: Approximate Results
+===
+
+Projects at AMPLab like Spark and BlinkDB are moving towards approximate results.
+- Instead of ```mean(volume)```
+ - ```mean(volume).within_time(5)```
+ - ```mean(volume).within_ci(0.95)```
+
+For real-time image processing it might be the only feasible solution and could drastically reduce the amount of time spent on analysis.
+
+
+
+Beyond: Image SQL
+===
+Structure Query Language (SQL) forms the basis for almost all database languages that exist today.
+- Standard language that allows the computer and cluster to query as it sees fit
+- Used for Big (Hive, Impala) and Small (SQLite) data-alike
+
+```{sql}
+SELECT customer_name, sum(price_paid) FROM sales_db GROUP BY customer_name
+```
+
+***
+
+Image SQL would be an image processing domain specific language (DSL) allowing image processing to be written as simple commands and computers / clusters divide and run the jobs
+
+```
+SELECT mean(VOLUME) FROM GAUSSIAN_FILTER(input_image) GROUP BY COMPONENT_LABEL
+```
 
 Spark Preview
 ===
 
 <iframe src='ext-figures/FilterTest - Spark Stages.html' width='100%' height='500'></iframe>
+
+
+
+Principles
+===
+### Disclosure : There are entire courses / PhD thesises / Companies about this, so this is just a scant introduction
+- Parallel and Distributed Computing
+- Threads
+- Shared-Memory
+- Race Conditions
+- Synchronization
+ - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+ 
+ 
+ Course Outline
+========================================================
+- 20th February - Introductory Lecture
+- 27th February - Filtering and Image Enhancement (A. Kaestner)
+- 6th March - Basic Segmentation, Discrete Binary Structures
+- 13th March - Advanced Segmentation
+- 20th March - Analyzing Single Objects
+- 27th March -  Analyzing Complex Objects
+- 3rd April -  Spatial Distribution
+- 10th April -  Statistics and Reproducibility
+- 17th April - Dynamic Experiments
+- 8th May - **Big Data**
+- 15th May - Guest Lecture - Applications in Material Science
+- 22th May - Project Presentations
+
+Literature / Useful References
+========================================================
+- [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
+ - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
+- [Scalable Systems Course](https://courses.cs.washington.edu/courses/cse490h/08au/)
+- [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
+- [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
