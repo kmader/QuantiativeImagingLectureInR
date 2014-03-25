@@ -206,11 +206,14 @@ Outline
 - Skeletons
  - Tortuosity
 - What are thickness maps?
+ - Thickness with Skeletons
 
 ***
 
 - Watershed Segmentation
  - Connected Objects
+- Curvature
+ - Characteristic Shapes
 
 
 
@@ -218,48 +221,21 @@ Learning Objectives
 ========================================================
 
 ### Motivation (Why and How?)
-- How do we quantify where and how big our objects are?
-- How can we say something about the shape?
-- How can we compare objects of different sizes?
-- How can we compare two images on the basis of the shape as calculated from the images?
-- How can we put objects into an finite element simulation? or make pretty renderings?
 
+- How do we measure distances between many objects?
+- How can we extract topology of a structure?
 
+- How can we measure sizes in complicated objects?
+- How do we measure sizes relavant for diffusion or other local processes?
 
-Motivation
-===
-
-We have dramatically simplified our data, but there is still too much.
-
-- We perform an experiment bone to see how big the cells are inside the tissue
-$$\downarrow$$ ![Bone Measurement](ext-figures/tomoimage.png) 
-
-### 2560 x 2560 x 2160 x 32 bit
-_56GB / sample_
-- Filtering and Enhancement!  
-$$\downarrow$$
-- 56GB of less noisy data
-
-***
-
-- __Segmentation__
-
-$$\downarrow$$
-
-### 2560 x 2560 x 2160 x 1 bit
-(1.75GB / sample)
-
-- Still an aweful lot of data
+- How do we identify seperate objects when they are connected?
+- How do we investigate surfaces in more detail and their shape?
+- How can we compare shape of complex objects when they grow?
+ - Are there characteristic shape metrics?
 
 What did we want in the first place
 ========================================================
-
-### _Single number_:
-* volume fraction,
-* cell count,
-* average cell stretch,
-* cell volume variability
-
+To simplify our data, but an ellipse model is __too__ simple for many shapes
 
 So while bounding box and ellipse-based models are useful for many object and cells, they do a very poor job with the sample below.
 
@@ -471,7 +447,7 @@ Skeletonization
 ===
 
 The first step is to take the distance transform the structure 
-$$I_d(x,y) = \textrm{dist}(I(x,y)$$
+$$I_d(x,y) = \textrm{dist}(I(x,y))$$
 We can see in this image there are already local maxima that form a sort of backbone which closely maps to what we are interested in.
 
 
@@ -616,11 +592,11 @@ thick.map<-function(dist.df,min.dist=0.25) {
 ```{r, fig.cap="Cell Distance Map",fig.height=6}
 
 dmap.fg<-dist.map(fill.img,fg.ph=155,bg.ph=0)
-th_fillmap<-scale_fill_gradientn(colours=rainbow(10),limits=c(0,max(dmap.fg$dist)))
+th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))
 ggplot(dmap.fg,aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Distance\nFrom\nSurface")+
-  th_fillmap+
+  th_fillmap.fn(max(dmap.fg$dist))+
   theme_bw(20)+coord_equal()
 ```
 
@@ -630,6 +606,7 @@ ggplot(dmap.fg,aes(x=x,y=y,fill=dist))+
 ggplot(thick.map(dmap.fg),aes(x=x,y=y,fill=sph.rad))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Sphere\nRadius")+
+  th_fillmap.fn(max(dmap.fg$dist))+
   theme_bw(20)+coord_equal()
 ```
 
@@ -640,6 +617,7 @@ dmap.bg<-dist.map(fill.img,fg.ph=0,bg.ph=155)
 ggplot(dmap.bg,aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Distance\nFrom\nSurface")+
+  th_fillmap.fn(max(dmap.bg$dist))+
   theme_bw(20)+coord_equal()
 ```
 
@@ -649,6 +627,7 @@ ggplot(dmap.bg,aes(x=x,y=y,fill=dist))+
 ggplot(thick.map(dmap.bg),aes(x=x,y=y,fill=sph.rad))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Sphere\nRadius")+
+  th_fillmap.fn(max(dmap.bg$dist))+
   theme_bw(20)+coord_equal()
 ```
 
@@ -674,8 +653,8 @@ $$ \begin{cases}
 ```{r, fig.cap="Skeleton",fig.height=9}
 
 merge.mesh.dif<-rbind(
-  cbind(subset(test.mesh.dist,dist>sqrt(3)),type="Non-surface\nPoints",val=0),
-  cbind(subset(test.mesh.dif,val>1),type="Slope\nPoints",dist=0)
+  cbind(subset(test.mesh.dist,dist>=sqrt(3)),type="Non-surface\nPoints",val=0),
+  cbind(subset(test.mesh.dif,val>.5),type="Slope\nPoints",dist=0)
   )
 overlap.im<-ddply(merge.mesh.dif,.(x,y),function(c.pts) {
   data.frame(cnt=nrow(c.pts), # points from how many images are present
@@ -696,7 +675,6 @@ From Skeleton vs All Points
 
 ```{r, fig.cap="Thickness from skeleton",fig.height=6,results='markup'}
 
-
 filled.skel<-fill.img.fn(subset(overlap.im,cnt==2),step.size=0.25,dist=0,cnt=0)
 system.time(skthmap<-thick.map(filled.skel))
 ggplot(skthmap,aes(x=x,y=y,fill=sph.rad))+
@@ -709,7 +687,6 @@ ggplot(skthmap,aes(x=x,y=y,fill=sph.rad))+
 ***
 
 ```{r, fig.cap="Thickness from all points",fig.height=6,results='markup'}
-
 system.time(thmap<-thick.map(test.mesh.dist))
 ggplot(thmap,aes(x=x,y=y,fill=sph.rad))+
   geom_tile(color="black")+
@@ -723,14 +700,76 @@ Statistically Does it Matter
 
 ```{r, fig.cap="Thickness from all points",fig.height=6}
 
-ggplot(rbind(
-  cbind(skthmap,type="Skeleton Map"),
-  cbind(thmap,type="Full Map")),aes(x=sph.rad,color=type))+
-  geom_density(aes(y=..count..))+
+hist.sum<-ddply.cutcols(rbind(
+  cbind(thmap,type="Full Map"),
+  cbind(skthmap,type="Skeleton Map")
+  ),
+  .(cut_interval(sph.rad,12),type),
+  function(c.block) data.frame(count=nrow(c.block))
+  )
+ggplot(hist.sum,aes(x=sph.rad,color=type,y=count))+
+  geom_line()+geom_point()+
   labs(x="Sphere Radius",y="Voxel Count",color="Algorithm")+
-  theme_bw(20)
+  theme_bw(20)+scale_y_sqrt()
 ```
 
+***
+
+#### It depends
+
+- Small structures are lost
+- They might not have been very important or _noisy_ anyways
+- Higher values are very similar
+
+```{r, results='asis'}
+comp.table<-data.frame(cbind(summary(thmap$sph.rad),summary(skthmap$sph.rad)))
+names(comp.table)<-c("Full Map","Skeleton Map")
+kable(comp.table)
+```
+
+
+How much can we cut down
+===
+
+```{r, fig.cap="Skeleton",fig.height=6,results='markup'}
+merge.mesh.dif<-rbind(
+  cbind(subset(test.mesh.dist,dist>2),type="Non-surface\nPoints",val=0),
+  cbind(subset(test.mesh.dif,val>1.25),type="Slope\nPoints",dist=0)
+  )
+overlap.im<-ddply(merge.mesh.dif,.(x,y),function(c.pts) {
+  data.frame(cnt=nrow(c.pts), # points from how many images are present
+             dist=max(c.pts$dist))
+})
+tfilled.skel<-fill.img.fn(subset(overlap.im,cnt==2),step.size=0.25,dist=0,cnt=0)
+system.time(tskthmap<-thick.map(tfilled.skel))
+ggplot(tskthmap,aes(x=x,y=y,fill=sph.rad))+
+  geom_tile(color="black")+
+   th_fillmap+
+  labs(title="Thickness from Skeleton\n Slope>1.25 & Dist>1.7",fill="Sphere\nRadius")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+```{r, fig.cap="Thickness from all points",fig.height=4}
+hist.sum<-ddply.cutcols(rbind(
+    cbind(thmap,type="Full Map"),
+    cbind(skthmap,type="Skeleton Map"),
+    cbind(tskthmap,type="Tiny Skeleton Map")),
+  .(cut_interval(sph.rad,12),type),
+  function(c.block) data.frame(count=nrow(c.block))
+  )
+ggplot(hist.sum,aes(x=sph.rad,color=type,y=count))+
+  geom_line()+geom_point()+
+  labs(x="Sphere Radius",y="Voxel Count",color="Algorithm")+
+  theme_bw(20)+scale_y_sqrt()
+```
+
+```{r, results='asis'}
+comp.table<-data.frame(cbind(summary(thmap$sph.rad),summary(skthmap$sph.rad),summary(tskthmap$sph.rad)))
+names(comp.table)<-c("Full Map","Skeleton Map","Tiny Skeleton Map")
+kable(comp.table)
+```
 
 Watershed
 ===
@@ -740,3 +779,11 @@ Watershed is a method for segmenting objects without using component labeling.
 - It utilizes the shape of structures to find objects
 - Imagine how rain would fall on a topographical map
 
+
+Curvature
+===
+type:alert
+
+Characteristic Shape
+===
+type:alert
