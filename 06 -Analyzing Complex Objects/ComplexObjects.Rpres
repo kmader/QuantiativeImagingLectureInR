@@ -211,8 +211,7 @@ Outline
 
 - Watershed Segmentation
  - Connected Objects
-- Voronoi Tesselation
- - Networks
+
 
 
 Learning Objectives
@@ -301,17 +300,24 @@ Distance Maps
 ===
 ```{r dist_map_code}
 # Distance map code
-xr<-range(cur.cell.df$x)
-yr<-range(cur.cell.df$y)
-fill.img<-ddply(expand.grid(x=c(xr[1]:xr[2]),
-                  y=c(yr[1]:yr[2])),.(x,y),
+# Fill Image code
+# ... is for extra columns in the data set
+fill.img.fn<-function(in.img,step.size=1,...) {
+  xr<-range(in.img$x)
+  yr<-range(in.img$y)
+  ddply(expand.grid(x=seq(xr[1],xr[2],step.size),
+                  y=seq(yr[1],yr[2],step.size)),
+        .(x,y),
       function(c.pos) {
         ix<-c.pos$x[1]
         iy<-c.pos$y[1]
-        nset<-subset(cur.cell.df,x==ix & y==iy)
-        if(nrow(nset)<1) nset<-data.frame(x=ix,y=iy,val=0)
+        nset<-subset(in.img,x==ix & y==iy)
+        if(nrow(nset)<1) nset<-data.frame(x=ix,y=iy,val=0,...)
         nset
         })
+}
+fill.img<-fill.img.fn(cur.cell.df)
+
 dist.map<-function(in.df,fg.ph=155,bg.ph=0) {
   foreground.df<-subset(in.df,val==fg.ph)
   background.df<-subset(in.df,val==bg.ph)
@@ -438,23 +444,166 @@ ggplot(dist.map(fill.img,fg.ph=0,bg.ph=155),aes(x=x,y=y,fill=dist))+
   theme_bw(20)+coord_equal()
 ```
 
-Watershed
+Skeletonization / Networks
 ===
+
+For some structures like cellular materials and trabecular bone, we want a more detailed analysis than just thickness. We want to know
+
+- which structures are connected
+- how they are connected
+- express the network in a simple manner
+ - quantify tortuosity
+ - branching
+
+***
+
+```{r, fig.cap="Mesh Mask",fig.height=9}
+test.mesh<-expand.grid(xi=seq(-10,10,length.out=5),yi=seq(-10,10,length.out=4))
+test.mesh$ri<-runif(nrow(test.mesh),min=0.5,max=2)
+test.mesh.im<-make.sph.img(test.mesh)
+ggplot(subset(test.mesh.im,val==0),aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  labs(title="Object Mask")+
+  theme_bw(20)+coord_equal()
+```
+
+Skeletonization
+===
+
+The first step is to take the distance transform the structure 
+$$I_d(x,y) = \textrm{dist}(I(x,y)$$
+We can see in this image there are already local maxima that form a sort of backbone which closely maps to what we are interested in.
+
+
+```{r, fig.cap="Distance Map",fig.height=5}
+test.mesh.dist<-dist.map(test.mesh.im,fg.ph=0,bg.ph=1)
+ggplot(test.mesh.dist,aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  labs(title="Circle Distance Map",fill="Distance\nFrom\nSurface")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+By using the laplacian filter as an approximate for the derivative operator which finds the values which high local gradients.
+
+$$ \nabla I_{d}(x,y) = (\frac{\delta^2}{\delta x^2}+\frac{\delta^2}{\delta y^2})I_d \approx \underbrace{\begin{bmatrix}
+-1 & -1 & -1 \\
+-1 & 8 & -1 \\
+-1 & -1 & -1
+\end{bmatrix}}_{\textrm{Laplacian Kernel}} \otimes I_d(x,y) $$
+
+```{r, fig.cap="Skeleton",fig.height=4.5}
+# use a laplacian kernel
+lap.kernel<-data.frame(xi=c(-1, 0, 1,-1, 0, 1,-1, 0, 1),
+                       yi=c(-1,-1,-1, 0, 0, 0, 1, 1, 1),
+                       wi=c(-1,-1,-1,-1, 8,-1,-1,-1,-1))
+test.mesh.dif<-data.frame(x=c(),y=c(),val=c())
+for(i in 1:nrow(lap.kernel)) {
+  temp.df<-test.mesh.dist[,c("x","y")]
+  temp.df$val<-with(lap.kernel[i,],test.mesh.dist$dist*wi)
+  temp.df$x<-with(lap.kernel[i,],temp.df$x+diff(x.grid)[1]*xi)
+  temp.df$y<-with(lap.kernel[i,],temp.df$y+diff(x.grid)[1]*yi)
+  test.mesh.dif<-rbind(test.mesh.dif,temp.df)
+}
+test.mesh.dif<-ddply(test.mesh.dif,.(x,y),function(all.vals) {
+  data.frame(val=sum(all.vals$val))
+})
+ggplot(test.mesh.dif,aes(x=x,y=y,fill=val))+
+  geom_tile(color="black")+
+  labs(title="Laplacian Image",fill="Laplacian/\nGradient")+
+  theme_bw(20)+coord_equal()+scale_fill_gradient2()
+```
+
+Creating the skeleton
+===
+
+We can locate the local maxima of the structure by setting a minimum surface distance
+$$I_d(x,y)>MIN-SLOPE$$
+and combining it with a minimum slope value 
+$$\nabla I_d(x,y) > MIN-DIST$$
+
+***
+
+### Thresholds
+Harking back to our first lectures, this can be seen as a 2D threshold of the entire dataset.
+- We first make the dataset into a tuple
+
+$$ \textrm{cImg}(x,y) = \langle \underbrace{I_d(x,y)}_1, \underbrace{\nabla I_d(x,y)}_2 \rangle $$
+
+$$ \textrm{skelImage}(x,y) = $$
+$$ \begin{cases}
+1, & \textrm{cImg}_1(x,y)\geq MIN-DIST \\ 
+ \textbf{ AND} &   \textrm{cImg}_2(x,y)\geq MIN-SLOPE \\
+0, & \textrm{otherwise}
+\end{cases}$$ 
+
+
+Different Thresholds
+===
+
+```{r, fig.cap="Skeleton",fig.height=9}
+merge.mesh.dif<-rbind(
+  cbind(subset(test.mesh.dist,dist>2),type="Non-surface\nPoints",val=0),
+  cbind(subset(test.mesh.dif,val>1),type="Slope\nPoints",dist=0)
+  )
+
+ggplot(merge.mesh.dif,aes(x=x,y=y,fill=type))+
+  geom_tile(color="black",alpha=0.75)+
+  labs(title="Min Slope=1, Min Dist=2",fill="Source")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+```{r, fig.cap="Skeleton",fig.height=9}
+merge.mesh.dif<-rbind(
+  cbind(subset(test.mesh.dist,dist>1),type="Non-surface\nPoints",val=0),
+  cbind(subset(test.mesh.dif,val>0),type="Slope\nPoints",dist=0)
+  )
+ggplot(merge.mesh.dif,aes(x=x,y=y,fill=type))+
+  geom_tile(color="black",alpha=0.5)+
+  labs(title="Min Slope=0, Min Dist=1",fill="Source")+
+  theme_bw(20)+coord_equal()
+```
+
+
+Pruning 
+===
+
+```{r, fig.cap="Skeleton",fig.height=9}
+
+overlap.im<-ddply(merge.mesh.dif,.(x,y),function(c.pts) {
+  data.frame(cnt=nrow(c.pts), # points from how many images are present
+             dist=max(c.pts$dist))
+})
+
+ggplot(subset(overlap.im,cnt==2),aes(x=x,y=y))+
+  geom_tile(color="black",alpha=0.9,fill="red")+
+  labs(title="Min Slope=0, Min Dist=1.5",fill="Source")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+### Pruning
+- The structure is a overgrown
+- Stricter 'thresholds' 
+
 
 Thickness Map
 ===
 ```{r thick_map}
-thick.map<-function(dist.df) {
-  obj.vox<-subset(dist.df,dist>0)
-  full.thick.map<-ddply(dist.df,.(x,y),function(c.pos) {
+thick.map<-function(dist.df,min.dist=0.25) {
+  obj.vox<-subset(dist.df,dist>=0)
+  full.thick.map<-ddply(subset(dist.df,dist>=min.dist),.(x,y),function(c.pos) {
     ix<-c.pos$x[1]
     iy<-c.pos$y[1]
     ir<-c.pos$dist[1]
     # spread the distance out to all points within the sphere
-    obj.vox$cdist<-with(obj.vox,sqrt((x-ix)^2+(y-iy)^2))
     # save the images inside the sphere
     cbind(
-      subset(obj.vox,cdist<ir)[,c("x","y")],
+      subset(obj.vox,((x-ix)^2+(y-iy)^2)<ir^2)[,c("x","y")],
       sph.rad=ir
     )
   })
@@ -467,9 +616,11 @@ thick.map<-function(dist.df) {
 ```{r, fig.cap="Cell Distance Map",fig.height=6}
 
 dmap.fg<-dist.map(fill.img,fg.ph=155,bg.ph=0)
+th_fillmap<-scale_fill_gradientn(colours=rainbow(10),limits=c(0,max(dmap.fg$dist)))
 ggplot(dmap.fg,aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Distance\nFrom\nSurface")+
+  th_fillmap+
   theme_bw(20)+coord_equal()
 ```
 
@@ -501,118 +652,91 @@ ggplot(thick.map(dmap.bg),aes(x=x,y=y,fill=sph.rad))+
   theme_bw(20)+coord_equal()
 ```
 
-
-Skeletonization / Networks
+Thickness Map From Skeleton
 ===
 
-For some structures like cellular materials and trabecular bone, we want a more detailed analysis than just thickness. We want to know
+Calculating the distance map by drawing a sphere at each point is very time consuming ($O(n^3)$). 
 
-- which structures are connected
-- how they are connected
-- express the network in a simple manner
- - quantify tortuosity
- - branching
+- The skeleton (last section) is very closely related to the thickness. 
+- We found the local maxima in the image using the Laplace
+- We can thus grow the Spheres from these points instead of all
+- Start by instead of thresholding transforming the image to the distance at each point
+
+$$ \textrm{thSkelImage}(x,y) = $$
+$$ \begin{cases}
+\textrm{cImg}_1(x,y) , & \textrm{cImg}_1(x,y)\geq MIN-DIST \\ 
+  &  \& \textrm{ cImg}_2(x,y)\geq MIN-SLOPE \\
+0, & \textrm{otherwise}
+\end{cases}$$ 
 
 ***
 
-```{r, fig.cap="Mesh Mask",fig.height=9}
-test.mesh<-expand.grid(xi=seq(-10,10,length.out=5),yi=seq(-10,10,length.out=4))
-test.mesh$ri<-runif(nrow(test.mesh),min=0.5,max=2)
-test.mesh.im<-make.sph.img(test.mesh)
-ggplot(subset(test.mesh.im,val==0),aes(x=x,y=y))+
-  geom_tile(color="black",fill="grey")+
-  labs(title="Object Mask")+
-  theme_bw(20)+coord_equal()
-```
+```{r, fig.cap="Skeleton",fig.height=9}
 
-Skeletonization
-===
-
-The first step is to take the distance transform the structure ( $I_d(x,y) = \textrm{dist}(I(x,y)$ ). We can see in this image there are already local maxima that form a sort of backbone which closely maps to what we are interested in. 
-
-
-```{r, fig.cap="Distance Map",fig.height=5}
-test.mesh.dist<-dist.map(test.mesh.im,fg.ph=0,bg.ph=1)
-ggplot(test.mesh.dist,aes(x=x,y=y,fill=dist))+
-  geom_tile(color="black")+
-  labs(title="Circle Distance Map",fill="Distance\nFrom\nSurface")+
-  theme_bw(20)+coord_equal()
-```
-
-***
-
-By using the laplacian filter as an approximate for the derivative operator which finds the values which high local gradients.
-
-$$ \nabla I_{d}(x,y) = \frac{\delta^2 I_d}{\delta x^2 I_d}+\frac{\delta^2}{\delta y^2} \approx \underbrace{\begin{bmatrix}
--1 & -1 & -1 \\
--1 & 8 & -1 \\
--1 & -1 & -1
-\end{bmatrix}}_{\textrm{Laplacian Kernel}} \otimes I_d(x,y) $$
-
-```{r, fig.cap="Skeleton",fig.height=5}
-# use a laplacian kernel
-lap.kernel<-data.frame(xi=c(-1, 0, 1,-1, 0, 1,-1, 0, 1),
-                       yi=c(-1,-1,-1, 0, 0, 0, 1, 1, 1),
-                       wi=c(-1,-1,-1,-1, 8,-1,-1,-1,-1))
-test.mesh.dif<-data.frame(x=c(),y=c(),val=c())
-for(i in 1:nrow(lap.kernel)) {
-  temp.df<-test.mesh.dist[,c("x","y")]
-  temp.df$val<-with(lap.kernel[i,],test.mesh.dist$dist*wi)
-  temp.df$x<-with(lap.kernel[i,],temp.df$x+diff(x.grid)[1]*xi)
-  temp.df$y<-with(lap.kernel[i,],temp.df$y+diff(x.grid)[1]*yi)
-  test.mesh.dif<-rbind(test.mesh.dif,temp.df)
-}
-test.mesh.dif<-ddply(test.mesh.dif,.(x,y),function(all.vals) {
-  data.frame(val=sum(all.vals$val))
-})
-ggplot(test.mesh.dif,aes(x=x,y=y,fill=val))+
-  geom_tile(color="black")+
-  labs(title="Laplacian Image",fill="Laplacian/\nGradient")+
-  theme_bw(20)+coord_equal()+scale_fill_gradient2()
-```
-
-Creating the skeleton
-===
-
-We can locate the local maxima of the structure by setting a minimum surface distance 
-$$I_d(x,y)>MIN-SLOPE$$
-and combining it with a minimum slope value 
-$$\nabla I_d(x,y) > MIN-DIST$$
-
-***
-
-```{r, fig.cap="Skeleton",fig.height=5}
 merge.mesh.dif<-rbind(
-  cbind(subset(test.mesh.dif,val>1),type="Slope\nPoints",dist=0),
-  cbind(subset(test.mesh.dist,dist>1.5),type="Non-surface\nPoints",val=0))
-
-ggplot(merge.mesh.dif,aes(x=x,y=y,fill=type))+
-  geom_tile(color="black",alpha=0.5)+
-  labs(title="Min Slope=1, Min Dist=1.5",fill="Source")+
-  theme_bw(20)+coord_equal()
-```
-
-```{r, fig.cap="Skeleton",fig.height=5}
-merge.mesh.dif<-rbind(
-  cbind(subset(test.mesh.dif,val>0),type="Slope\nPoints",dist=0),
-  cbind(subset(test.mesh.dist,dist>1),type="Non-surface\nPoints",val=0))
-ggplot(merge.mesh.dif,aes(x=x,y=y,fill=type))+
-  geom_tile(color="black",alpha=0.5)+
-  labs(title="Min Slope=0, Min Dist=1.5",fill="Source")+
-  theme_bw(20)+coord_equal()
-```
-
-
-Overlapped Images
-===
-```{r, fig.cap="Skeleton",fig.height=5}
-
+  cbind(subset(test.mesh.dist,dist>sqrt(3)),type="Non-surface\nPoints",val=0),
+  cbind(subset(test.mesh.dif,val>1),type="Slope\nPoints",dist=0)
+  )
 overlap.im<-ddply(merge.mesh.dif,.(x,y),function(c.pts) {
   data.frame(cnt=nrow(c.pts), # points from how many images are present
              dist=max(c.pts$dist))
 })
+
+th_fillmap<-scale_fill_gradientn(colours=rainbow(10),limits=c(0,max(test.mesh.dist$dist)))
 ggplot(subset(overlap.im,cnt==2),aes(x=x,y=y,fill=dist))+
-  geom_tile(color="black",alpha=0.5)+
-  labs(title="Min Slope=0, Min Dist=1.5",fill="Source")+
+  geom_tile(color="black",alpha=1)+
+  labs(title="Value Skeleton",fill="Source")+
+  th_fillmap+
   theme_bw(20)+coord_equal()
 ```
+
+
+From Skeleton vs All Points
+===
+
+```{r, fig.cap="Thickness from skeleton",fig.height=6,results='markup'}
+
+
+filled.skel<-fill.img.fn(subset(overlap.im,cnt==2),step.size=0.25,dist=0,cnt=0)
+system.time(skthmap<-thick.map(filled.skel))
+ggplot(skthmap,aes(x=x,y=y,fill=sph.rad))+
+  geom_tile(color="black")+
+   th_fillmap+
+  labs(title="Thickness From Skeleton",fill="Sphere\nRadius")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+```{r, fig.cap="Thickness from all points",fig.height=6,results='markup'}
+
+system.time(thmap<-thick.map(test.mesh.dist))
+ggplot(thmap,aes(x=x,y=y,fill=sph.rad))+
+  geom_tile(color="black")+
+  labs(title="Full Thickness Map",fill="Sphere\nRadius")+
+  th_fillmap+
+  theme_bw(20)+coord_equal()
+```
+
+Statistically Does it Matter
+===
+
+```{r, fig.cap="Thickness from all points",fig.height=6}
+
+ggplot(rbind(
+  cbind(skthmap,type="Skeleton Map"),
+  cbind(thmap,type="Full Map")),aes(x=sph.rad,color=type))+
+  geom_density(aes(y=..count..))+
+  labs(x="Sphere Radius",y="Voxel Count",color="Algorithm")+
+  theme_bw(20)
+```
+
+
+Watershed
+===
+type:alert
+
+Watershed is a method for segmenting objects without using component labeling. 
+- It utilizes the shape of structures to find objects
+- Imagine how rain would fall on a topographical map
+
