@@ -52,7 +52,7 @@ df.to.im<-function(in.df,val.col="val",inv=F) {
   out.mat
   }
 ddply.cutcols<-function(...,cols=1) {
-  # run standard ddply command
+  # run standard ddply command 
   cur.table<-ddply(...)
   cutlabel.fixer<-function(oVal) {
     sapply(oVal,function(x) {
@@ -143,6 +143,8 @@ extents.fun<-function(in.df) {
                                          ymax=c(emax(c.cell$y),c.cell.mean$y)))
     })
   }
+
+th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))
 ```
 
 Quantitative Big Imaging 
@@ -271,17 +273,7 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 - Is it a cell or organelle with docking sites for cell?
 - Neither extents nor anisotropy are very meaningful, we need a __more specific metric__ which can characterize
 
-Distance Maps: What is it
-===
-type: alert
-
-The distance map is an image where each voxel contains a value. For each image there are two possible distance maps. 
-
-1. Foreground where each voxel in the foreground becomes a value for the distance to the closest background voxel.
-1. Background where each voxel in the background becomes a value for the distance to the closest foreground voxel.
-
-
-Distance Maps
+Distance Maps: What are they
 ===
 ```{r dist_map_code}
 # Distance map code
@@ -313,17 +305,14 @@ dist.map<-function(in.df,fg.ph=155,bg.ph=0) {
     data.frame(dist=sqrt(min(with(background.df,(x-ix)^2+(y-iy)^2))))
   })
 }
-```
 
-Starting with the following object with voxels defined as either foreground or background
 
-```{r, fig.cap="Simple Circles",fig.height=4}
 # grid used for all datasets
 x.grid<-seq(-10,10,length.out=81)
 # function to make a test circle image
-make.sph.img<-function(sph.list) {
+make.sph.img<-function(sph.list,in.grid=x.grid) {
   
-  test.sph.img<-expand.grid(x=x.grid,y=x.grid)
+  test.sph.img<-expand.grid(x=in.grid,y=in.grid)
   test.sph.img$val<-0
   
   for(i in 1:nrow(sph.list)) {
@@ -334,13 +323,44 @@ make.sph.img<-function(sph.list) {
     }
   test.sph.img
   }
+
+```
+
+A map (or image) of distances. Each point in the map is the distance that point is from a given feature of interest (surface of an object, ROI, center of object, etc)
+
+```{r, fig.cap="Simple Circles",fig.height=5}
+test.sph.list<-data.frame(xi=c(-3,-3, 5, 5),
+                    yi=c(-5, 5,-3, 5),
+                    ri=c( 2, 3, 5, 2))
+test.img<-make.sph.img(test.sph.list,seq(0,10))
+ggplot(fill.img.fn(dist.map(test.img,fg.ph=1,bg.ph=0),dist=0),aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  geom_text(aes(label=ifelse(dist>0,round(dist*10)/10,"Obj")))+
+  th_fillmap.fn(2)+
+  labs(title="Object Distance Map",fill="Distance\nFrom\nObject")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+### Definition
+If we start with an image as a collection of points divided into two categories 
+- $Im(x,y)=$ {Foreground, Background}
+- We can define a distance map operator ($dist$) that transforms the image into a distance map
+
+$$ dist(\vec{x}) = \textrm{min}(||\vec{x}-\vec{y}|| \forall \vec{y} \in \textrm{Background}) $$
+
+We will use Euclidean distance $||\vec{x}-\vec{y}||$ for this class but there are other metrics which make sense when dealing with other types of data like Manhattan/City-block or weighted metrics.
+
+Distance Maps
+===
+```{r, fig.cap="Simple Circles",fig.height=4}
 test.sph.list<-data.frame(xi=c(-3,-3, 5, 5),
                     yi=c(-5, 5,-3, 5),
                     ri=c( 2, 3, 5, 2))
 test.img<-make.sph.img(test.sph.list)
-ggplot(cbind(test.img,label=ifelse(test.img$val,"Foreground","Background")),aes(x=x,y=y,fill=label))+
+ggplot(cbind(test.img,label=ifelse(test.img$val,"FG","BG")),aes(x=x,y=y,fill=label))+
   geom_tile(color="black")+
-  labs(title="Object Mask",fill="Label")+
+  labs(title="Foreground and Background",fill="Label")+
   theme_bw(20)+coord_equal()
 ```
 
@@ -348,6 +368,7 @@ We can create 2 distance maps
 
 1. Foreground $\rightarrow$ Background 
  - Information about the objects size and interior
+
 1. Background $\rightarrow$ Foreground 
  - Information about the distance / space between objects
 
@@ -357,6 +378,7 @@ We can create 2 distance maps
 ggplot(dist.map(test.img,fg.ph=1,bg.ph=0),aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Object Distance Map",fill="Distance\nFrom\nSurface")+
+  th_fillmap.fn(6)+
   theme_bw(20)+coord_equal()
 ```
 
@@ -364,6 +386,7 @@ ggplot(dist.map(test.img,fg.ph=1,bg.ph=0),aes(x=x,y=y,fill=dist))+
 ggplot(dist.map(test.img,fg.ph=0,bg.ph=1),aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Background Distance Map",fill="Distance\nFrom\nSurface")+
+  th_fillmap.fn(6)+
   theme_bw(20)+coord_equal()
 ```
 
@@ -527,7 +550,7 @@ $$ \begin{cases}
 \end{cases}$$ 
 
 
-Different Thresholds
+Skeleton: Different Thresholds
 ===
 
 ```{r, fig.cap="Skeleton",fig.height=9}
@@ -556,7 +579,7 @@ ggplot(merge.mesh.dif,aes(x=x,y=y,fill=type))+
 ```
 
 
-Pruning 
+Skeleton: Pruning 
 ===
 
 ```{r, fig.cap="Skeleton",fig.height=9}
@@ -579,11 +602,95 @@ ggplot(subset(overlap.im,cnt==2),aes(x=x,y=y))+
 - Stricter 'thresholds' 
 
 
+
+Skeleton: Junctions 
+===
+
+With the skeleton which is ideally one voxel thick, we can characterize the junctions in the system by looking at the neighborhood of each voxel.
+
+```{r, fig.cap="Skeleton",fig.height=9}
+
+make.junc<-function(in.skel,step.size=1,max.dist=1) {
+  t.neighbors<-subset(
+    expand.grid(xv=step.size*c(-1:1),yv=step.size*c(-1:1)),
+    sqrt(xv^2+yv^2)<=(max.dist*step.size))
+  spread.skel<-ddply(t.neighbors,.(xv,yv),function(c.off) {
+    data.frame(x=in.skel$x+c.off[1,"xv"],
+              y=in.skel$y+c.off[1,"yv"])
+  })
+  f.skel<-subset(
+    ddply(spread.skel,.(x,y),function(in.pt) data.frame(cnt=nrow(in.pt))),
+    cnt>1)
+  f.skel$label<-with(f.skel,ifelse(cnt==2,"Terminal",ifelse(cnt==3,"Segment",ifelse(cnt>3,"Junction",""))))
+  f.skel
+}
+
+pruned.skeleton<-subset(overlap.im,cnt==2)
+
+junc.skel1<-make.junc(pruned.skeleton,step.size=0.25,max.dist=1)
+
+ggplot(junc.skel1,aes(x=x,y=y,fill=label))+
+  geom_tile(color="black",alpha=0.9)+
+  labs(title="Cross Neighborhood",fill="Type")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+As with _nearly_ every operation, the neighborhood we define is important and we can see that if we use a box neighborhood vs a cross neighborhood (4 vs 8 adjacent) we count diagonal connections differently
+
+```{r, fig.cap="Skeleton",fig.height=9}
+junc.skel2<-make.junc(pruned.skeleton,step.size=0.25,max.dist=2)
+
+ggplot(junc.skel2,aes(x=x,y=y,fill=label))+
+  geom_tile(color="black",alpha=0.9)+
+  labs(title="Box Neighborhood",fill="Type")+
+  theme_bw(20)+coord_equal()
+```
+
+Skeleton: Network Assessment
+===
+type: alert
+Once we have classified the skeleton into _terminals_, _segments_, and _junctions_ we can analyze the various components and assess metrics like connectivity, branching, and many other. 
+
+The easist way is to further process the image by
+- component labeling the different segments and joints
+- determining the average length of each segment
+- number of incoming segments at a given joint
+
+
+***
+Most of the other metrics can be simply counted
+
+### Cross Neighborhood
+
+```{r, results='asis'}
+kable(aggregate(x~label,data=junc.skel1,FUN=length))
+```
+
+### Box Neighborhood
+
+```{r, results='asis'}
+kable(aggregate(x~label,data=junc.skel2,FUN=length))
+```
+
+Skeleton: Tortuosity
+===
+
+One of the more interesting ones in material science is called tortuosity and it is defined as the ratio between the arc-length of a _segment_ and the distance between its starting and ending points. 
+$$ \tau = \frac{L}{C} $$
+
+A high degree of [tortuosity](http://en.wikipedia.org/wiki/Tortuosity) indicates that the network is convoluted and is important when estimating or predicting flow rates.
+Specifically
+- in geology it is an indication that diffusion and fluid transport will occur more slowly
+- in analytical chemistry it is utilized to perform size exclusion chromatography
+- in vascular tissue it can be a sign of pathology.
+
+
+
 Thickness Map: What is it?
 ===
 type:alert
-
-
 
 
 Thickness Map
@@ -611,7 +718,7 @@ thick.map<-function(dist.df,min.dist=0.25) {
 ```{r, fig.cap="Cell Distance Map",fig.height=6}
 
 dmap.fg<-dist.map(fill.img,fg.ph=155,bg.ph=0)
-th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))
+
 ggplot(dmap.fg,aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
   labs(title="Single Cell",fill="Distance\nFrom\nSurface")+
@@ -792,6 +899,7 @@ kable(comp.table)
 
 Thickness in 3D Images
 ===
+type:alert
 
 
 Watershed
@@ -815,6 +923,7 @@ ggplot(dist.map(make.sph.img(test.sph.list.big),fg.ph=1,bg.ph=0),aes(x=x,y=y,fil
   theme_bw(20)+coord_equal()
 ```
 
+
 Curvature
 ===
 type:alert
@@ -833,3 +942,19 @@ Curvature: Take Home Message
 It provides another metric for characterizing complex shapes
 - Particularly useful for examining interfaces
  - Folds, saddles, and many other types of points are not characterized well be ellipsoids or thickness maps
+
+
+Other Techniques
+===
+
+There are hundreds of other techniques which can be applied to these complicated structures, but they go beyond the scope of this course. Many of them are model-based which means they work well but only for particular types of samples or images. Of the more general techniques several which are easily testable inside of FIJI are 
+- Directional Analysis = Looking at the orientation of different components using Fourier analysis (_Analyze_ $\rightarrow$ _Directionality_)
+- Tubeness / Surfaceness (_Plugins_ $\rightarrow$ _Analyze_ $\rightarrow$) characterize binary images and the shape at each point similar to curvature but with a different underlying model
+
+*** 
+- Fractal Dimensionality = A metric for assessing the structure as you scale up and down by examining various spatial relationships
+ - Ma, D., Stoica, A. D., & Wang, X.-L. (2009). Power-law scaling and fractal nature of medium-range order in metallic glasses. Nature Materials, 8(1), 30–4. doi:10.1038/nmat2340
+- Two (or more) point correlation functions = Used in theoretical material science and physics to describe random materials and can be used to characterize distances, orientations, and organization in complex samples 
+ - Jiao, Y., Stillinger, F., & Torquato, S. (2007). Modeling heterogeneous materials via two-point correlation functions: Basic principles. Physical Review E, 76(3). doi:10.1103/PhysRevE.76.031110
+ - Andrey, P., Kiêu, K., Kress, C., Lehmann, G., Tirichine, L., Liu, Z., … Debey, P. (2010). Statistical analysis of 3D images detects regular spatial distributions of centromeres and chromocenters in animal and plant nuclei. PLoS Computational Biology, 6(7), e1000853. doi:10.1371/journal.pcbi.1000853
+ - Haghpanahi, M., & Miramini, S. (2008). Extraction of morphological parameters of tissue engineering scaffolds using two-point correlation function, 463–466. Retrieved from http://portal.acm.org/citation.cfm?id=1713360.1713456
