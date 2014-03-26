@@ -271,6 +271,15 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 - Is it a cell or organelle with docking sites for cell?
 - Neither extents nor anisotropy are very meaningful, we need a __more specific metric__ which can characterize
 
+Distance Maps: What is it
+===
+type: alert
+
+The distance map is an image where each voxel contains a value. For each image there are two possible distance maps. 
+
+1. Foreground where each voxel in the foreground becomes a value for the distance to the closest background voxel.
+1. Background where each voxel in the background becomes a value for the distance to the closest foreground voxel.
+
 
 Distance Maps
 ===
@@ -306,10 +315,7 @@ dist.map<-function(in.df,fg.ph=155,bg.ph=0) {
 }
 ```
 
-The distance map is an image where each voxel contains a value. For each image there are two possible distance maps. 
-
-1.  Foreground where each voxel in the foreground becomes a value for the distance to the closest background voxel.
-1. Background where each voxel in the background becomes a value for the distance to the closest foreground voxel.
+Starting with the following object with voxels defined as either foreground or background
 
 ```{r, fig.cap="Simple Circles",fig.height=4}
 # grid used for all datasets
@@ -332,12 +338,18 @@ test.sph.list<-data.frame(xi=c(-3,-3, 5, 5),
                     yi=c(-5, 5,-3, 5),
                     ri=c( 2, 3, 5, 2))
 test.img<-make.sph.img(test.sph.list)
-ggplot(subset(test.img,val>0),aes(x=x,y=y))+
-  geom_tile(color="black",fill="grey")+
-  labs(title="Object Mask")+
+ggplot(cbind(test.img,label=ifelse(test.img$val,"Foreground","Background")),aes(x=x,y=y,fill=label))+
+  geom_tile(color="black")+
+  labs(title="Object Mask",fill="Label")+
   theme_bw(20)+coord_equal()
 ```
 
+We can create 2 distance maps
+
+1. Foreground $\rightarrow$ Background 
+ - Information about the objects size and interior
+1. Background $\rightarrow$ Foreground 
+ - Information about the distance / space between objects
 
 ***
 
@@ -567,6 +579,13 @@ ggplot(subset(overlap.im,cnt==2),aes(x=x,y=y))+
 - Stricter 'thresholds' 
 
 
+Thickness Map: What is it?
+===
+type:alert
+
+
+
+
 Thickness Map
 ===
 ```{r thick_map}
@@ -751,7 +770,7 @@ ggplot(tskthmap,aes(x=x,y=y,fill=sph.rad))+
 
 ***
 
-```{r, fig.cap="Thickness from all points",fig.height=4}
+```{r, fig.cap="Thickness Distributions Compared",fig.height=4}
 hist.sum<-ddply.cutcols(rbind(
     cbind(thmap,type="Full Map"),
     cbind(skthmap,type="Skeleton Map"),
@@ -771,6 +790,10 @@ names(comp.table)<-c("Full Map","Skeleton Map","Tiny Skeleton Map")
 kable(comp.table)
 ```
 
+Thickness in 3D Images
+===
+
+
 Watershed
 ===
 type:alert
@@ -779,11 +802,34 @@ Watershed is a method for segmenting objects without using component labeling.
 - It utilizes the shape of structures to find objects
 - Imagine how rain would fall on a topographical map
 
+***
+
+```{r, fig.cap="Closer Circles",fig.height=4}
+test.sph.list.big<-test.sph.list
+# bring everything closer
+test.sph.list.big$xi<-0.95*test.sph.list.big$xi
+test.sph.list.big$yi<-0.95*test.sph.list.big$yi
+ggplot(dist.map(make.sph.img(test.sph.list.big),fg.ph=1,bg.ph=0),aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  labs(title="Same Circles, a bit closer",fill="Distance\nFrom\nSurface")+
+  theme_bw(20)+coord_equal()
+```
 
 Curvature
 ===
 type:alert
+"Computation of Surface Curvature from Range Images Using Geometrically Intrinsic Weights"*, T. Kurita and P. Boulanger, 1992.
+
+http://en.wikipedia.org/wiki/Mean_curvature
+
+
 
 Characteristic Shape
 ===
 type:alert
+
+Curvature: Take Home Message
+===
+It provides another metric for characterizing complex shapes
+- Particularly useful for examining interfaces
+ - Folds, saddles, and many other types of points are not characterized well be ellipsoids or thickness maps
