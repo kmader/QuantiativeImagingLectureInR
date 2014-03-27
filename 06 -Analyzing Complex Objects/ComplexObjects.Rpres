@@ -150,7 +150,7 @@ th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 20 March 2014
+date: 27 March 2014
 width: 1440
 height: 900
 css: ../template.css
@@ -171,17 +171,26 @@ Course Outline
 - 10th April -  Statistics and Reproducibility
 - 17th April - Dynamic Experiments
 - 8th May - Big Data
-- 15th May - Guest Lecture - Applications in Material Science
+- 15th May - Guest Lecture - In-Operando Imaging of Batteries (V. Wood)
 - 22th May - Project Presentations
 
 Literature / Useful References
 ========================================================
-
+### Books
 - Jean Claude, Morphometry with R
 - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
 - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
 - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+
+*** 
+### Papers / Sites
+- Thickness
+ - [1] Hildebrand, T., & Ruegsegger, P. (1997). A new method for the model-independent assessment of thickness in three-dimensional images. Journal of Microscopy, 185(1), 67–75. doi:10.1046/j.1365-2818.1997.1340694.x
+- Curvature
+ - http://mathworld.wolfram.com/MeanCurvature.html
+ - [2] "Computation of Surface Curvature from Range Images Using Geometrically Intrinsic Weights"*, T. Kurita and P. Boulanger, 1992.
+
 
 
 Previously on QBI ...
@@ -294,15 +303,18 @@ fill.img.fn<-function(in.img,step.size=1,...) {
         })
 }
 fill.img<-fill.img.fn(cur.cell.df)
-
-dist.map<-function(in.df,fg.ph=155,bg.ph=0) {
+euclid.dist<-function(x,x0,y,y0) sqrt((x-x0)^2+(y-y0)^2)
+man.dist<-function(x,x0,y,y0) abs(x-x0)+abs(y-y0)
+dist.map<-function(in.df,fg.ph=155,bg.ph=0,dist.fn=euclid.dist) {
   foreground.df<-subset(in.df,val==fg.ph)
   background.df<-subset(in.df,val==bg.ph)
   ddply(foreground.df,.(x,y),function(c.pos) {
     ix<-c.pos$x[1]
     iy<-c.pos$y[1]
     # calculate the minimum distance to a background voxel
-    data.frame(dist=sqrt(min(with(background.df,(x-ix)^2+(y-iy)^2))))
+    data.frame(dist=min(
+      with(background.df,dist.fn(x,ix,y,iy))
+      ))
   })
 }
 
@@ -332,12 +344,12 @@ A map (or image) of distances. Each point in the map is the distance that point 
 test.sph.list<-data.frame(xi=c(-3,-3, 5, 5),
                     yi=c(-5, 5,-3, 5),
                     ri=c( 2, 3, 5, 2))
-test.img<-make.sph.img(test.sph.list,seq(0,10))
-ggplot(fill.img.fn(dist.map(test.img,fg.ph=1,bg.ph=0),dist=0),aes(x=x,y=y,fill=dist))+
+test.img<-make.sph.img(test.sph.list,seq(-2,8))
+
+ggplot(test.img,aes(x=x,y=y,fill=ifelse(val,"FG","BG")))+
   geom_tile(color="black")+
-  geom_text(aes(label=ifelse(dist>0,round(dist*10)/10,"Obj")))+
-  th_fillmap.fn(2)+
-  labs(title="Object Distance Map",fill="Distance\nFrom\nObject")+
+  geom_text(aes(label=ifelse(val,"FG","BG")))+
+  labs(title="Object Distance Map",fill="Phase")+
   theme_bw(20)+coord_equal()
 ```
 
@@ -350,6 +362,53 @@ If we start with an image as a collection of points divided into two categories
 $$ dist(\vec{x}) = \textrm{min}(||\vec{x}-\vec{y}|| \forall \vec{y} \in \textrm{Background}) $$
 
 We will use Euclidean distance $||\vec{x}-\vec{y}||$ for this class but there are other metrics which make sense when dealing with other types of data like Manhattan/City-block or weighted metrics.
+
+Distance Maps: Types
+===
+Using this rule a distance map can be made for the euclidean metric 
+```{r, fig.cap="Simple Circles",fig.height=5}
+ggplot(fill.img.fn(dist.map(test.img,fg.ph=1,bg.ph=0),dist=0),aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  geom_text(aes(label=ifelse(dist>0,round(dist*10)/10,"Obj")))+
+  th_fillmap.fn(4)+
+  labs(title="Euclidean Distance",fill="Distance\nFrom\nObject")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+Similarly the Manhattan or city block distance metric can be used where the distance is defined as 
+$$ \sum_{i} |\vec{x}-\vec{y}|_i $$
+
+```{r, fig.cap="Simple Circles",fig.height=5}
+ggplot(fill.img.fn(dist.map(test.img,fg.ph=1,bg.ph=0,dist.fn=man.dist),dist=0),aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  geom_text(aes(label=ifelse(dist>0,round(dist*10)/10,"Obj")))+
+  th_fillmap.fn(4)+
+  labs(title="Manhattan / City Block Distance",fill="Distance\nFrom\nObject")+
+  theme_bw(20)+coord_equal()
+```
+
+Distance Maps: Precaution
+===
+type: alert
+
+The distance map is one of the crictical points where the resolution of the imaging system is important. 
+- We measure distances computationally in pixels or voxels
+- but for them to have a meaning physically they must be converted
+ - Isotropic imaging (1 $\mu$ m x 1$\mu$ m x 1 $\mu$ m) is __fine__
+ 
+***
+
+### Anisotropic
+Ideally 
+
+- as part of filtering, resample and convert to an isotropic scale. 
+
+If that is not possible 
+
+- custom distance map algorithms which use the side-lengths of the voxels to calculate distance rather than assuming 1x1x1
+
 
 Distance Maps
 ===
@@ -545,7 +604,7 @@ $$ \textrm{cImg}(x,y) = \langle \underbrace{I_d(x,y)}_1, \underbrace{\nabla I_d(
 $$ \textrm{skelImage}(x,y) = $$
 $$ \begin{cases}
 1, & \textrm{cImg}_1(x,y)\geq MIN-DIST \\ 
- \textbf{ AND} &   \textrm{cImg}_2(x,y)\geq MIN-SLOPE \\
+ &  \& \textrm{ cImg}_2(x,y)\geq MIN-SLOPE \\
 0, & \textrm{otherwise}
 \end{cases}$$ 
 
@@ -597,9 +656,15 @@ ggplot(subset(overlap.im,cnt==2),aes(x=x,y=y))+
 
 ***
 
-### Pruning
-- The structure is a overgrown
-- Stricter 'thresholds' 
+The structure is a overgrown
+
+1. Stricter 'thresholds' 
+ - Sensitive to 'threshold' selection
+ - Resolution dependent
+1. Dedicated pruning algorithms
+ - Ideally model-based
+ - Minimum branch length
+ - Minimum branch width
 
 
 
@@ -650,7 +715,7 @@ ggplot(junc.skel2,aes(x=x,y=y,fill=label))+
 
 Skeleton: Network Assessment
 ===
-type: alert
+
 Once we have classified the skeleton into _terminals_, _segments_, and _junctions_ we can analyze the various components and assess metrics like connectivity, branching, and many other. 
 
 The easist way is to further process the image by
@@ -690,7 +755,25 @@ Specifically
 
 Thickness Map: What is it?
 ===
-type:alert
+
+Thickness is a metric for assessing the size and structure of objects in a very generic manner. 
+For every point $\vec{x}$ in the image you find the largest sphere which:
+- contains that point
+- is entirely contained within the object
+
+***
+
+![Thickness Diagram](ext-figures/ThickOverview.png) 
+Taken from [1]
+
+- The image shows a typical object
+- The sphere centered at point $p$ with a radius $r$ is the largest that fits
+
+### Application
+
+- Ideal for spherical and cylindrical objects since it shows their radius
+- Also relevant for flow and diffusion since it can highlight bottlenecks in structure
+
 
 
 Thickness Map
@@ -899,50 +982,228 @@ kable(comp.table)
 
 Thickness in 3D Images
 ===
-type:alert
+
+While the examples and demonstrations so far have been shown in 2D, the same exact technique can be applied to 3D data as well. For example for this liquid foam structure
+
+![Liquid Foam Plateau Border](ext-figures/3dfoam.png)
+
+***
+- The thickness can be calculated of the background (air) voxels in the same manner.
+
+- With care, this can be used as a proxy for bubble size distribution in systems where all the bubbles are connected to it is difficult to identify single ones.
+
+
+![Liquid Foam Thickness](ext-figures/thk3dfoam.png)
 
 
 Watershed
 ===
-type:alert
 
 Watershed is a method for segmenting objects without using component labeling. 
 - It utilizes the shape of structures to find objects
-- Imagine how rain would fall on a topographical map
+- From the distance map we can make out substructures with our eyes
+- But how to we find them?!
 
 ***
 
-```{r, fig.cap="Closer Circles",fig.height=4}
+```{r, fig.cap="Closer Circles",fig.height=9}
 test.sph.list.big<-test.sph.list
 # bring everything closer
 test.sph.list.big$xi<-0.95*test.sph.list.big$xi
 test.sph.list.big$yi<-0.95*test.sph.list.big$yi
-ggplot(dist.map(make.sph.img(test.sph.list.big),fg.ph=1,bg.ph=0),aes(x=x,y=y,fill=dist))+
+
+ws.distmap<-dist.map(make.sph.img(test.sph.list.big,seq(-10,10)),fg.ph=1,bg.ph=0)
+
+ggplot(ws.distmap,aes(x=x,y=y,fill=dist))+
   geom_tile(color="black")+
-  labs(title="Same Circles, a bit closer",fill="Distance\nFrom\nSurface")+
+  labs(title="Original Distance Map",fill="Distance\nFrom\nSurface")+
+  theme_bw(20)+coord_equal()
+```
+
+Watershed: Flowing Downhill
+===
+
+So we start by distributing pixels all across the image
+```{r, fig.cap="Closer Circles",fig.height=9}
+
+ws.distmap$count<-1 # evenly distributed
+ws.distmap$orig.x<-ws.distmap$x
+ws.distmap$orig.y<-ws.distmap$y
+ggplot(ws.distmap,aes(x=x,y=y,fill=dist))+
+  geom_tile(color="black")+
+  geom_tile(aes(color=as.factor(count)),fill="red",alpha=0.5,size=.2)+
+  labs(title="Initial Distribution of Water",fill="Distance\nFrom\nSurface",
+       color="Water\nCount")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+If any of the neighbors have a higher distance (more downhill) then move to that position
+```{r watershed_code}
+single.watershed<-function(ws.dmap,s.dist=1) {
+  ws.fun<-function(in.pos) {
+    c.pos<-in.pos[1,]
+    # all the points within range of the current voxel with a greater distance
+    # since everything flows uphill
+    jump.pts<-subset(ws.dmap,
+           (sqrt( (x-c.pos$x)^2 + (y-c.pos$y)^2 )<=s.dist) & dist>=c.pos$dist)
+    jump.pts<-jump.pts[order(-jump.pts$dist),]
+    # find the furtherst point and
+    # save the old positions
+    best.pts<-cbind(jump.pts[1,c("x","y","dist")],
+                    orig.x=in.pos$orig.x,
+                    orig.y=in.pos$orig.y,
+                    count=in.pos$count)
+
+    # leave an empty copy of the voxel behind (c.pos)
+    c.pos$count<-0
+    rbind(best.pts,
+          c.pos)
+    
+  }
+  rbind(
+    ddply(subset(ws.dmap,count>0),.(x,y),ws.fun),
+    subset(ws.dmap,count==0)
+    )
+} 
+
+prop.watershed<-function(...,iters=1) {
+  if(iters>1) prop.watershed(single.watershed(...),iters=iters-1)
+  else single.watershed(...)
+}
+show.watershed<-function(ju.tab) 
+  ddply(ju.tab,.(x,y),function(c.pos) data.frame(dist=c.pos[1,"dist"],count=sum(c.pos[,"count"])))
+```
+```{r, fig.cap="Closer Circles",fig.height=9}
+
+ws.onestep<-prop.watershed(ws.distmap,sqrt(2),iters=1)
+ggplot(show.watershed(ws.onestep),aes(x=x,y=y,fill=dist))+
+  geom_tile(aes(fill=as.factor(count),color=dist),size=.2)+
+  labs(title="After one step",color="Distance\nFrom\nSurface",
+       fill="Water\nCount")+
+  theme_bw(20)+coord_equal()
+```
+
+Watershed: More flowing
+===
+```{r, fig.cap="Closer Circles",fig.height=9}
+
+ws.fewstep<-prop.watershed(ws.onestep,sqrt(2),iters=1)
+ggplot(show.watershed(ws.fewstep),aes(x=x,y=y,fill=dist))+
+  geom_tile(aes(fill=(count),color=dist),size=1)+
+  labs(title="After 2 steps",color="Distance\nFrom\nSurface",
+       fill="Water\nCount")+
+   scale_fill_gradientn(colours=rainbow(10))+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+```{r, fig.cap="Closer Circles",fig.height=9}
+ws.manysteps<-prop.watershed(ws.fewstep,sqrt(2),iters=4)
+ggplot(show.watershed(ws.manysteps),aes(x=x,y=y,fill=dist))+
+  geom_tile(aes(fill=as.factor(count),color=dist),size=.3)+
+  labs(title="After 6 steps",color="Distance\nFrom\nSurface",
+       fill="Water\nCount")+
+  theme_bw(20)+coord_equal()
+```
+
+Watershed: Regrowing
+===
+We can then take the points from these basins and regrow them back to their original size and these represent the watershed regions of our image
+
+***
+
+```{r, fig.cap="Closer Circles",fig.height=9}
+ws.manysteps$label<-with(ws.manysteps,paste("Cent:",x,",",y,sep=""))
+ggplot(subset(ws.manysteps,count>0),aes(x=orig.x,y=orig.y))+
+  geom_tile(aes(fill=label),color="black")+
+  labs(title="After 6 steps",
+       fill="Watershed")+
   theme_bw(20)+coord_equal()
 ```
 
 
+
 Curvature
 ===
-type:alert
-"Computation of Surface Curvature from Range Images Using Geometrically Intrinsic Weights"*, T. Kurita and P. Boulanger, 1992.
 
-http://en.wikipedia.org/wiki/Mean_curvature
+Curvature is a metric related to the surface or interface between phases or objects. 
+- It is most easily understood in its 1D sense or being the radius of the circle that matchs the local shape of a curve
+
+![Curvature-Wikipedia](http://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Osculating_circle.svg/250px-Osculating_circle.svg.png)
+
+- Mathematically it is defined as 
+
+$$ \kappa = \frac{1}{R} $$
+
+- Thus a low curvature means the value means a very large radius and a small curvature means a very small radius
+
+
+Curvature: Surface Normal
+===
+
+In order to meaningfully talk about curvatures of surfaces, we first need to define a consistent frame of reference for examining the surface of an object. We thus define a surface normal vector as a vector oriented orthogonally to the surface away from the interior of the object $\rightarrow \vec{N}$
+![Surface](ext-figures/3Dsurface.png)
+![Surface Normals](ext-figures/3DsurfaceWiNormals.png)
+
+Curvature: 3D
+===
+With the notion of surface normal defined ($\vec{N}$), we can define many curvatures at point $\vec{x}$ on the surface. 
+- This is because there are infinitely many planes which contain both point $\vec{x}$ and $\vec{N}$ 
+- More generally we can define an angle $\theta$ about which a single plane containing both can be freely rotated
+- We can then define two principal curvatures by taking the maximum and minimum of this curve
+
+$$ \kappa_1 = \textrm{max}(\kappa(\theta)) $$
+$$ \kappa_2 = \textrm{min}(\kappa(\theta)) $$
+
+***
+
+### Mean Curvature
+The mean of the two principal curvatures
+$$ H = \frac{1}{2}(\kappa_1+\kappa_2) $$
+
+### Gaussian Curvature
+The mean of the two principal curvatures
+$$ K = \kappa_1\kappa_2 $$
+- positive for spheres (or spherical inclusions)
+ - curvatures agree in sign
+- negative for saddles (hyperboloid surfaces)
+ - curvatures disgree in sign
+- 0 for planes
+
+Curvature: 3D Examples
+===
+Examining a complex structure with no meaningful ellipsoidal or watershed model. The images themselves show the type of substructures and shapes which are present in the sample. 
+
+
+![Mean Curvature](ext-figures/Complicated3DsurfaceMCurv.png)
+
+
+***
+
+- gaussian curvature:  the comparative amount of surface at, above, and below 0 
+ - from spherical particles into annealed mesh of balls
+
+![Gaussian Curvature](ext-figures/Complicated3DsurfaceGCurv.png)
 
 
 
 Characteristic Shape
 ===
-type:alert
+
+Characteristic shape can be calculated by measuring principal curvatures and normalizing them by scaling to the structure size. A distribution of these curvatures then provides shape information on a structure indepedent of the size. 
+
+For example a structure transitioning from a collection of perfectly spherical particles to a annealed solid will go from having many round spherical faces with positive gaussian curvature to many saddles and more complicated structures with 0 or negative curvature.
+
 
 Curvature: Take Home Message
 ===
 It provides another metric for characterizing complex shapes
 - Particularly useful for examining interfaces
  - Folds, saddles, and many other types of points are not characterized well be ellipsoids or thickness maps
-
+- Provides a scale-free metric for assessing structures
+- Can provide visual indications of structural changes
 
 Other Techniques
 ===
