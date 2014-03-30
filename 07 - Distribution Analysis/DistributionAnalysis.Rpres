@@ -72,6 +72,21 @@ ddply.cutcols<-function(...,cols=1) {
   cur.table
   }
 
+```
+
+```{r utility_functions,results='hide',cache=FALSE}
+## Standard image processing tools which I use for visualizing the examples in the script
+commean.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    weight.sum<-sum(c.cell$weight)
+    data.frame(xv=mean(c.cell$x),
+               yv=mean(c.cell$y),
+               xm=with(c.cell,sum(x*weight)/weight.sum),
+               ym=with(c.cell,sum(y*weight)/weight.sum)
+               )
+    })
+  }
+
 colMeans.df<-function(x,...) as.data.frame(t(colMeans(x,...)))
 
 pca.fun<-function(in.df) {
@@ -147,6 +162,8 @@ extents.fun<-function(in.df) {
 th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))
 ```
 
+
+
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
@@ -186,7 +203,15 @@ Literature / Useful References
 *** 
 ### Papers / Sites
 
+- Voronoi Tesselations
+ - Ghosh, S. (1997). Tessellation-based computational methods for the characterization and analysis of heterogeneous microstructures. Composites Science and Technology, 57(9-10), 1187–1210
 
+- Alignment / Distribution Tensor
+ - Mader, K. et al (2013). A quantitative framework for the 3D characterization of the osteocyte lacunar system. Bone, 57(1), 142–154
+
+- Two point correlation
+ - Dinis, L., et. al. (2007). Analysis of 3D solids using the natural neighbour radial point interpolation method. Computer Methods in Applied Mechanics and Engineering, 196(13-16)
+ 
 
 
 Previously on QBI ...
@@ -216,25 +241,124 @@ Outline
 - Global Enviroment
  - Alignment
  - Self-Avoidance
+ - Two Point Correlation Function
  
-
-
-Learning Objectives
-========================================================
-
-### Motivation (Why and How?)
-
-- How do we simplify the information of many components?
-
-- How can we quantify terms like "tightly packed", "evenly spaced", and "clustered"?
-- How can we compare samples when we only have one?
-- How can we quantify terms like "aligned well", "oriented towards the surface", or "oriented around the canal"?
-
-
-
+ 
 What do we start with?
 ===
 Going back to our original cell image
 
-1. We have been able to get rid of the noise in the image and find all the cells
-1. We have analyzed the shape of the cells
+1. We have been able to get rid of the noise in the image and find all the cells (lecture 2-4)
+1. We have analyzed the shape of the cells using the shape tensor (lecture 5)
+1. We even separated cells joined together using Watershed (lecture 6)
+
+We can characterize the sample and the average and standard deviations of volume, orientation, surface area, and other metrics
+
+Motivation (Why and How?)
+===
+
+With all of these images, the first step is always to understand exactly what we are trying to learn from our images.
+
+```{r, fig.cap="All Cells",fig.height=7}
+
+cell.im<-jpeg::readJPEG("ext-figures/Cell_Colony.jpg")
+cell.lab.df<-im.to.df(bwlabel(cell.im<.6))
+size.histogram<-ddply(subset(cell.lab.df,val>0),.(val),function(c.label) data.frame(count=nrow(c.label)))
+keep.vals<-subset(size.histogram,count>25)
+
+
+cur.cell.df<-subset(cell.lab.df,val %in% keep.vals$val)
+cell.pca<-pca.fun(cur.cell.df)
+cell.ellipse<-vec.to.ellipse(cell.pca)
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=cell.ellipse,aes(color="Ellipse",group=val))+
+  geom_path(data=bbox.fun(cur.cell.df),aes(x=xi,y=yi,color="Bounding\nBox",group=val))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+***
+
+1. We want to know how many cells are alive
+ - Maybe small cells are dead and larger cells are alive $\rightarrow$ examine the volume distribution
+ - Maybe living cells are round and dead cells are really spiky and pointy $\rightarrow$ examine anisotropy
+
+1. We want to know where the cells are alive or most densely packed
+ - We can visually inspect the sample (maybe even color by volume)
+ - We can examine the raw positions (x,y,z) but what does that really tell us?
+ - We can make boxes and count the cells inside each one
+ - How do we compare two regions in the same sample or even two samples?
+
+Motivation (continued)
+===
+
+```{r, fig.cap="All Cells",fig.height=7}
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=cell.ellipse,aes(color="Ellipse",group=val))+
+  geom_path(data=bbox.fun(cur.cell.df),aes(x=xi,y=yi,color="Bounding\nBox",group=val))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+
+***
+
+
+1. We want to know how the cells are communicating
+ - Maybe physically connected cells (touching) are communicating $\rightarrow$ watershed
+ - Maybe cells oriented the same direction are communicating $\rightarrow$ _average?_ orientation
+ - Maybe cells which are close __enough__ are communicating $\rightarrow$ ?
+ 
+1. We want to know how the cells are nourished
+ - Maybe closely packed cells are better nourished $\rightarrow$ count cells in a box?
+ - 
+
+
+So what do we still need
+===
+
+1. A way for counting cells in a region and estimating density without creating arbitrary boxes
+1. A way for finding out how many cells are _near_ a given cell, it's nearest neighbors
+1. A way for quantifying how far apart cells are and then comparing different regions within a sample
+1. A way for quantifying and comparing orientations
+ - the mean of 0$^\circ$ and 180$^\circ$ = 90$^\circ$
+ - the distance between -180$^\circ$ and 179$^\circ$ is 359$^\circ$
+ - since we have not defined a tip or head, 0$^\circ$ and 180$^\circ$ are actually the same
+ 
+***
+
+### What would be really great? 
+
+If we had a tool which could be adapted to answering a large variety of problems without constant fiddling
+
+
+
+Ok, so now what?
+===
+
+Zoomed into a smaller region
+
+```{r, fig.cap="Smaller Region",fig.height=6}
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=cell.ellipse,aes(color="Ellipse",group=val))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  xlim(200,400)+ylim(100,300)+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+***
+
+So if we want to know the the mean or standard deviations of the position or orientations we can analyze them easily. 
+
+```{r, asis='asis'}
+summary(cell.pca[,c("x","y","vx","vy")])
+```
+
+
+
+
+
+
