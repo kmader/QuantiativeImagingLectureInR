@@ -331,7 +331,10 @@ So what do we still need
 
 ### What would be really great? 
 
-If we had a tool which could be adapted to answering a large variety of problems without constant fiddling
+A tool which could be adapted to answering a large variety of problems
+- multiple types of structures
+- multiple phases
+
 
 
 
@@ -353,10 +356,130 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 
 So if we want to know the the mean or standard deviations of the position or orientations we can analyze them easily. 
 
-```{r, asis='asis'}
-summary(cell.pca[,c("x","y","vx","vy")])
+```{r, results='asis'}
+s.table<-summary(cell.pca[,c("x","y","vx","vy")])
+kable(s.table,row.names=FALSE)
 ```
 
+
+Neighbors
+===
+
+### Definition
+```be situated next to or very near (another)``` (Oxford American)
+- Not a very useful metric
+- How close?
+
+### Nearest Neighbor
+```{r nearest_neighbor} 
+find.nn<-function(in.df) {
+  ddply(in.df,.(val),function(c.group) {
+    cur.val<-c.group$val[1]
+    cur.x<-c.group$x[1]
+    cur.y<-c.group$y[1]
+    all.butme<-subset(in.df,val!=cur.val)
+    all.butme$dist<-with(all.butme,sqrt((x-cur.x)^2+(y-cur.y)^2))
+    min.ele<-subset(all.butme,dist<=min(all.butme$dist))
+    min.ele.order<-order(runif(nrow(min.ele)))
+    min.ele<-min.ele[min.ele.order,]
+    out.df<-data.frame(x=cur.x,y=cur.y,
+               xe=min.ele$x[1],ye=min.ele$y[1],vale=min.ele$val[1],dist=min.ele$dist[1])
+    out.df
+    })
+}
+```
+The absolute closest neighbor (Euclidean distance)
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=4}
+cur.grid<-expand.grid(x=-c(-4:4),y=c(-3:3))
+cur.grid$val<-1:nrow(cur.grid)
+ggplot(cur.grid,aes(x=x,y=y))+
+  geom_segment(data=find.nn(cur.grid),aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Single Cell",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+  coord_equal()+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=3}
+# scale it a bit
+str.grid<-cur.grid
+str.grid$x<-with(cur.grid,x*(sqrt(x^2+y^2)/5)^(3))
+str.grid$y<-with(cur.grid,y*(sqrt(x^2+y^2)/5)^(3))
+ggplot(str.grid,aes(x=x,y=y))+
+  geom_segment(data=find.nn(str.grid),aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Uniaxially",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  theme_bw(20)+guides(fill=F)
+
+```
+
+```{r, fig.cap="Stretched Grid",fig.height=3}
+# scale it a bit
+str.grid2<-cur.grid
+str.grid2$x<-with(cur.grid,x*sqrt(x^2+y^2))
+str.grid2$y<-with(cur.grid,y*sqrt(x^2+y^2))
+ggplot(str.grid2,aes(x=x,y=y))+
+  geom_segment(data=find.nn(str.grid2),aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Single Cell",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  theme_bw(20)+guides(fill=F)
+```
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=3}
+# scale it a bit
+str.grid3<-cur.grid
+str.grid3$x<-with(cur.grid,x*(sqrt(x^2+y^2)/5)^(0.25))
+str.grid3$y<-with(cur.grid,y*(sqrt(x^2+y^2)/5)^(0.25))
+ggplot(str.grid3,aes(x=x,y=y))+
+  geom_segment(data=find.nn(str.grid3),aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Uniaxially",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  theme_bw(20)+guides(fill=F)
+
+```
+
+
+
+
+Orientations
+===
+
+```{r, fig.cap="Length Distribution",fig.height=3}
+dist.plots<-rbind(cbind(find.nn(cur.grid),glab="Even Grid"),
+             cbind(find.nn(str.grid),glab="Uniaxially Stretched"),
+             cbind(find.nn(str.grid2),glab="Radially Stretched"),
+             cbind(find.nn(str.grid3),glab="Squeezed"))
+ggplot(dist.plots,
+              
+       aes(x=dist,color=glab))+
+  geom_density(size=1.5)+
+  theme_bw(20)
+```
+
+***
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
+
+ggplot(dist.plots,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  theme_bw(20)
+```
 
 
 
