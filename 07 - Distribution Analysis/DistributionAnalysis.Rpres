@@ -1185,27 +1185,55 @@ plot(deldir(subset(test.systems.swirl,glab==v.stretch)),wlines=c('triang'),showr
 
 Neighbor Count
 ===
-```{r, fig.cap="Maximum Stretch",fig.height=7}
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+test.systems.comp.vor<-dd.summary(test.systems.comp)
+ggplot(test.systems.comp.vor,      
+       aes(x=n.count))+
+  geom_density(aes(color=as.factor(glab)))+
+  labs(x="Neighbors",title="Compression Neighbor Count",color="Compression")+
+ # scale_y_sqrt()+
+  theme_bw(20)
+```
+
+```{r, fig.cap="Maximum Stretch",fig.height=4}
 test.systems.vor<-dd.summary(test.systems)
 ggplot(test.systems.vor,      
-       aes(x=as.factor(n.count),y=..count..))+
-  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
-  labs(x="Neighbors",title="Stretch Neighbor Count",fill="Swirl")+
+       aes(x=n.count))+
+  geom_density(aes(color=as.factor(glab)))+
+  labs(x="Neighbors",title="Stretch Neighbor Count",color="Stretch")+
  # scale_y_sqrt()+
   theme_bw(20)
 ```
 
 ***
-
-
-```{r, fig.cap="Maximum Stretch",fig.height=7}
-test.systems.swirl.vor<-dd.summary(test.systems.swirl)
-ggplot(test.systems.swirl.vor,      
-       aes(x=as.factor(n.count),y=..count..))+
-  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
-  labs(x="Neighbors",title="Swirl Neighbor Count",fill="Swirl")+
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+test.systems.shear.vor<-dd.summary(test.systems.shear)
+ggplot(test.systems.shear.vor,      
+       aes(x=n.count))+
+  geom_density(aes(color=as.factor(glab)))+
+  labs(x="Neighbors",title="Shearing Neighbor Count",color="Shear")+
  # scale_y_sqrt()+
   theme_bw(20)
+```
+
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+test.systems.swirl.vor<-dd.summary(test.systems.swirl)
+ggplot(test.systems.swirl.vor,      
+       aes(x=n.count))+
+  geom_density(aes(color=as.factor(glab)))+
+  labs(x="Neighbors",title="Stretch Neighbor Count",color="Shear")+
+ # scale_y_sqrt()+
+  theme_bw(20)
+```
+
+All Metrics
+===
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+test.all.vor<-rbind(cbind(test.systems.comp.vor,system="Compression"),
+      cbind(test.systems.vor,system="Stretching"),
+      cbind(test.systems.shear.vor,system="Shearing"),
+      cbind(test.systems.swirl.vor,system="Swirling"))
+ggplot(test.all.vor,aes(x=as.factor(glab),y=n.count))+geom_boxplot()+facet_wrap(~system)
 ```
 
 
@@ -1231,22 +1259,6 @@ ggplot(test.systems.swirl.vor,
   theme_bw(20)
 ```
 
-Using Both Metrics
-===
-```{r, fig.cap="Maximum Stretch",fig.height=7,fig.width=9}
-ggplot(rbind(cbind(test.systems.vor,system="Stretch",cdist=0),
-             cbind(test.systems.swirl.vor,system="Swirl")
-             ),
-       aes(x=area,y=n.count,color=glab,shape=as.factor(system)))+
-  stat_binhex(bins=5)+
-  geom_jitter()+
-  
-  #geom_density2d(alpha=0.5)+
-  labs(x="Area",y="Neighbors",color="System")+
-  scale_color_gradientn(colours=rainbow(4))+
-  facet_grid(~system)+
-  theme_bw(20)
-```
 
 
 
