@@ -309,11 +309,12 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 1. We want to know how the cells are communicating
  - Maybe physically connected cells (touching) are communicating $\rightarrow$ watershed
  - Maybe cells oriented the same direction are communicating $\rightarrow$ _average?_ orientation
- - Maybe cells which are close __enough__ are communicating $\rightarrow$ ?
+ - Maybe cells which are close __enough__ are communicating $\rightarrow$ __?__
+ - Maybe cells form hub and spoke networks $\rightarrow$ __?__
  
 1. We want to know how the cells are nourished
- - Maybe closely packed cells are better nourished $\rightarrow$ count cells in a box?
- - 
+ - Maybe closely packed cells are better nourished $\rightarrow$ count cells in a box__?__
+ - Maybe cells are oriented around canals which supply them $\rightarrow$ __?__
 
 
 So what do we still need
@@ -341,36 +342,47 @@ A tool which could be adapted to answering a large variety of problems
 Ok, so now what?
 ===
 
-Zoomed into a smaller region
-
-```{r, fig.cap="Smaller Region",fig.height=6}
+```{r, fig.cap="Smaller Region",fig.height=4}
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
   geom_path(data=cell.ellipse,aes(color="Ellipse",group=val))+
-  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  labs(title="Zoomed into a smaller region")+
   xlim(200,400)+ylim(100,300)+
-  theme_bw(20)+coord_equal()+guides(fill=F)
+  theme_bw(20)+coord_equal()+guides(fill=F,color=F)
 ```
 
+$$ \downarrow $$
+
+```{r, results='asis'}
+kable(head(cell.pca[,c("x","y","vx","vy")]),align='c',digits=2)
+```
+
+$$ \cdots $$
 ***
 
 So if we want to know the the mean or standard deviations of the position or orientations we can analyze them easily. 
 
+
 ```{r, results='asis'}
-s.table<-summary(cell.pca[,c("x","y","vx","vy")])
-kable(s.table,row.names=FALSE)
+cell.pca$Theta<-cell.pca$th.off*180/pi
+cell.pca$Length<-cell.pca$vw
+s.table<-apply(cell.pca[,c("x","y","Length","vx","vy","Theta")],2,summary)
+
+kable(t(s.table),align='c',digits=2)
 ```
 
+- But what if we want more or other information?
 
 Neighbors
 ===
 
 ### Definition
-```be situated next to or very near (another)``` (Oxford American)
-- Not a very useful metric
-- How close?
+ Oxford American $\rightarrow$ ```be situated next to or very near to (another)``` 
+- Does not sound very scientific
+- How close? 
+ - Touching, closer than anything else?
 
-### Nearest Neighbor
+### Nearest Neighbor (distance)
 ```{r nearest_neighbor} 
 find.nn<-function(in.df) {
   ddply(in.df,.(val),function(c.group) {
@@ -388,7 +400,35 @@ find.nn<-function(in.df) {
     })
 }
 ```
-The absolute closest neighbor (Euclidean distance)
+Given a set of objects with centroids at 
+$$ \textbf{P}=\begin{bmatrix} \vec{x}_0,\vec{x}_1,\cdots,\vec{x}_i \end{bmatrix} $$
+
+
+***
+
+We can define the nearest neighbor as the position of the object in our set which is closest
+
+$$ \vec{\textrm{NN}}(\vec{y}) = \textrm{argmin}(||\vec{y}-\vec{x}|| \forall \vec{x} \in \textbf{P}-\vec{y}) $$
+
+We define the distance as the Euclidean distance from the current point to that point, and the angle as the 
+
+$$ \textrm{NND}(\vec{y}) = \textrm{min}(||\vec{y}-\vec{x}|| \forall \vec{x} \in \textbf{P}-\vec{y}) $$
+$$ \textrm{NN}\theta(\vec{y}) = \tan^{-1}\frac{(\vec{\textrm{NN}}-\vec{y})\cdot \vec{j}}{(\vec{\textrm{NN}}-\vec{y})\cdot{i}} $$
+
+
+Nearest Neighbor Definition
+===
+
+So examining a simple starting system like a grid, we already start running into issues. 
+- In a perfect grid like structure each object has 4 equidistant neighbors (6 in 3D)
+- Which one is closest?
+
+We thus add an additional clause (only relevant for simulated data) where if there are multiple equidistant neighbors, a _nearest_ is chosen randomly
+
+***
+
+This ensures when we examine the orientation distribution (NN$\theta$) of the neighbors it is evenly distributed
+
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=4}
 cur.grid<-expand.grid(x=-c(-4:4),y=c(-3:3))
 cur.grid$val<-1:nrow(cur.grid)
@@ -402,75 +442,114 @@ ggplot(cur.grid,aes(x=x,y=y))+
   theme_bw(20)+guides(fill=F)
 ```
 
-***
-
-```{r, fig.cap="Uniaxially Stretched",fig.height=3}
-# scale it a bit
-str.grid<-cur.grid
-str.grid$x<-with(cur.grid,x*(sqrt(x^2+y^2)/5)^(3))
-str.grid$y<-with(cur.grid,y*(sqrt(x^2+y^2)/5)^(3))
-ggplot(str.grid,aes(x=x,y=y))+
-  geom_segment(data=find.nn(str.grid),aes(xend=xe,yend=ye),
-               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
-  geom_point(aes(color=val),size=3,alpha=0.75)+
-  labs(title="Uniaxially",color="Label")+
-  scale_color_gradientn(colours=rainbow(10))+
-    coord_equal()+
-  theme_bw(20)+guides(fill=F)
-
-```
-
-```{r, fig.cap="Stretched Grid",fig.height=3}
-# scale it a bit
-str.grid2<-cur.grid
-str.grid2$x<-with(cur.grid,x*sqrt(x^2+y^2))
-str.grid2$y<-with(cur.grid,y*sqrt(x^2+y^2))
-ggplot(str.grid2,aes(x=x,y=y))+
-  geom_segment(data=find.nn(str.grid2),aes(xend=xe,yend=ye),
-               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
-  geom_point(aes(color=val),size=3,alpha=0.75)+
-  labs(title="Single Cell",color="Label")+
-  scale_color_gradientn(colours=rainbow(10))+
-    coord_equal()+
-  theme_bw(20)+guides(fill=F)
-```
-
-```{r, fig.cap="Uniaxially Stretched",fig.height=3}
-# scale it a bit
-str.grid3<-cur.grid
-str.grid3$x<-with(cur.grid,x*(sqrt(x^2+y^2)/5)^(0.25))
-str.grid3$y<-with(cur.grid,y*(sqrt(x^2+y^2)/5)^(0.25))
-ggplot(str.grid3,aes(x=x,y=y))+
-  geom_segment(data=find.nn(str.grid3),aes(xend=xe,yend=ye),
-               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
-  geom_point(aes(color=val),size=3,alpha=0.75)+
-  labs(title="Uniaxially",color="Label")+
-  scale_color_gradientn(colours=rainbow(10))+
-    coord_equal()+
-  theme_bw(20)+guides(fill=F)
-
-```
-
-
-
-
-Orientations
+In-Silico Systems
 ===
 
-```{r, fig.cap="Length Distribution",fig.height=3}
-dist.plots<-rbind(cbind(find.nn(cur.grid),glab="Even Grid"),
-             cbind(find.nn(str.grid),glab="Uniaxially Stretched"),
-             cbind(find.nn(str.grid2),glab="Radially Stretched"),
-             cbind(find.nn(str.grid3),glab="Squeezed"))
+For the rest of these sections we will repeatedly use several in-silico systems to test our methods and try to better understand the kind of results we obtain from them. 
+
+1. Stretch
+ - A non-evenly distributed system with a parameter $\alpha$ controlling if objects bunch near the edges or the center. A maximum distance $m$ is defined as the magnitude of the largest offset in x or y
+ 
+$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{m}\right)^\alpha m \\ y \end{bmatrix} $$
+
+***
+
+1. Swirl
+ - A transformation where the points are rotated more based on how far away they are from the center and the slope of the swirl ($\alpha$)
+ 
+$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{r}\right)^\alpha r \\ y \end{bmatrix} $$
+
+
+Examining Different Stretches
+===
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
+
+test.systems<-ldply(c(0.5,0.8,1,1.5,2),function(c.stretch) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,str.fun(x,a=c.stretch))
+  str.grid$y<-with(cur.grid,str.fun(y,a=c.stretch))
+  cbind(str.grid,glab=c.stretch)
+})
+
+dist.plots<-ddply(test.systems,.(glab),find.nn)
+ggplot(test.systems,aes(x=x,y=y))+
+  geom_segment(data=dist.plots,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots,
-              
-       aes(x=dist,color=glab))+
-  geom_density(size=1.5)+
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+
+  theme_bw(20)
+```
+
+Stretch Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5)+
+  geom_histogram()+
+  labs(x="NND",title="NN Distances",fill="Stretch")+
+  scale_y_sqrt()+
   theme_bw(20)
 ```
 
 ***
-```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram()+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Examining Swirl Systems
+===
+
+```{r, fig.cap="",fig.height=9}
+cur.grid$cdist<-with(cur.grid,sqrt(x^2+y^2))
+test.systems<-ldply(seq(0,pi/6/4,length.out=4),function(c.swirl) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,cos(c.swirl*cdist)*x-sin(c.swirl*cdist)*y)
+  str.grid$y<-with(cur.grid,cos(c.swirl*cdist)*y+sin(c.swirl*cdist)*x)
+  cbind(str.grid,glab=round(c.swirl*180/pi))
+})
+
+dist.plots<-ddply(test.systems,.(glab),find.nn)
+ggplot(test.systems,aes(x=x,y=y))+
+  geom_segment(data=dist.plots,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 
 ggplot(dist.plots,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
@@ -478,9 +557,33 @@ ggplot(dist.plots,
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
     coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+
   theme_bw(20)
 ```
 
+Swirl NN Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5)+
+  geom_histogram()+
+  labs(x="NND",title="NN Distances",fill="Swirl")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
+  geom_density(size=1,adjust=1/5)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Swirl")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
 
 
 
