@@ -31,6 +31,7 @@ require(grid) # contains the arrow function
 require(biOps)
 require(doMC) # for parallel code
 require(EBImage)
+require(reshape2) # for the melt function
 ## To install EBImage
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("EBImage")
@@ -490,13 +491,13 @@ $$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} =
 Examining Compression
 ===
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
-
-test.systems.comp<-ldply(c(0.8,1,1.2),function(c.stretch) {
-  str.grid<-cur.grid
-  str.grid$x<-with(cur.grid,c.stretch*x)
-  str.grid$y<-with(cur.grid,c.stretch*y)
+comp.fun<-function(c.stretch,in.grid=cur.grid) {
+  str.grid<-in.grid
+  str.grid$x<-with(in.grid,c.stretch*x)
+  str.grid$y<-with(in.grid,c.stretch*y)
   cbind(str.grid,glab=c.stretch)
-})
+}
+test.systems.comp<-ldply(c(0.8,1,1.2),comp.fun)
 
 dist.plots.comp<-ddply(test.systems.comp,.(glab),find.nn)
 ggplot(test.systems.comp,aes(x=x,y=y))+
@@ -553,12 +554,12 @@ Examining Different Shears
 ===
 
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
-
-test.systems.shear<-ldply(c(0.5,1,3),function(c.shear) {
-  str.grid<-cur.grid
-  str.grid$x<-with(cur.grid,x+c.shear*(y-2)/2)
+shear.fun<-function(c.shear,in.grid=cur.grid) {
+  str.grid<-in.grid
+  str.grid$x<-with(in.grid,x+c.shear*(y-2)/2)
   cbind(str.grid,glab=c.shear)
-})
+}
+test.systems.shear<-ldply(c(0.5,1,3),shear.fun)
 
 dist.plots.shear<-ddply(test.systems.shear,.(glab),find.nn)
 ggplot(test.systems.shear,aes(x=x,y=y))+
@@ -594,7 +595,7 @@ ggplot(dist.plots.shear,
        aes(x=dist,fill=as.factor(glab)))+
   #geom_density(size=1.5,adjust=1/5)+
   geom_histogram(binwidth=0.25)+
-  labs(x="NND",title="NN Distances",color="Stretch")+
+  labs(x="NND",title="NN Distances",fill="Shear")+
   scale_y_sqrt()+
   theme_bw(20)
 ```
@@ -605,7 +606,7 @@ ggplot(dist.plots.shear,
 ggplot(dist.plots.shear,      
        aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
   geom_histogram(binwidth=45)+
-    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Shear")+
   scale_y_sqrt()+
   theme_bw(20)
 ```
@@ -617,12 +618,13 @@ Examining Different Stretches
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
 
 str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
-test.systems<-ldply(c(0.5,1,3),function(c.stretch) {
-  str.grid<-cur.grid
-  str.grid$x<-with(cur.grid,str.fun(x,a=c.stretch))
-  str.grid$y<-with(cur.grid,str.fun(y,a=c.stretch))
+stretch.fun<-function(c.stretch,in.grid=cur.grid) {
+  str.grid<-in.grid
+  str.grid$x<-with(in.grid,str.fun(x,a=c.stretch))
+  str.grid$y<-with(in.grid,str.fun(y,a=c.stretch))
   cbind(str.grid,glab=c.stretch)
-})
+}
+test.systems<-ldply(c(0.5,1,3),stretch.fun)
 
 dist.plots<-ddply(test.systems,.(glab),find.nn)
 ggplot(test.systems,aes(x=x,y=y))+
@@ -679,13 +681,15 @@ Examining Swirl Systems
 ===
 
 ```{r, fig.cap="",fig.height=9}
-cur.grid$cdist<-with(cur.grid,sqrt(x^2+y^2))
-test.systems.swirl<-ldply(c(0,pi/40,pi/10),function(c.swirl) {
-  str.grid<-cur.grid
-  str.grid$x<-with(cur.grid,cos(c.swirl*cdist)*x-sin(c.swirl*cdist)*y)
-  str.grid$y<-with(cur.grid,cos(c.swirl*cdist)*y+sin(c.swirl*cdist)*x)
+swirl.fun<-function(c.swirl,in.grid=cur.grid) {
+  in.grid$cdist<-with(in.grid,sqrt(x^2+y^2))
+  str.grid<-in.grid
+  str.grid$x<-with(in.grid,cos(c.swirl*cdist)*x-sin(c.swirl*cdist)*y)
+  str.grid$y<-with(in.grid,cos(c.swirl*cdist)*y+sin(c.swirl*cdist)*x)
   cbind(str.grid,glab=round(c.swirl*180/pi))
-})
+}
+
+test.systems.swirl<-ldply(c(0,pi/40,pi/10),swirl.fun)
 
 dist.plots.swirl<-ddply(test.systems.swirl,.(glab),find.nn)
 
@@ -883,11 +887,9 @@ Shear Distributions
 
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots.shear,      
-       aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5,adjust=1/5)+
-  geom_histogram(binwidth=0.25)+
-  labs(x="NND",title="NN Distances",color="Stretch")+
-  scale_y_sqrt()+
+       aes(x=dist,color=as.factor(glab)))+
+  geom_density(size=1.5,adjust=1)+
+  labs(x="NND",title="NN Distances",color="Shear")+
   theme_bw(20)
 ```
 
@@ -895,10 +897,10 @@ ggplot(dist.plots.shear,
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.shear,      
-       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
-  geom_histogram(binwidth=45)+
-    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
-  scale_y_sqrt()+
+       aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
+  geom_density(size=1.5,adjust=1/1.5)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Shear")+
+  coord_polar()+
   theme_bw(20)
 ```
 
@@ -947,11 +949,10 @@ Stretch Distributions
 
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots,      
-       aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5,adjust=1/5)+
-  geom_histogram(binwidth=0.25)+
+       aes(x=dist,color=as.factor(glab)))+
+  geom_density(size=1.5,adjust=1)+
+  #geom_histogram(binwidth=0.25)+
   labs(x="NND",title="NN Distances",color="Stretch")+
-  scale_y_sqrt()+
   theme_bw(20)
 ```
 
@@ -959,10 +960,11 @@ ggplot(dist.plots,
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots,      
-       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
-  geom_histogram(binwidth=45)+
-    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
-  scale_y_sqrt()+
+       aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
+  #geom_histogram(binwidth=45)+
+  geom_density(size=1.5,adjust=1)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Stretch")+
+  coord_polar()+
   theme_bw(20)
 ```
 
@@ -1033,7 +1035,7 @@ Voronoi Tesselation
 ===
 ```{r voronoi_code}
 library(deldir)
-dd.summary<-function(in.df) ddply(in.df,.(glab),function(c.grid) {
+dd.grid.summary<-function(c.grid) {
   c.dd<-deldir(c.grid)
   c.vor<-c.dd$dirsgs
   n.pts<-as.vector(summary(as.factor(c(c.vor$ind1,c.vor$ind2))))
@@ -1041,7 +1043,8 @@ dd.summary<-function(in.df) ddply(in.df,.(glab),function(c.grid) {
                     n.count=n.pts,
                     area=c.dd$summary$dir.area)
   merge(c.grid,n.vec,by.x="val",by.y="ind")
-})
+}
+dd.summary<-function(in.df) ddply(in.df,.(glab),dd.grid.summary)
 
 ```
 
@@ -1167,98 +1170,330 @@ plot(deldir(subset(test.systems.swirl,glab==v.swirl)),wlines=c('tess'),showrect=
 Neighborhoods
 ===
 
+### Compression 
+
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+v.comp<-min(test.systems.comp$glab)
+plot(deldir(subset(test.systems.comp,glab==v.comp)),wlines=c('triang'),showrect=T)
+```
+
 ### Stretch 
 
-```{r, fig.cap="Maximum Stretch",fig.height=7}
-v.stretch<-quantile(test.systems$glab,0.9)
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+v.stretch<-max(test.systems$glab)
 plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('triang'),showrect=T)
 ```
 
+
 ***
   
+### Shear
+
+```{r, fig.cap="Maximum Stretch",fig.height=4}
+v.shear<-max(test.systems.shear$glab)
+plot(deldir(subset(test.systems.shear,glab==v.shear)),wlines=c('triang'),showrect=T)
+```
+
+
 ### Swirl
 
-```{r, fig.cap="Maximum Stretch",fig.height=7}
+```{r, fig.cap="Maximum Stretch",fig.height=4}
 v.stretch<-quantile(test.systems.swirl$glab,0.95)
 plot(deldir(subset(test.systems.swirl,glab==v.stretch)),wlines=c('triang'),showrect=T)
 ```
 
+
 Neighbor Count
 ===
-```{r, fig.cap="Maximum Stretch",fig.height=4}
+```{r, all_voronoi}
 test.systems.comp.vor<-dd.summary(test.systems.comp)
-ggplot(test.systems.comp.vor,      
-       aes(x=n.count))+
-  geom_density(aes(color=as.factor(glab)))+
-  labs(x="Neighbors",title="Compression Neighbor Count",color="Compression")+
- # scale_y_sqrt()+
-  theme_bw(20)
-```
-
-```{r, fig.cap="Maximum Stretch",fig.height=4}
 test.systems.vor<-dd.summary(test.systems)
-ggplot(test.systems.vor,      
-       aes(x=n.count))+
-  geom_density(aes(color=as.factor(glab)))+
-  labs(x="Neighbors",title="Stretch Neighbor Count",color="Stretch")+
- # scale_y_sqrt()+
-  theme_bw(20)
-```
-
-***
-```{r, fig.cap="Maximum Stretch",fig.height=4}
 test.systems.shear.vor<-dd.summary(test.systems.shear)
-ggplot(test.systems.shear.vor,      
-       aes(x=n.count))+
-  geom_density(aes(color=as.factor(glab)))+
-  labs(x="Neighbors",title="Shearing Neighbor Count",color="Shear")+
- # scale_y_sqrt()+
-  theme_bw(20)
-```
-
-```{r, fig.cap="Maximum Stretch",fig.height=4}
 test.systems.swirl.vor<-dd.summary(test.systems.swirl)
-ggplot(test.systems.swirl.vor,      
-       aes(x=n.count))+
-  geom_density(aes(color=as.factor(glab)))+
-  labs(x="Neighbors",title="Stretch Neighbor Count",color="Shear")+
- # scale_y_sqrt()+
-  theme_bw(20)
-```
-
-All Metrics
-===
-```{r, fig.cap="Maximum Stretch",fig.height=4}
-test.all.vor<-rbind(cbind(test.systems.comp.vor,system="Compression"),
-      cbind(test.systems.vor,system="Stretching"),
-      cbind(test.systems.shear.vor,system="Shearing"),
+test.all.vor<-rbind(cbind(test.systems.comp.vor,system="Compression",cdist=0),
+      cbind(test.systems.vor,system="Stretching",cdist=0),
+      cbind(test.systems.shear.vor,system="Shearing",cdist=0),
       cbind(test.systems.swirl.vor,system="Swirling"))
-ggplot(test.all.vor,aes(x=as.factor(glab),y=n.count))+geom_boxplot()+facet_wrap(~system)
+
 ```
 
 
-Tile Area 
-===
-```{r, fig.cap="Maximum Stretch",fig.height=7}
-ggplot(test.systems.vor,      
-       aes(x=area,y=..count..))+
-  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
-  labs(x="Area",title="Stretch Area Count",fill="Stretch")+
+```{r, fig.cap="Maximum Stretch",fig.height=9,fig.width=11}
+
+ggplot(test.all.vor,      
+       aes(x=n.count))+
+  geom_density(aes(color=as.factor(glab)),adjust=1.5)+
+  labs(x="Neighbors",color="Stretch")+
+  facet_wrap(~system)+
   theme_bw(20)
 ```
+
+Volume
+===
+
+```{r, fig.cap="Maximum Stretch",fig.height=9,fig.width=11}
+
+ggplot(test.all.vor,      
+       aes(x=area))+
+  geom_density(aes(color=as.factor(glab)))+
+  labs(x="Area",color="Stretch")+
+  facet_wrap(~system)+
+  scale_x_sqrt()+
+  theme_bw(20)
+```
+
+
+Mean vs Variability
+===
+```{r, fig.cap="Maximum Stretch",fig.width=11,fig.height=3}
+
+ggplot(
+  ddply(test.all.vor,.(glab,system),
+        function(in.seg) with(in.seg,data.frame(mean.val=mean(n.count),std.val=sd(n.count)))),
+  aes(x=as.factor(glab)))+
+  geom_line(aes(y=mean.val/20,color="Mean",group=system))+  
+  geom_line(aes(y=std.val/mean.val,color="Variability",group=system))+
+  facet_grid(~system,scales="free_x")+
+  labs(x="Parameter",y="Neighbor Count (au)",color="Metric")+
+  theme_bw(20)
+
+```
+
+```{r, fig.cap="Maximum Stretch",fig.width=11,fig.height=3}
+ggplot(
+  ddply(test.all.vor,.(glab,system),
+        function(in.seg) with(in.seg,data.frame(mean.val=mean(area),std.val=sd(area)))),
+  aes(x=as.factor(glab)))+
+  geom_line(aes(y=mean.val/2,color="Mean",group=system))+  
+  geom_line(aes(y=std.val/mean.val,color="Variability",group=system))+
+  facet_grid(~system,scales="free_x")+
+  labs(x="Parameter",y="Area (au)",color="Metric")+
+  theme_bw(20)
+```
+
+Where are we at?
+===
+
+We have introduced a number of "operations" we can perform on our objects to change their positions
+- compression
+- stretching
+- shearing
+- swirling
+
+We have introduced a number of metrics to characterize our images
+- Nearest Neighbor distance
+- Nearest Neighbor angle
+- Delaunay Neigbhor count
+- Territory Area (Volume)
+
+***
+
+A single random systems is useful 
+- but in order to have a reasonable understanding of the behavior of a system we need to sample many of them. 
+
+### Understand metrics as a random system + a known transformation
+
+- We take __mean__ values
+- Also __coefficient of variation__ ([CV](http://en.wikipedia.org/wiki/Coefficient_of_variation)) values since they are "scale-free" 
+
+```{r, random_system}
+m.grid<-function(n.pts=81) {
+  out.grid<-data.frame(x=runif(n.pts,min=-4,max=4),y=runif(n.pts,min=-4,max=4))
+  out.grid$val<-1:nrow(out.grid)
+  out.grid
+}
+all.metrics<-function(in.grid) {
+  nn.df<-find.nn(in.grid)
+  vor.df<-dd.grid.summary(in.grid)
+  data.frame(NND=mean(nn.df$dist),
+             NNTheta=mean(with(nn.df,180/pi*atan2(ye-y,xe-x))),
+             DNC=mean(vor.df$n.count),
+             Region.Ter=mean(vor.df$area),
+             CV.NND=sd(nn.df$dist)/mean(nn.df$dist),
+             SD.NNTheta=sd(with(nn.df,180/pi*atan2(ye-y,xe-x))),
+             CV.DNC=sd(vor.df$n.count)/mean(vor.df$n.count),
+             CV.Region.Ter=sd(vor.df$area)/mean(vor.df$area)
+             )
+}
+
+many.grid<-function(n.grid,n.pts=81,trans.fun=function(in.pts) in.pts) {
+  ldply(1:n.grid,function(n) {
+    s.grid<-trans.fun(m.grid(n.pts))
+    all.metrics(s.grid)
+  },.parallel=T)
+}
+c.pts<-20
+```
+
+Understanding Metrics
+===
+
+In imaging science we always end up with lots of data, the tricky part is understanding the results that come out.
+With this simulation-based approach
+- we generate completely random data
+- apply a known transformation to it $\mathcal{F}$
+- quantify the results
+
+We can then take this knowledge and use it to interpret observed data as transformations on an initially random system. We try and find the __rules__ used to produce the sample
+
 
 ***
 
 
-```{r, fig.cap="Maximum Stretch",fig.height=7}
+### Examples
 
-ggplot(test.systems.swirl.vor,      
-       aes(x=area,y=..count..))+
-  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
-  labs(x="Area",title="Swirl Area",fill="Swirl")+
+1. Cell distribution in bone
+ - Cell position appears random
+ - Metrics $\neq$ Random Statistics
+ - Cells are consistently _self-avoiding_ or _stretched_
+ 
+1. Egg-shell Pores
+ - Pores in rock / egg shell appear random
+ - Metrics $\neq$ Random Statistics
+ - Pores are also _self-avoiding_
+
+Compression
+===
+
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+comp.sim<-rbind(cbind(many.grid(c.pts),system="No Compression"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) comp.fun(0.75,in.df)),system="Compression"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) comp.fun(1.25,in.df)),system="Tension")
+                )
+ggplot(melt(comp.sim),aes(x=value,color=system))+
+  geom_density()+
+  facet_wrap(~variable,scales="free",ncol=4)+
+  labs(y="Frequency",x="Value",color="State")+
+  theme_bw(20)
+
+```
+
+Compression Sensitivity
+===
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+comp.data<-ldply(seq(0.9,1.1,length.out=5),function(c.comp) 
+  cbind(many.grid(c.pts,trans.fun=function(in.df) comp.fun(c.comp,in.df)),comp=c.comp))
+
+
+ggplot(melt(comp.data,id.vars=c("comp")),aes(x=comp,y=value))+
+  geom_jitter()+
+  geom_smooth(method="lm",size=2)+
+  labs(y="Value",x="Compression Parameter")+
+  facet_wrap(~variable,scale="free_y",ncol=4)+
   theme_bw(20)
 ```
 
 
+Stretching
+===
+
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+comp.sim<-rbind(cbind(many.grid(c.pts),system="No Stretch"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) stretch.fun(0.8,in.df)),system="Squeezing"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) stretch.fun(1.2,in.df)),system="Pushing")
+                )
+
+ggplot(melt(comp.sim),aes(x=value,color=system))+
+  geom_density()+
+  facet_wrap(~variable,scales="free",ncol=4)+
+  labs(y="Frequency",x="Value",color="State")+
+  theme_bw(20)
+```
+
+Stretching Sensitivity
+===
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+stretch.data<-ldply(seq(0.9,1.1,length.out=5),function(c.stretch) 
+  cbind(many.grid(c.pts,trans.fun=function(in.df) stretch.fun(c.stretch,in.df)),stretch=c.stretch))
+
+ggplot(melt(stretch.data,id.vars=c("stretch")),aes(x=stretch,y=value))+
+  geom_jitter()+
+  geom_smooth(method="lm",size=2)+
+  labs(y="Value",x="Stretching Parameter")+
+  facet_wrap(~variable,scale="free_y",ncol=4)+
+  theme_bw(20)
+```
+
+Shearing
+===
+
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+comp.sim<-rbind(cbind(many.grid(c.pts),system="No Shear"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) shear.fun(-0.5,in.df)),system="Reverse Shear"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) shear.fun(0.5,in.df)),system="Shear")
+                )
+
+ggplot(melt(comp.sim),aes(x=value,color=system))+
+  geom_density()+
+  facet_wrap(~variable,scales="free",ncol=4)+
+  labs(y="Frequency",x="Value",color="State")+
+  theme_bw(20)
+```
+
+Shearing Sensitivity
+===
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+shear.data<-ldply(seq(0,0.2,length.out=5),function(c.shear) 
+  cbind(many.grid(c.pts,trans.fun=function(in.df) shear.fun(c.shear,in.df)),shear=c.shear))
+
+ggplot(melt(shear.data,id.vars=c("shear")),aes(x=shear,y=value))+
+  geom_jitter()+
+  geom_smooth(method="lm",size=2)+
+  labs(y="Value",x="Shear Parameter")+
+  facet_wrap(~variable,scale="free_y",ncol=4)+
+  theme_bw(20)
+
+```
+
+Swirling
+===
+
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+comp.sim<-rbind(cbind(many.grid(c.pts),system="No Swirl"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) swirl.fun(0.5,in.df)),system="Some Swirl"),
+                cbind(many.grid(c.pts,trans.fun=function(in.df) swirl.fun(2,in.df)),system="Tons of Swirl")
+                )
+
+ggplot(melt(comp.sim),aes(x=value,color=system))+
+  geom_density()+
+  facet_wrap(~variable,scales="free",ncol=4)+
+  labs(y="Frequency",x="Value",color="State")+
+  theme_bw(20)
+```
+
+Swirling Sensitivity
+===
+```{r, fig.cap="Maximum Stretch",fig.width=13,fig.height=9}
+swirl.data<-ldply(seq(0,0.2,length.out=5),function(c.swirl) 
+  cbind(many.grid(c.pts,trans.fun=function(in.df) shear.fun(c.swirl,in.df)),swirl=c.swirl))
+
+ggplot(melt(swirl.data,id.vars=c("swirl")),aes(x=swirl,y=value))+
+  geom_jitter()+
+  geom_smooth(method="lm",size=2)+
+  labs(y="Value",x="Swirl Parameter")+
+  facet_wrap(~variable,scale="free_y",ncol=4)+
+  theme_bw(20)
+```
+
+Self-Avoiding
+===
+
+
+
+Distribution Tensor
+===
+
+Distribution Anisotropy
+===
+
+Distribution Oblateness
+===
+
+
+Alignment Tensor
+===
+
+Alignment Anisotropy
+===
 
 
