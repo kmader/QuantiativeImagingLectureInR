@@ -433,6 +433,7 @@ This ensures when we examine the orientation distribution (NN$\theta$) of the ne
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=4}
 cur.grid<-expand.grid(x=-c(-4:4),y=c(-4:4))
 cur.grid$val<-1:nrow(cur.grid)
+std.grid<-cur.grid
 ggplot(cur.grid,aes(x=x,y=y))+
   geom_segment(data=find.nn(cur.grid),aes(xend=xe,yend=ye),
                arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
@@ -1006,12 +1007,11 @@ ggplot(dist.plots.swirl,
 
 Swirl NN Distributions
 ===
-
 ```{r, fig.cap="Length Distribution",fig.height=9}
 
 ggplot(dist.plots.swirl,      
-       aes(x=dist,fill=as.factor(glab)))+
-  geom_histogram(binwidth=0.25)+
+       aes(x=dist,color=as.factor(glab)))+
+  geom_density()+
   labs(x="NND",title="NN Distances",fill="Swirl")+
   scale_y_sqrt()+
   theme_bw(20)
@@ -1020,10 +1020,9 @@ ggplot(dist.plots.swirl,
 ***
 
 ```{r, fig.cap="NN Orientation",fig.height=9}
-
 ggplot(dist.plots.swirl,      
        aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
-  geom_density(aes(y=..scaled..),size=1,adjust=1/7)+
+  geom_density(size=1,adjust=1)+
     labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Swirl",y="Frequency")+
   #scale_y_sqrt()+
   theme_bw(20)
@@ -1043,27 +1042,99 @@ dd.summary<-function(in.df) ddply(in.df,.(glab),function(c.grid) {
                     area=c.dd$summary$dir.area)
   merge(c.grid,n.vec,by.x="val",by.y="ind")
 })
+
 ```
 
 Voronoi tesselation is a method for partitioning a space based on points. The basic idea is that each point $\vec{p}$ is assigned a region $\textbf{R}$ consisting of points which are closer to $\vec{p}$ than any of the other points. Below the diagram is shown in a dashed line for the points shown as small circles.
 
-```{r, fig.cap="NN Orientation",fig.height=6}
-plot(deldir(subset(test.systems,glab==1)),wlines=c('tess'),showrect=T)
+```{r, fig.cap="NN Orientation",fig.height=5}
+plot(deldir(std.grid),wlines=c('tess'),showrect=T)
 ```
 
 ***
 
-### [Delaunay Triangulation](http://mathworld.wolfram.com/DelaunayTriangulation.html)
+We call the area of a region ($\textbf{R}$) around point $\vec{p}$ its territory.
 
-A parallel or _dual_ idea where triangles are used and each triangle is created such that the circle which encloses it contains no other points. The triangulation makes the _neighbors_ explcit since connected points in the triangulation correspond to points in our tesselation which share an edge (or face in 3D)
+The grid on the random system, shows much more diversity in territory area.
 
-```{r, fig.cap="NN Orientation",fig.height=6}
-plot(deldir(subset(test.systems,glab==1)),wlines=c('triang'))
+```{r, fig.cap="NN Orientation",fig.height=5}
+plot(deldir(cur.grid),wlines=c('tess'),showrect=T)
+```
+
+Delaunay Triangulation
+===
+
+A parallel or _dual_ [idea](http://mathworld.wolfram.com/DelaunayTriangulation.html) where triangles are used and each triangle is created such that the circle which encloses it contains no other points. The triangulation makes the _neighbors_ explcit since connected points in the triangulation correspond to points in our tesselation which share an edge (or face in 3D)
+
+```{r, fig.cap="NN Orientation",fig.height=5}
+plot(deldir(std.grid),wlines=c('triang'))
+```
+
+***
+We define the number of connections each point $\vec{p}$ has the Neighbor Count or Delaunay Neighbor Count.
+
+The triangulation on a random system has a much higher diversity in neighbor count
+
+```{r, fig.cap="NN Orientation",fig.height=7}
+plot(deldir(cur.grid),wlines=c('triang'))
+```
+
+
+Compression System
+===
+
+### Compression
+
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.comp<-quantile(test.systems.comp$glab,0.2)
+plot(deldir(subset(test.systems.comp,glab==v.comp)),wlines=c('tess'),showrect=T)
+```
+
+***
+
+### Tension
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.comp<-quantile(test.systems.comp$glab,0.95)
+plot(deldir(subset(test.systems.comp,glab==v.comp)),wlines=c('tess'),showrect=T)
+```
+
+Shear System
+===
+
+### Low Shear
+
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.shear<-min(test.systems.shear$glab)
+plot(deldir(subset(test.systems.shear,glab==v.shear)),wlines=c('tess'),showrect=T)
+```
+
+***
+
+### High Shear
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.shear<-max(test.systems.shear$glab)
+plot(deldir(subset(test.systems.shear,glab==v.shear)),wlines=c('tess'),showrect=T)
 ```
 
 
 Stretch System
 ===
+
+### Low Stretch 
+
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-min(test.systems$glab)
+plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('tess'),showrect=T)
+```
+
+***
+
+### Highly Stretched System
 
 ```{r, fig.cap="Maximum Stretch",fig.height=7}
 v.stretch<-quantile(test.systems$glab,0.95)
@@ -1071,28 +1142,25 @@ plot(deldir(subset(test.systems,glab>=v.stretch)),wlines=c('tess'),showrect=T)
 ```
 
 
-***
-
-```{r, fig.cap="Maximum Stretch",fig.height=7}
-v.stretch<-quantile(test.systems$glab,0.5)
-plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('tess'),showrect=T)
-```
-
 
 Swirl System
 ===
 
+### Low Swirl System 
+
 ```{r, fig.cap="Maximum Stretch",fig.height=7}
-v.stretch<-quantile(test.systems.swirl$glab,type=1,0.5)
-plot(deldir(subset(test.systems.swirl,abs(glab-v.stretch)<0.1)),wlines=c('tess'),showrect=T)
+v.swirl<-min(test.systems.swirl$glab)
+plot(deldir(subset(test.systems.swirl,glab==v.swirl)),wlines=c('tess'),showrect=T)
 ```
 
 
 ***
 
+### High Swirl System
+
 ```{r, fig.cap="Maximum Stretch",fig.height=7}
-v.stretch<-quantile(test.systems.swirl$glab,0.95)
-plot(deldir(subset(test.systems.swirl,glab==v.stretch)),wlines=c('tess'),showrect=T)
+v.swirl<-max(test.systems.swirl$glab)
+plot(deldir(subset(test.systems.swirl,glab==v.swirl)),wlines=c('tess'),showrect=T)
 ```
 
 
