@@ -205,6 +205,7 @@ Literature / Useful References
 
 - Voronoi Tesselations
  - Ghosh, S. (1997). Tessellation-based computational methods for the characterization and analysis of heterogeneous microstructures. Composites Science and Technology, 57(9-10), 1187–1210
+ - [Wolfram Explanation](http://mathworld.wolfram.com/VoronoiDiagram.html)
 
 - Alignment / Distribution Tensor
  - Mader, K. et al (2013). A quantitative framework for the 3D characterization of the osteocyte lacunar system. Bone, 57(1), 142–154
@@ -430,7 +431,7 @@ We thus add an additional clause (only relevant for simulated data) where if the
 This ensures when we examine the orientation distribution (NN$\theta$) of the neighbors it is evenly distributed
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=4}
-cur.grid<-expand.grid(x=-c(-4:4),y=c(-3:3))
+cur.grid<-expand.grid(x=-c(-4:4),y=c(-4:4))
 cur.grid$val<-1:nrow(cur.grid)
 ggplot(cur.grid,aes(x=x,y=y))+
   geom_segment(data=find.nn(cur.grid),aes(xend=xe,yend=ye),
@@ -440,33 +441,182 @@ ggplot(cur.grid,aes(x=x,y=y))+
   scale_color_gradientn(colours=rainbow(10))+
   coord_equal()+
   theme_bw(20)+guides(fill=F)
+
 ```
 
 In-Silico Systems
 ===
 
-For the rest of these sections we will repeatedly use several in-silico systems to test our methods and try to better understand the kind of results we obtain from them. 
+For the rest of these sections we will repeatedly use several simple in-silico systems to test our methods and try to better understand the kind of results we obtain from them.
 
-1. Stretch
- - A non-evenly distributed system with a parameter $\alpha$ controlling if objects bunch near the edges or the center. A maximum distance $m$ is defined as the magnitude of the largest offset in x or y
+- Compression
+ - The most simple system simply involves a scaling in every direction by $\alpha$
+ - $\alpha<1$ the system is compressed
+ - $\alpha>1$ the system is expanded
  
-$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{m}\right)^\alpha m \\ y \end{bmatrix} $$
+ $$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \alpha \begin{bmatrix} x \\ y \end{bmatrix} $$
+ 
+ ***
+ 
+- Shearing
+ - Slightly more complicated system where objects are shifted based on their location using a slope of $\alpha$
+ 
+ $$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} 1 & \alpha \\ 0 & 1 \end{bmatrix} \begin{bmatrix} x \\ y \end{bmatrix} $$
+
+ 
+
+In-Silico Systems (Continued)
+===
+
+- Stretch
+ - A non-evenly distributed system with a parameter $\alpha$ controlling if objects bunch near the edges or the center. A maximum distance $m$ is defined as the magnitude of the largest offset in x or y
+ - __+__ Same total volume just arranged differently
+ 
+$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{m}\right)^\alpha m \\ \textrm{sign}(y) \left(\frac{|y|}{m}\right)^\alpha m \end{bmatrix} $$
 
 ***
 
-1. Swirl
- - A transformation where the points are rotated more based on how far away they are from the center and the slope of the swirl ($\alpha$)
+- Swirl
+ - A transformation where the points are rotated more based on how far away they are from the center and the slope of the swirl ($\alpha$), 
  
-$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{r}\right)^\alpha r \\ y \end{bmatrix} $$
+$$ \theta (x,y) = \alpha \sqrt{x^2+y^2} $$
+ 
+$$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = 
+\begin{bmatrix} \cos\theta(x,y) & -\sin\theta(x,y) \\
+\sin\theta(x,y) & \cos\theta(x,y) 
+\end{bmatrix} \begin{bmatrix} x \\ y \end{bmatrix} $$
+
+Examining Compression
+===
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+
+test.systems.comp<-ldply(c(0.8,1,1.2),function(c.stretch) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,c.stretch*x)
+  str.grid$y<-with(cur.grid,c.stretch*y)
+  cbind(str.grid,glab=c.stretch)
+})
+
+dist.plots.comp<-ddply(test.systems.comp,.(glab),find.nn)
+ggplot(test.systems.comp,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.comp,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
+ggplot(dist.plots.comp,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
+  theme_bw(20)
+```
+
+Compression Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots.comp,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots.comp,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram(binwidth=45)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Examining Different Shears
+===
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+
+test.systems.shear<-ldply(c(0.5,1,3),function(c.shear) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,x+c.shear*(y-2)/2)
+  cbind(str.grid,glab=c.shear)
+})
+
+dist.plots.shear<-ddply(test.systems.shear,.(glab),find.nn)
+ggplot(test.systems.shear,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.shear,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
+ggplot(dist.plots.shear,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
+  theme_bw(20)
+```
+
+Shear Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots.shear,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots.shear,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram(binwidth=45)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
 
 
 Examining Different Stretches
 ===
 
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
-str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
 
-test.systems<-ldply(c(0.5,0.8,1,1.5,2),function(c.stretch) {
+str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
+test.systems<-ldply(c(0.5,1,3),function(c.stretch) {
   str.grid<-cur.grid
   str.grid$x<-with(cur.grid,str.fun(x,a=c.stretch))
   str.grid$y<-with(cur.grid,str.fun(y,a=c.stretch))
@@ -482,19 +632,20 @@ ggplot(test.systems,aes(x=x,y=y))+
   scale_color_gradientn(colours=rainbow(10))+
     coord_equal()+
   facet_grid(glab~.)+
-  theme_bw(20)+guides(fill=F)
+  theme_bw(20)
 ```
 
 ***
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
 ggplot(dist.plots,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
     coord_equal()+
-  labs(title="Nearest Neighbor Orientations")+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
   theme_bw(20)
 ```
 
@@ -504,9 +655,9 @@ Stretch Distributions
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots,      
        aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5)+
-  geom_histogram()+
-  labs(x="NND",title="NN Distances",fill="Stretch")+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
   scale_y_sqrt()+
   theme_bw(20)
 ```
@@ -516,7 +667,7 @@ ggplot(dist.plots,
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots,      
        aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
-  geom_histogram()+
+  geom_histogram(binwidth=45)+
     labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
   scale_y_sqrt()+
   theme_bw(20)
@@ -528,16 +679,17 @@ Examining Swirl Systems
 
 ```{r, fig.cap="",fig.height=9}
 cur.grid$cdist<-with(cur.grid,sqrt(x^2+y^2))
-test.systems<-ldply(seq(0,pi/6/4,length.out=4),function(c.swirl) {
+test.systems.swirl<-ldply(c(0,pi/40,pi/10),function(c.swirl) {
   str.grid<-cur.grid
   str.grid$x<-with(cur.grid,cos(c.swirl*cdist)*x-sin(c.swirl*cdist)*y)
   str.grid$y<-with(cur.grid,cos(c.swirl*cdist)*y+sin(c.swirl*cdist)*x)
   cbind(str.grid,glab=round(c.swirl*180/pi))
 })
 
-dist.plots<-ddply(test.systems,.(glab),find.nn)
-ggplot(test.systems,aes(x=x,y=y))+
-  geom_segment(data=dist.plots,aes(xend=xe,yend=ye),
+dist.plots.swirl<-ddply(test.systems.swirl,.(glab),find.nn)
+
+ggplot(test.systems.swirl,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.swirl,aes(xend=xe,yend=ye),
                arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
   geom_point(aes(color=val),size=3,alpha=0.75)+
   labs(title="Positions and Neighbors",color="Label")+
@@ -550,8 +702,7 @@ ggplot(test.systems,aes(x=x,y=y))+
 ***
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
-
-ggplot(dist.plots,
+ggplot(dist.plots.swirl,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
@@ -565,10 +716,10 @@ Swirl NN Distributions
 ===
 
 ```{r, fig.cap="Length Distribution",fig.height=9}
-ggplot(dist.plots,      
+
+ggplot(dist.plots.swirl,      
        aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5)+
-  geom_histogram()+
+  geom_histogram(binwidth=0.25)+
   labs(x="NND",title="NN Distances",fill="Swirl")+
   scale_y_sqrt()+
   theme_bw(20)
@@ -577,14 +728,457 @@ ggplot(dist.plots,
 ***
 
 ```{r, fig.cap="NN Orientation",fig.height=9}
-ggplot(dist.plots,      
+
+ggplot(dist.plots.swirl,      
        aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
-  geom_density(size=1,adjust=1/5)+
-    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Swirl")+
+  geom_density(aes(y=..scaled..),size=1,adjust=1/7)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Swirl",y="Frequency")+
+  #scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+What we notice
+===
+
+We notice there are several fairly significant short-comings of these metrics (particularly with in-silico systems)
+
+1. Orientation appears to be useful but random
+ - Why should it matter if one side is 0.01% closer?
+1. Single outlier objects skew results
+1. We only extract one piece of information
+1. Difficult to create metrics
+ - Fit a peak to the angle distribution and measure the width as the "angle variability"?
+
+Luckily we are not the first people to address this issue 
+
+Random Systems
+===
+
+Using a uniform grid of points as a starting point has a strong influence on the results. A better approach is to use a randomly distributed series of points 
+- resembles real data much better
+- avoids these symmetry problems
+ - $\epsilon$ sized edges or overlaps
+ - identical distances to nearby objects
+ 
+```{r use_random_grid}
+cur.grid<-data.frame(x=runif(81,min=-4,max=4),y=runif(81,min=-4,max=4))
+cur.grid$val<-1:nrow(cur.grid)
+```
+
+***
+
+```{r, fig.cap="Maximum Stretch",fig.height=7,fig.width=9}
+ggplot(cur.grid,aes(x=x,y=y))+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  theme_bw(20)
+```
+
+
+Examining Compression
+===
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+
+test.systems.comp<-ldply(c(0.8,1,1.2),function(c.stretch) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,c.stretch*x)
+  str.grid$y<-with(cur.grid,c.stretch*y)
+  cbind(str.grid,glab=c.stretch)
+})
+
+dist.plots.comp<-ddply(test.systems.comp,.(glab),find.nn)
+ggplot(test.systems.comp,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.comp,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
+ggplot(dist.plots.comp,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
+  theme_bw(20)
+```
+
+Compression Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots.comp,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
   scale_y_sqrt()+
   theme_bw(20)
 ```
 
+***
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots.comp,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram(binwidth=45)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Examining Different Shears
+===
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+
+test.systems.shear<-ldply(c(0.5,1,3),function(c.shear) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,x+c.shear*(y-2)/2)
+  cbind(str.grid,glab=c.shear)
+})
+
+dist.plots.shear<-ddply(test.systems.shear,.(glab),find.nn)
+ggplot(test.systems.shear,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.shear,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
+ggplot(dist.plots.shear,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
+  theme_bw(20)
+```
+
+Shear Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots.shear,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots.shear,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram(binwidth=45)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Examining Different Stretches
+===
+
+```{r, fig.cap="Uniaxially Stretched",fig.height=9}
+
+str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
+test.systems<-ldply(c(0.5,1,3),function(c.stretch) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,str.fun(x,a=c.stretch))
+  str.grid$y<-with(cur.grid,str.fun(y,a=c.stretch))
+  cbind(str.grid,glab=c.stretch)
+})
+
+dist.plots<-ddply(test.systems,.(glab),find.nn)
+ggplot(test.systems,aes(x=x,y=y))+
+  geom_segment(data=dist.plots,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+
+ggplot(dist.plots,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+guides(color=F)+
+  theme_bw(20)
+```
+
+Stretch Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=dist,fill=as.factor(glab)))+
+  #geom_density(size=1.5,adjust=1/5)+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",color="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+ 
+```{r, fig.cap="NN Orientation",fig.height=9}
+ggplot(dist.plots,      
+       aes(x=180/pi*atan2(ye-y,xe-x),fill=as.factor(glab)))+
+  geom_histogram(binwidth=45)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Stretch")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Examining Swirl Systems
+===
+
+```{r, fig.cap="",fig.height=9}
+cur.grid$cdist<-with(cur.grid,sqrt(x^2+y^2))
+test.systems.swirl<-ldply(c(0,pi/40,pi/10),function(c.swirl) {
+  str.grid<-cur.grid
+  str.grid$x<-with(cur.grid,cos(c.swirl*cdist)*x-sin(c.swirl*cdist)*y)
+  str.grid$y<-with(cur.grid,cos(c.swirl*cdist)*y+sin(c.swirl*cdist)*x)
+  cbind(str.grid,glab=round(c.swirl*180/pi))
+})
+
+dist.plots.swirl<-ddply(test.systems.swirl,.(glab),find.nn)
+
+ggplot(test.systems.swirl,aes(x=x,y=y))+
+  geom_segment(data=dist.plots.swirl,aes(xend=xe,yend=ye),
+               arrow=arrow(length = unit(0.3,"cm")),alpha=0.75)+
+  geom_point(aes(color=val),size=3,alpha=0.75)+
+  labs(title="Positions and Neighbors",color="Label")+
+  scale_color_gradientn(colours=rainbow(10))+
+    coord_equal()+
+  facet_grid(glab~.)+
+  theme_bw(20)+guides(fill=F)
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
+ggplot(dist.plots.swirl,
+       aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_segment(aes(color=glab),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_grid(glab~.)+
+    coord_equal()+
+  labs(title="Nearest Neighbor Orientations")+
+  theme_bw(20)
+```
+
+Swirl NN Distributions
+===
+
+```{r, fig.cap="Length Distribution",fig.height=9}
+
+ggplot(dist.plots.swirl,      
+       aes(x=dist,fill=as.factor(glab)))+
+  geom_histogram(binwidth=0.25)+
+  labs(x="NND",title="NN Distances",fill="Swirl")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="NN Orientation",fig.height=9}
+
+ggplot(dist.plots.swirl,      
+       aes(x=180/pi*atan2(ye-y,xe-x),color=as.factor(glab)))+
+  geom_density(aes(y=..scaled..),size=1,adjust=1/7)+
+    labs(x=expression(paste("NN ",theta)),title="NN Orientation",color="Swirl",y="Frequency")+
+  #scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Voronoi Tesselation
+===
+```{r voronoi_code}
+library(deldir)
+dd.summary<-function(in.df) ddply(in.df,.(glab),function(c.grid) {
+  c.dd<-deldir(c.grid)
+  c.vor<-c.dd$dirsgs
+  n.pts<-as.vector(summary(as.factor(c(c.vor$ind1,c.vor$ind2))))
+  n.vec<-data.frame(ind=1:length(n.pts),
+                    n.count=n.pts,
+                    area=c.dd$summary$dir.area)
+  merge(c.grid,n.vec,by.x="val",by.y="ind")
+})
+```
+
+Voronoi tesselation is a method for partitioning a space based on points. The basic idea is that each point $\vec{p}$ is assigned a region $\textbf{R}$ consisting of points which are closer to $\vec{p}$ than any of the other points. Below the diagram is shown in a dashed line for the points shown as small circles.
+
+```{r, fig.cap="NN Orientation",fig.height=6}
+plot(deldir(subset(test.systems,glab==1)),wlines=c('tess'),showrect=T)
+```
+
+***
+
+### [Delaunay Triangulation](http://mathworld.wolfram.com/DelaunayTriangulation.html)
+
+A parallel or _dual_ idea where triangles are used and each triangle is created such that the circle which encloses it contains no other points. The triangulation makes the _neighbors_ explcit since connected points in the triangulation correspond to points in our tesselation which share an edge (or face in 3D)
+
+```{r, fig.cap="NN Orientation",fig.height=6}
+plot(deldir(subset(test.systems,glab==1)),wlines=c('triang'))
+```
+
+
+Stretch System
+===
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems$glab,0.95)
+plot(deldir(subset(test.systems,glab>=v.stretch)),wlines=c('tess'),showrect=T)
+```
+
+
+***
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems$glab,0.5)
+plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('tess'),showrect=T)
+```
+
+
+Swirl System
+===
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems.swirl$glab,type=1,0.5)
+plot(deldir(subset(test.systems.swirl,abs(glab-v.stretch)<0.1)),wlines=c('tess'),showrect=T)
+```
+
+
+***
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems.swirl$glab,0.95)
+plot(deldir(subset(test.systems.swirl,glab==v.stretch)),wlines=c('tess'),showrect=T)
+```
+
+
+Neighborhoods
+===
+
+### Stretch 
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems$glab,0.9)
+plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('triang'),showrect=T)
+```
+
+***
+  
+### Swirl
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+v.stretch<-quantile(test.systems.swirl$glab,0.95)
+plot(deldir(subset(test.systems.swirl,glab==v.stretch)),wlines=c('triang'),showrect=T)
+```
+
+Neighbor Count
+===
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+test.systems.vor<-dd.summary(test.systems)
+ggplot(test.systems.vor,      
+       aes(x=as.factor(n.count),y=..count..))+
+  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
+  labs(x="Neighbors",title="Stretch Neighbor Count",fill="Swirl")+
+ # scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+test.systems.swirl.vor<-dd.summary(test.systems.swirl)
+ggplot(test.systems.swirl.vor,      
+       aes(x=as.factor(n.count),y=..count..))+
+  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
+  labs(x="Neighbors",title="Swirl Neighbor Count",fill="Swirl")+
+ # scale_y_sqrt()+
+  theme_bw(20)
+```
+
+
+Tile Area 
+===
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+ggplot(test.systems.vor,      
+       aes(x=area,y=..count..))+
+  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
+  labs(x="Area",title="Stretch Area Count",fill="Stretch")+
+  theme_bw(20)
+```
+
+***
+
+
+```{r, fig.cap="Maximum Stretch",fig.height=7}
+
+ggplot(test.systems.swirl.vor,      
+       aes(x=area,y=..count..))+
+  geom_histogram(aes(fill=as.factor(glab)),binwidth=1)+facet_grid(glab~.)+
+  labs(x="Area",title="Swirl Area",fill="Swirl")+
+  theme_bw(20)
+```
+
+Using Both Metrics
+===
+```{r, fig.cap="Maximum Stretch",fig.height=7,fig.width=9}
+ggplot(rbind(cbind(test.systems.vor,system="Stretch",cdist=0),
+             cbind(test.systems.swirl.vor,system="Swirl")
+             ),
+       aes(x=area,y=n.count,color=glab,shape=as.factor(system)))+
+  stat_binhex(bins=5)+
+  geom_jitter()+
+  
+  #geom_density2d(alpha=0.5)+
+  labs(x="Area",y="Neighbors",color="System")+
+  scale_color_gradientn(colours=rainbow(4))+
+  facet_grid(~system)+
+  theme_bw(20)
+```
 
 
 
