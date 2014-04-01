@@ -1604,17 +1604,99 @@ $$ \textrm{SAC} = \frac{\textrm{NND}}{\sqrt[3]{\frac{\bar{\textrm{Ter}}}{2\pi}}}
 Distribution Tensor
 ===
 
+So the information we have is 3D why are we taking single metrics (distance, angle, volume) to quantify it. 
+- Shouldn't we use 3D metrics with 3D data?
+- Just like the shape tensor we covered before, we can define a _distribution_ tensor to characterize the shape of the distribution. 
+- The major difference instead of constituting voxels we use _edges_
+ - an edge is defined from the Delaunay triangluation
+ - it connects two neighboring bubbles together
+ 
+
+***
+
+- We can calculate distribution for a single bubble by taking all edges that touch the object or from a region by finding all edges inside that region
+
+We start off by calculating the covariance matrix from the list of edges $\vec{v}_{ij}$ in a given volume $\mathcal{V}$
+
+$$ \vec{v}_{ij} = \vec{\textrm{COV}}(i)-\vec{\textrm{COV}}(j) $$
+
+$$ COV(\mathcal{V}) = \frac{1}{N} \sum_{\forall \textrm{COM}(i) \in \mathcal{V}} \begin{bmatrix}
+\vec{v}_x\vec{v}_x & \vec{v}_x\vec{v}_y & \vec{v}_x\vec{v}_z\\
+\vec{v}_y\vec{v}_x & \vec{v}_y\vec{v}_y & \vec{v}_y\vec{v}_z\\
+\vec{v}_z\vec{v}_x & \vec{v}_z\vec{v}_y & \vec{v}_z\vec{v}_z
+\end{bmatrix} $$
+
+Distribution Tensor (continued)
+===
+
+We then take the eigentransform of this array to obtain the eigenvectors (principal components, $\vec{\Lambda}_{1\cdots 3}$) and eigenvalues (scores, $\lambda_{1\cdots 3}$)
+
+$$ COV(I_{id}) \longrightarrow \underbrace{\begin{bmatrix}
+\vec{\Lambda}_{1x} & \vec{\Lambda}_{1y} & \vec{\Lambda}_{1z} \\
+\vec{\Lambda}_{2x} & \vec{\Lambda}_{2y} & \vec{\Lambda}_{2z} \\
+\vec{\Lambda}_{3x} & \vec{\Lambda}_{3y} & \vec{\Lambda}_{3z} 
+\end{bmatrix}}_{\textrm{Eigenvectors}} * \underbrace{\begin{bmatrix} 
+\lambda_1 & 0 & 0 \\ 
+0 & \lambda_2 & 0 \\
+0 & 0 & \lambda_3
+\end{bmatrix}}_{\textrm{Eigenvalues}} * \underbrace{\begin{bmatrix}
+\vec{\Lambda}_{1x} & \vec{\Lambda}_{1y} & \vec{\Lambda}_{1z} \\
+\vec{\Lambda}_{2x} & \vec{\Lambda}_{2y} & \vec{\Lambda}_{2z} \\
+\vec{\Lambda}_{3x} & \vec{\Lambda}_{3y} & \vec{\Lambda}_{3z} 
+\end{bmatrix}^{T}}_{\textrm{Eigenvectors}} $$
+The principal components tell us about the orientation of the object and the scores tell us about the corresponding magnitude (or length) in that direction.
+
+
 Distribution Anisotropy
 ===
 
+Visual example
+- Tensor represents the average _spacing_ between objects in each direction $\approx$ thickness of background.
+- Its interpretation is more difficult since it doesn't represent a _real_ object
+
+![Distribution Tensor](ext-figures/DistributionTensor.png)
+
+***
+
+From this tensor we can define an anisotropy in the same manner as we defined for shapes. The anisotropy defined as before 
+$$ Aiso = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Longest Side}} $$
+
+
+- An isotropic distribution tensor indicates the spacing between objects is approximately the same in every direction
+ - Does not mean a grid, organized, or evenly spaced!
+ - Just the same in every direction
+- Anisotropic distribution tensor means the spacing is smaller in one direction than the others
+ - Can be regular or grid-like
+ - Just closer on one direction
+
 Distribution Oblateness
 ===
+
+![Distribution Tensor](ext-figures/DistributionTensor.png)
+
+***
+
+From this tensor we can also define oblateness in the same manner as we defined for shapes. The oblateness is also defined as before as a _type_ of anisotropy
+
+$$ \textrm{Ob} = 2\frac{\lambda_{2}-\lambda_{1}}{\lambda_{3}-\lambda_{1}}-1 $$
+
+
+- Indicates the pancakeness of the distribution
+- Oblate means it is very closely spaced in 2 directions and far in the other
+ - strand-like structure
+- Prolate means it is close in one direction and far in the other 2
+ - sheet-like structure
+
 
 
 Alignment Tensor
 ===
 
+![Alignemnt Tensor](ext-figures/AlignmentTensor1.png)
+
+
 Alignment Anisotropy
 ===
 
+![Alignemnt Tensor](ext-figures/AlignmentTensor.png)
 
