@@ -11,7 +11,7 @@ cache.path<-"pres_cache/"
 if(exists("printed")) { # settings for printed version (if the variable exists)
   echo.val<-T # show code
   fig.height<-3
-  dpi<-150
+  dpi<-100
   cache<-T
   fig.path<-"print_figures/"
   cache.path<-"print_cache/"
@@ -575,6 +575,7 @@ ggplot(test.systems.comp,aes(x=x,y=y))+
 
 ggplot(dist.plots.comp,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -589,8 +590,7 @@ Compression Distributions
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots.comp,      
        aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5,adjust=1/5)+
-  geom_histogram(binwidth=0.25)+
+  geom_histogram(binwidth=0.1)+
   labs(x="NND",title="NN Distances",color="Stretch")+
   scale_y_sqrt()+
   theme_bw(20)
@@ -617,7 +617,7 @@ shear.fun<-function(c.shear,in.grid=cur.grid) {
   str.grid$x<-with(in.grid,x+c.shear*(y-2)/2)
   cbind(str.grid,glab=c.shear)
 }
-test.systems.shear<-ldply(c(0.5,1,3),shear.fun)
+test.systems.shear<-ldply(c(0,0.5,2),shear.fun)
 
 dist.plots.shear<-ddply(test.systems.shear,.(glab),find.nn)
 ggplot(test.systems.shear,aes(x=x,y=y))+
@@ -634,9 +634,9 @@ ggplot(test.systems.shear,aes(x=x,y=y))+
 ***
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
-
 ggplot(dist.plots.shear,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -651,7 +651,6 @@ Shear Distributions
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots.shear,      
        aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5,adjust=1/5)+
   geom_histogram(binwidth=0.25)+
   labs(x="NND",title="NN Distances",fill="Shear")+
   scale_y_sqrt()+
@@ -667,6 +666,7 @@ ggplot(dist.plots.shear,
     labs(x=expression(paste("NN ",theta)),title="NN Orientation",fill="Shear")+
   scale_y_sqrt()+
   theme_bw(20)
+
 ```
 
 
@@ -674,7 +674,6 @@ Examining Different Stretches
 ===
 
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
-
 str.fun<-function(x,a=1,r=4) sign(x)*r*(abs(x)/r)^a
 stretch.fun<-function(c.stretch,in.grid=cur.grid) {
   str.grid<-in.grid
@@ -702,6 +701,7 @@ ggplot(test.systems,aes(x=x,y=y))+
 
 ggplot(dist.plots,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -767,6 +767,7 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.swirl,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -845,7 +846,7 @@ Examining Compression
 ===
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
 
-test.systems.comp<-ldply(c(0.8,1,1.2),function(c.stretch) {
+test.systems.comp<-ldply(c(0.6,1,1.5),function(c.stretch) {
   str.grid<-cur.grid
   str.grid$x<-with(cur.grid,c.stretch*x)
   str.grid$y<-with(cur.grid,c.stretch*y)
@@ -867,9 +868,9 @@ ggplot(test.systems.comp,aes(x=x,y=y))+
 ***
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
-
 ggplot(dist.plots.comp,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -884,7 +885,6 @@ Compression Distributions
 ```{r, fig.cap="Length Distribution",fig.height=9}
 ggplot(dist.plots.comp,      
        aes(x=dist,fill=as.factor(glab)))+
-  #geom_density(size=1.5,adjust=1/5)+
   geom_histogram(binwidth=0.25)+
   labs(x="NND",title="NN Distances",color="Stretch")+
   scale_y_sqrt()+
@@ -907,8 +907,7 @@ Examining Different Shears
 ===
 
 ```{r, fig.cap="Uniaxially Stretched",fig.height=9}
-
-test.systems.shear<-ldply(c(0.5,1,3),function(c.shear) {
+test.systems.shear<-ldply(c(0,1,3),function(c.shear) {
   str.grid<-cur.grid
   str.grid$x<-with(cur.grid,x+c.shear*(y-2)/2)
   cbind(str.grid,glab=c.shear)
@@ -932,6 +931,7 @@ ggplot(test.systems.shear,aes(x=x,y=y))+
 
 ggplot(dist.plots.shear,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+  geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -994,6 +994,7 @@ ggplot(test.systems,aes(x=x,y=y))+
 
 ggplot(dist.plots,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
@@ -1057,6 +1058,7 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.swirl,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
+    geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
   geom_segment(aes(color=glab),
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
