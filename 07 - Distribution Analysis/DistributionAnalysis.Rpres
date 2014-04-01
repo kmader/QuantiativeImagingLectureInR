@@ -1690,9 +1690,69 @@ $$ \textrm{Ob} = 2\frac{\lambda_{2}-\lambda_{1}}{\lambda_{3}-\lambda_{1}}-1 $$
  - sheet-like structure
 
 
+Orientation
+===
+
+The shape tensor provides for each object 3 possible orientations (each of the eigenvectors). 
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
+opt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),th.amp=0,...) {
+  th.val<-runif(n.pts,min=-th.amp,max=th.amp)+pi*round(runif(n.pts))
+  data.frame(x=rn.fun(n.pts),y=rn.fun(n.pts),
+             xv=cos(th.val),yv=sin(th.val),
+             th.amp=th.amp,n.pts=n.pts,
+             label=paste("Avg:",round(mean(180/pi*th.val)*10)/10,"Sd:",round(sd(180/pi*th.val)*10)/10),...)
+}
+or.data<-ldply(seq(1e-1,pi/2.5,length.out=3),function(noise) opt.maker(50,th.amp=noise))
+
+ggplot(or.data,
+       aes(x,y,xend=x+0.2*xv,yend=y+0.2*yv))+
+  geom_segment(aes(color="Orientation"),arrow=arrow(length = unit(0.15,"cm")))+
+  geom_point(aes(color="COV"),alpha=0.7)+
+  facet_grid(label~.)+
+  coord_equal()+
+  labs(color="Type")+
+  theme_bw(20)
+
+```
+
+***
+
+As we saw in earlier plots it is difficult to express this information in point or graph format
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
+ggplot(or.data,
+       aes(x=0,y=0,xend=xv,yend=yv))+
+    geom_density2d(aes(x=xv,y=yv),color="red",alpha=0.7)+
+  geom_segment(arrow=arrow(length = unit(0.3,"cm")))+
+   facet_grid(label~.)+
+    coord_equal()+
+  labs(title="Object Primary Orientations")+guides(color=F)+
+  theme_bw(20)
+
+```
+
+
+
 
 Alignment Tensor
 ===
+
+We can again take advantage of the versatility of a tensor representation for our data and use an _alignment_ tensor. 
+
+- The same as all of the tensors we have introduced
+- Except we use the primary orientation instead of _voxel positions_ (shape) or _edges_ (distribution)
+- Similar to distribution it is calculated for a volume ($\mathcal{V}$) or region and is meaningless for a single object
+
+$$ \vec{v}_{i} = \vec{\Lambda_1}(i) $$
+
+$$ COV = \frac{1}{N} \sum_{\forall \textrm{COM}(i) \in \mathcal{V}} \begin{bmatrix}
+\vec{v}_x\vec{v}_x & \vec{v}_x\vec{v}_y & \vec{v}_x\vec{v}_z\\
+\vec{v}_y\vec{v}_x & \vec{v}_y\vec{v}_y & \vec{v}_y\vec{v}_z\\
+\vec{v}_z\vec{v}_x & \vec{v}_z\vec{v}_y & \vec{v}_z\vec{v}_z
+\end{bmatrix} $$
+
+***
 
 ![Alignemnt Tensor](ext-figures/AlignmentTensor1.png)
 
