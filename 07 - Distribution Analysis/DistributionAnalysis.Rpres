@@ -196,10 +196,12 @@ Literature / Useful References
 ========================================================
 ### Books
 - Jean Claude, Morphometry with R
-- [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
-- [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
+ - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+ - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
-- Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+ - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+- J. Weickert, Visualization and Processing of Tensor Fields
+ - [Online](http://books.google.ch/books?id=ScLxPORMob4C&lpg=PA220&ots=mYIeQbaVXP&dq=&pg=PA220#v=onepage&q&f=false)
 
 *** 
 ### Papers / Sites
@@ -207,6 +209,10 @@ Literature / Useful References
 - Voronoi Tesselations
  - Ghosh, S. (1997). Tessellation-based computational methods for the characterization and analysis of heterogeneous microstructures. Composites Science and Technology, 57(9-10), 1187–1210
  - [Wolfram Explanation](http://mathworld.wolfram.com/VoronoiDiagram.html)
+
+- Self-Avoiding / Nearest Neighbor
+ - Schwarz, H., & Exner, H. E. (1983). The characterization of the arrangement of feature centroids in planes and volumes. Journal of Microscopy, 129(2), 155–169.
+ - Kubitscheck, U. et al. (1996). Single nuclear pores visualized by confocal microscopy and image processing. Biophysical Journal, 70(5), 2067–77.
 
 - Alignment / Distribution Tensor
  - Mader, K. et al (2013). A quantitative framework for the 3D characterization of the osteocyte lacunar system. Bone, 57(1), 142–154
@@ -390,6 +396,42 @@ kable(t(s.table),align='c',digits=2)
 ```
 
 - But what if we want more or other information?
+
+Calculating Density
+===
+
+One of the first metrics to examine with distribution is density $\rightarrow$ how many objects in a given region or volume. 
+
+It is deceptively easy to calculate involving the ratio of the number of objects divided by the volume.
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=5}
+pt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),...) data.frame(x=rn.fun(n.pts),y=rn.fun(n.pts),n.pts=n.pts,...)
+
+ggplot(ldply(c(10,100,1000),pt.maker),aes(x,y))+
+  geom_point()+facet_grid(n.pts~.)+
+  coord_equal()+
+  theme_bw(20)
+
+```
+
+***
+It doesn't tell us much, many very different systems with the _same_ density and what if we want the density of a single point? Does that even make sense?
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
+dist.funs<-c(function(pts) runif(pts,min=0,max=1),
+             function(pts) rnorm(pts,mean=0.5,sd=0.3),
+             function(pts) rnorm(pts,mean=0.5,sd=0.1),
+             function(pts) rlnorm(pts,meanlog=1.5,sdlog=1.5)/exp(3))
+
+ggplot(ldply(1:length(dist.funs),function(fun.ind) pt.maker(500,rn.fun=dist.funs[[fun.ind]],fun.ind=fun.ind)),
+       aes(x,y))+
+  geom_point()+facet_grid(fun.ind~.)+
+  coord_equal()+
+  xlim(0,1.01)+ylim(0,1.01)+
+  labs(title="Density = 500 N/mm^2")+
+  theme_bw(20)
+
+```
+
+
 
 Neighbors
 ===
@@ -1051,8 +1093,8 @@ Voronoi Tesselation
 ===
 ```{r voronoi_code}
 library(deldir)
-dd.grid.summary<-function(c.grid) {
-  c.dd<-deldir(c.grid)
+dd.grid.summary<-function(c.grid,...) {
+  c.dd<-deldir(c.grid,...)
   c.vor<-c.dd$dirsgs
   n.pts<-as.vector(summary(as.factor(c(c.vor$ind1,c.vor$ind2))))
   n.vec<-data.frame(ind=1:length(n.pts),
@@ -1078,6 +1120,55 @@ The grid on the random system, shows much more diversity in territory area.
 
 ```{r, fig.cap="NN Orientation",fig.height=5}
 plot(deldir(cur.grid),wlines=c('tess'),showrect=T)
+```
+
+Calculating Density
+===
+
+Back to our original density problem of having just one number to broadly describe the system. 
+- Can a voronoi tesselation help us with this?
+- __YES__
+
+With density we calculated  
+$$ \textrm{Density} = \frac{\textrm{Number of Objects}}{\textrm{Total Volume}} $$
+with the regions we have a territory (volume) per object so the average territory is
+$$ \bar{Territory} = \frac{\sum \textrm{Territory}_i}{\textrm{Number of Objects}} = \frac{\textrm{Total Volume}}{\textrm{Number of Objects}} = \frac{1}{\textrm{Density}} $$
+So the same, but we now have a density definition for a single point! 
+$$ \textrm{Density}_i = \frac{1}{\textrm{Territory}_i} $$
+
+
+Density Examples
+===
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
+rand.pnts<-ldply(1:length(dist.funs),function(fun.ind) pt.maker(500,rn.fun=dist.funs[[fun.ind]],fun.ind=fun.ind))
+ggplot(rand.pnts,
+       aes(x,y))+
+  geom_point()+facet_grid(fun.ind~.)+
+  coord_equal()+
+  xlim(0,1.01)+ylim(0,1.01)+
+  labs(title="Density = 500 N/m^2")+
+  theme_bw(20)
+
+```
+
+***
+
+```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
+proc.block<-function(in.block) {
+  c.block<-subset(in.block,x>0 & x<1 & y>0 & y<1)
+  c.block<-rbind(c.block,data.frame(x=c(0,1),y=c(0,1),n.pts=-1,fun.ind=-1))
+  #dd.grid.summary(cbind(c.block,val=1:nrow(c.block)))
+  data.frame(area=deldir(c.block,..)$summary$dir.area)
+}
+ggplot(ddply(rand.pnts,.(fun.ind),proc.block),                 
+       aes(x=1/area))+
+  geom_density(aes(y=..count..))+
+  geom_vline(xintercept=500,color="red")+
+  facet_grid(fun.ind~.)+
+  scale_x_log10()+
+  labs(title="Density",x="Density 1/m^2",y="Frequency")+
+  theme_bw(20)
+
 ```
 
 Delaunay Triangulation
@@ -1493,7 +1584,20 @@ ggplot(melt(swirl.data,id.vars=c("swirl")),aes(x=swirl,y=value))+
 
 Self-Avoiding
 ===
+From the nearest neighbor distance metric, we can create a scale-free version of the metric which we call _self-avoiding coefficient_ or _grouping_. 
 
+The metric is the ratio of
+- observed nearest neighbor distance $\textrm{NND}$
+- the expected mean nearest neighbor distance ($r_0$) for a random point distribution (Poisson Point Process) with the same number of points (N.Obj) per volume (Total.Volume). 
+$$r_0=\sqrt[3]{\frac{\textrm{Total.Volume}}{2\pi \textrm{ N.Obj}}}$$
+
+*** 
+
+Using the territory we defined earlier (Region area/volume) we can simplify the definition to 
+
+$$ r_0=\sqrt[3]{\frac{\bar{\textrm{Ter}}}{2\pi}} $$
+
+$$ \textrm{SAC} = \frac{\textrm{NND}}{\sqrt[3]{\frac{\bar{\textrm{Ter}}}{2\pi}}} $$
 
 
 
