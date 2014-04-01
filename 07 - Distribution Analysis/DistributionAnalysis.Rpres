@@ -339,6 +339,22 @@ A tool which could be adapted to answering a large variety of problems
 - multiple phases
 
 
+Destructive Measurements
+===
+With most imaging techniques and sample types, the task of measurement itself impacts the sample.
+- Even techniques like X-ray tomography which _claim_ to be non-destructive still impart significant to lethal doses of X-ray radition for high resolution imaging
+- Electron microscopy, auto-tome-based methods, histology are all markedly more destructive and make longitudanal studies impossible
+- Even when such measurements are possible
+ - Registration can be a difficult task and introduce artifacts
+
+***
+
+### Why is this important?
+
+- techniques which allow us to compare different samples of the same type.
+- are sensitive to common transformations
+ - Sample B after the treatment looks like Sample A stretched to be 2x larger
+ - The volume fraction at the center is higher than the edges but organization remains the same
 
 
 Ok, so now what?
@@ -1477,6 +1493,7 @@ ggplot(melt(swirl.data,id.vars=c("swirl")),aes(x=swirl,y=value))+
 
 Self-Avoiding
 ===
+
 
 
 
