@@ -3,7 +3,7 @@ require(knitr)
 # default settings, # settings for presentation version
 echo.val<-F
 fig.height<-5
-dpi<-150
+dpi<-80
 cache<-T
 fig.path<-"pres_figures/"
 cache.path<-"pres_cache/"
@@ -349,7 +349,7 @@ Destructive Measurements
 ===
 With most imaging techniques and sample types, the task of measurement itself impacts the sample.
 - Even techniques like X-ray tomography which _claim_ to be non-destructive still impart significant to lethal doses of X-ray radition for high resolution imaging
-- Electron microscopy, auto-tome-based methods, histology are all markedly more destructive and make longitudanal studies impossible
+- Electron microscopy, auto-tome-based methods, histology are all markedly more destructive and make longitudinal studies impossible
 - Even when such measurements are possible
  - Registration can be a difficult task and introduce artifacts
 
@@ -473,7 +473,8 @@ $$ \vec{\textrm{NN}}(\vec{y}) = \textrm{argmin}(||\vec{y}-\vec{x}|| \forall \vec
 We define the distance as the Euclidean distance from the current point to that point, and the angle as the 
 
 $$ \textrm{NND}(\vec{y}) = \textrm{min}(||\vec{y}-\vec{x}|| \forall \vec{x} \in \textbf{P}-\vec{y}) $$
-$$ \textrm{NN}\theta(\vec{y}) = \tan^{-1}\frac{(\vec{\textrm{NN}}-\vec{y})\cdot \vec{j}}{(\vec{\textrm{NN}}-\vec{y})\cdot{i}} $$
+$$ \textrm{NN}\theta(\vec{y}) = \tan^{-1}\frac{(\vec{\textrm{NN}}-\vec{y})\cdot \vec{j}}{(\vec{\textrm{NN}}-\vec{y})\cdot \vec{i}} $$
+
 
 
 Nearest Neighbor Definition
@@ -759,7 +760,7 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
   scale_color_gradientn(colours=rainbow(10))+
     coord_equal()+
   facet_grid(glab~.)+
-  theme_bw(20)+guides(fill=F)
+  theme_bw(20)+guides(color=F)
 ```
 
 ***
@@ -768,12 +769,12 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
 ggplot(dist.plots.swirl,
        aes(x=0,y=0,xend=xe-x,yend=ye-y))+
     geom_density2d(aes(x=xe-x,y=ye-y),color="red",alpha=0.7)+
-  geom_segment(aes(color=glab),
+  geom_segment(
                arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(glab~.)+
     coord_equal()+
   labs(title="Nearest Neighbor Orientations")+
-  theme_bw(20)
+  theme_bw(20)+guides(color=F)
 ```
 
 Swirl NN Distributions
@@ -1142,33 +1143,32 @@ $$ \textrm{Density}_i = \frac{1}{\textrm{Territory}_i} $$
 Density Examples
 ===
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
-rand.pnts<-ldply(1:length(dist.funs),function(fun.ind) pt.maker(500,rn.fun=dist.funs[[fun.ind]],fun.ind=fun.ind))
-ggplot(rand.pnts,
-       aes(x,y))+
+rand.pnts<-ldply(1:length(dist.funs),function(fun.ind) {
+  out.pts<-pt.maker(500,rn.fun=dist.funs[[fun.ind]],fun.ind=fun.ind)
+  out.pts$val<-1:nrow(out.pts)
+  out.pts
+})
+ggplot(ddply(rand.pnts,.(fun.ind),function(in.pts) deldir(in.pts)$summary),
+       aes(x,y,color=1/dir.area))+
   geom_point()+facet_grid(fun.ind~.)+
+  scale_color_gradientn(colours=rainbow(4),trans="log10",limits=c(20,5000))+
   coord_equal()+
   xlim(0,1.01)+ylim(0,1.01)+
-  labs(title="Density = 500 N/m^2")+
-  theme_bw(20)
+  labs(title="Density = 500 N/m^2",color="Local\nDensity")+
+  theme_bw(15)
 
 ```
 
 ***
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
-proc.block<-function(in.block) {
-  c.block<-subset(in.block,x>0 & x<1 & y>0 & y<1)
-  c.block<-rbind(c.block,data.frame(x=c(0,1),y=c(0,1),n.pts=-1,fun.ind=-1))
-  #dd.grid.summary(cbind(c.block,val=1:nrow(c.block)))
-  data.frame(area=deldir(c.block,..)$summary$dir.area)
-}
-ggplot(ddply(rand.pnts,.(fun.ind),proc.block),                 
-       aes(x=1/area))+
-  geom_density(aes(y=..count..))+
-  geom_vline(xintercept=500,color="red")+
+ggplot(cbind(ddply(rand.pnts,.(fun.ind),function(c.block) deldir(c.block,rw=c(0,1,0,1))$summary),mn.pos=500),                 
+       aes(x=1/del.area))+
+  geom_density(aes(y=..count..,color="Local"))+
+  geom_vline(aes(colour="Average",xintercept=mn.pos))+
   facet_grid(fun.ind~.)+
   scale_x_log10()+
-  labs(title="Density",x="Density 1/m^2",y="Frequency")+
+  labs(title="Local Density",x="Density 1/m^2",y="Frequency",color="Density\nMetric")+
   theme_bw(20)
 
 ```
@@ -1176,7 +1176,7 @@ ggplot(ddply(rand.pnts,.(fun.ind),proc.block),
 Delaunay Triangulation
 ===
 
-A parallel or _dual_ [idea](http://mathworld.wolfram.com/DelaunayTriangulation.html) where triangles are used and each triangle is created such that the circle which encloses it contains no other points. The triangulation makes the _neighbors_ explcit since connected points in the triangulation correspond to points in our tesselation which share an edge (or face in 3D)
+A parallel or _dual_ [idea](http://mathworld.wolfram.com/DelaunayTriangulation.html) where triangles are used and each triangle is created such that the circle which encloses it contains no other points. The triangulation makes the _neighbors_ explicit since connected points in the triangulation correspond to points in our tesselation which share an edge (or face in 3D)
 
 ```{r, fig.cap="NN Orientation",fig.height=5}
 plot(deldir(std.grid),wlines=c('triang'))
@@ -1760,5 +1760,28 @@ $$ COV = \frac{1}{N} \sum_{\forall \textrm{COM}(i) \in \mathcal{V}} \begin{bmatr
 Alignment Anisotropy
 ===
 
+Anisotropy for alignment can be summarized as degree of alignment since very anisotropic distributions mean the objects are aligned well in the same direction while an isotropic distribution means the orientations are random. Oblateness can also be defined but is normally not particularly useful.
+
 ![Alignemnt Tensor](ext-figures/AlignmentTensor.png)
 
+
+Other Approaches
+===
+type:alert
+
+### K-Means
+
+K-Means can also be used to classify the point-space itself after shape analysis. It is even better suited than for images because while most images are only 2 or 3D the shape vector space can be 50-60 dimensional and is inherently much more difficult to visualize.
+
+
+***
+
+### 2 Point Correlation Functions
+
+For a wider class of analysis of spatial distribution, there exist a class a functions called _N-point Correlation Functions_
+- given a point of type $A$ at $\vec{x}$
+- what is the probability of $B$ at $\vec{x}+\vec{r}$
+
+- How is it useful
+ - A simple analysis can be used to see the spacing of objects (peaks in the $F(\vec{r})$ function, $A$ and $B$ are the same phase). 
+ - Where are cells located in reference to canals (peaks in $F(\vec{r})$ function, $A$ is a point inside a canal $B$ is the cells)
