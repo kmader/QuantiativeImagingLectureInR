@@ -589,9 +589,9 @@ Creating the skeleton
 ===
 
 We can locate the local maxima of the structure by setting a minimum surface distance
-$$I_d(x,y)>MIN-SLOPE$$
+$$I_d(x,y)>MIN_{DIST}$$
 and combining it with a minimum slope value 
-$$\nabla I_d(x,y) > MIN-DIST$$
+$$\nabla I_d(x,y) > MIN_{SLOPE}$$
 
 ***
 
@@ -1137,13 +1137,15 @@ Curvature is a metric related to the surface or interface between phases or obje
 
 $$ \kappa = \frac{1}{R} $$
 
-- Thus a low curvature means the value means a very large radius and a small curvature means a very small radius
+- Thus a low curvature means the value means a very large radius and high curvature means a very small radius
 
 
 Curvature: Surface Normal
 ===
 
 In order to meaningfully talk about curvatures of surfaces, we first need to define a consistent frame of reference for examining the surface of an object. We thus define a surface normal vector as a vector oriented orthogonally to the surface away from the interior of the object $\rightarrow \vec{N}$
+
+
 ![Surface](ext-figures/3Dsurface.png)
 ![Surface Normals](ext-figures/3DsurfaceWiNormals.png)
 
@@ -1164,6 +1166,7 @@ The mean of the two principal curvatures
 $$ H = \frac{1}{2}(\kappa_1+\kappa_2) $$
 
 ### Gaussian Curvature
+
 The mean of the two principal curvatures
 $$ K = \kappa_1\kappa_2 $$
 - positive for spheres (or spherical inclusions)

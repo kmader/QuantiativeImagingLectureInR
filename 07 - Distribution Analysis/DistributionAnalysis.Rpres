@@ -1408,7 +1408,7 @@ We have introduced a number of "operations" we can perform on our objects to cha
 We have introduced a number of metrics to characterize our images
 - Nearest Neighbor distance
 - Nearest Neighbor angle
-- Delaunay Neigbhor count
+- Delaunay Neighbor count
 - Territory Area (Volume)
 
 ***
