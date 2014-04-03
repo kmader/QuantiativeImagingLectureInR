@@ -320,6 +320,22 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
  - Maybe cells which are close __enough__ are communicating $\rightarrow$ __?__
  - Maybe cells form hub and spoke networks $\rightarrow$ __?__
  
+
+Motivation (continued)
+===
+
+```{r, fig.cap="All Cells",fig.height=7}
+ggplot(cur.cell.df,aes(x=x,y=y))+
+  geom_tile(color="black",fill="grey")+
+  geom_path(data=cell.ellipse,aes(color="Ellipse",group=val))+
+  geom_path(data=bbox.fun(cur.cell.df),aes(x=xi,y=yi,color="Bounding\nBox",group=val))+
+  labs(title="Single Cell",color="Shape\nAnalysis\nMethod")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
+
+
+***
+
 1. We want to know how the cells are nourished
  - Maybe closely packed cells are better nourished $\rightarrow$ count cells in a box__?__
  - Maybe cells are oriented around canals which supply them $\rightarrow$ __?__
@@ -1684,9 +1700,9 @@ $$ \textrm{Ob} = 2\frac{\lambda_{2}-\lambda_{1}}{\lambda_{3}-\lambda_{1}}-1 $$
 
 
 - Indicates the pancakeness of the distribution
-- Oblate means it is very closely spaced in 2 directions and far in the other
+- Oblate means it is very closely spaced in one direction and far in the other two
  - strand-like structure
-- Prolate means it is close in one direction and far in the other 2
+- Prolate means it is close in two directions and far in the other
  - sheet-like structure
 
 
@@ -1767,12 +1783,10 @@ Anisotropy for alignment can be summarized as degree of alignment since very ani
 
 Other Approaches
 ===
-type:alert
 
 ### K-Means
 
 K-Means can also be used to classify the point-space itself after shape analysis. It is even better suited than for images because while most images are only 2 or 3D the shape vector space can be 50-60 dimensional and is inherently much more difficult to visualize.
-
 
 ***
 
@@ -1785,3 +1799,5 @@ For a wider class of analysis of spatial distribution, there exist a class a fun
 - How is it useful
  - A simple analysis can be used to see the spacing of objects (peaks in the $F(\vec{r})$ function, $A$ and $B$ are the same phase). 
  - Where are cells located in reference to canals (peaks in $F(\vec{r})$ function, $A$ is a point inside a canal $B$ is the cells)
+ 
+ 
