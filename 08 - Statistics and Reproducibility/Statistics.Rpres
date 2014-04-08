@@ -35,6 +35,8 @@ require(reshape2) # for the melt function
 ## To install EBImage
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("EBImage")
+require(png)
+require(gridExtra)
 
 # start parallel environment
 registerDoMC()
@@ -72,6 +74,18 @@ ddply.cutcols<-function(...,cols=1) {
     }
   cur.table
   }
+
+
+show.pngs.as.grid<-function(file.list,title.fun,zoom=1) {
+  preparePng<-function(x) rasterGrob(readPNG(x,native=T,info=T),width=unit(zoom,"npc"),interp=F)
+  labelPng<-function(x,title="junk") (qplot(1:300, 1:300, geom="blank",xlab=NULL,ylab=NULL,asp=1)+
+                                        annotation_custom(preparePng(x))+
+                                        labs(title=title)+theme_bw(24)+
+                                        theme(axis.text.x = element_blank(),
+                                             axis.text.y = element_blank()))
+  imgList<-llply(file.list,function(x) labelPng(x,title.fun(x)) )
+  do.call(grid.arrange,imgList)
+}
 
 ```
 
@@ -422,7 +436,83 @@ plot(g,layout=layout.lgl(g,maxiter=10000,root=1)) #, layout=layout.circle)# layo
 - How do we judge the different results?
 
 
-Without Parameters
+Qualitative vs Quantitative
 ===
+
+Given the complexity of the tree, we need to do some pruning
+
+### Qualitative Assessment
+ - Evaluating metrics using visual feedback
+ - Compare with expectations from other independent techniques or approach
+ - Are there artifacts which are included in the output?
+ - Do the shapes look correct?
+ - Are they distributed as expected?
+ - Is their orientation menaingful?
+ 
+
+***
+
+```{r , fig.height=9,fig.width=9}
+title.fun<-function(file.name) strsplit(strsplit(strsplit(file.name,"/")[[1]][2],"-")[[1]][2],".png")[[1]][1]
+show.pngs.as.grid(Sys.glob("ext-figures/poros*.png"),title.fun,zoom=0.5)
+```
+
+Quantitative Metrics
+===
+
+```{r, load-metrics}
+source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
+source('~/Dropbox/TIPL/src/R/commonReportFunctions.R')
+# read and correct the coordinate system
+thresh.fun<-function(x) {
+  t<-sample.name.fcn(9,3)(x)
+  as.numeric(substring(t,2,nchar(t)))
+}
+readfcn<-function(x) cbind(compare.foam.corrected(x,
+                                                  checkProj=F
+                                                  #force.scale=0.011 # force voxel size to be 11um
+                                                  ),
+                           thresh=thresh.fun(x) # how to parse the sample names
+                           )
+# Where are the csv files located
+rootDir<-"/Users/mader/Dropbox/WorkRelated/Casanova/mcastudy" 
+clpor.files<-Sys.glob(paste(rootDir,"/a*/lacun_0.csv",sep="/")) # list all of the files
+
+# Read in all of the files
+all.lacun<-ldply(clpor.files,readfcn,.parallel=T)
+```
+
+
+
+***
+```{r , fig.height=5}
+poresum<-function(all.data) ddply(all.data,.(thresh),function(c.sample) {
+  data.frame(Count=nrow(c.sample),
+             Volume=mean(c.sample$VOLUME*1e9),
+             Stretch=mean(c.sample$AISO),
+             Oblateness=mean(c.sample$OBLATENESS),
+             #Lacuna_Density_mm=1/mean(c.sample$DENSITY_CNT),
+             Length=mean(c.sample$PROJ_PCA1*1000),
+             Width=mean(c.sample$PROJ_PCA2*1000),
+             Height=mean(c.sample$PROJ_PCA3*1000),
+             Orientation=mean(abs(c.sample$PCA1_Z)))
+})
+comb.summary<-rbind(cbind(poresum(all.canal),Phase="Canal"),cbind(poresum(all.lacun),Phase="Lacuna"))
+splot<-ggplot(comb.summary,aes(x=thresh,color=Phase))
+splot+geom_line(aes(y=Count))+scale_y_log10()+
+  theme_bw(24)+labs(y="Object Count",x="Threshold",color="Phase")
+```
+
+```{r , fig.height=5}
+ ggplot(all.lacun,aes(y=VOLUME*1e9,x=thresh))+
+  geom_jitter(alpha=0.1)+geom_smooth()+
+  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
+```
+
+```{r , fig.height=5}
+ ggplot(subset(all.lacun,thresh %% 1000==0),aes(y=VOLUME*1e9,x=as.factor(thresh)))+
+  geom_violin()+
+  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
+```
 
 
