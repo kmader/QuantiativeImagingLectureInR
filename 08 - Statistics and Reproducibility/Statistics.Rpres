@@ -215,7 +215,7 @@ Literature / Useful References
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
-- http://www.sagepub.com/upm-data/40007_Chapter8.pdf
+- [Hypothesis Testing Chapter](http://www.sagepub.com/upm-data/40007_Chapter8.pdf)
 
 *** 
 ### Papers / Sites
@@ -224,6 +224,8 @@ Literature / Useful References
  - https://itunes.apple.com/us/itunes-u/mcb-140-fall-2007-general/id461120088?mt=10
 - Correlation and Causation (Video)
  - https://www.youtube.com/watch?v=YFC2KUmEebc
+- [Matlab Unit Testing Documentation](http://www.mathworks.ch/ch/help/matlab/matlab-unit-test-framework.html
+)
  
  
 Previously on QBI ...
@@ -239,18 +241,31 @@ Previously on QBI ...
 - Complicated Shapes
 - Distribution Analysis
 
-Outline
-========================================================
+Quantitative "Big" Imaging
+====
 
-- Motivation (Why and How?)
-- Imaging Goals
-- Reproducibility
-- Statistical metrics and results
-- Parameterization
- - Parameter sweep
- - Sensitivity analysis
-- Unit Testing
-- Visualization
+The course has covered imaging enough and there have been a few quantitative metrics, but "big" has not really entered.
+
+What does __big__ mean?
+- Not just / even large
+- it means being ready for _big data_
+- volume, velocity, variety (3 V's)
+- scalable, fast, easy to customize
+
+***
+
+So what is "big" imaging
+- doing analyses in a disciplined manner
+ - fixed steps
+ - easy to regenerate results
+ - no _magic_
+- having everything automated
+ - 100 samples is as easy as 1 sample
+- being able to adapt and reuse analyses
+ - one really well working script and modify parameters
+ - different types of cells
+ - different regions
+
  
 Objectives
 ===
@@ -265,7 +280,19 @@ Objectives
 1. How can we ensure our techniques do what they are supposed to do?
 1. How can we visualize so much data? Are there rules?
 
- 
+Outline
+========================================================
+
+- Motivation (Why and How?)
+- Scientific Goals
+- Reproducibility
+- Statistical metrics and results
+- Parameterization
+ - Parameter sweep
+ - Sensitivity analysis
+- Unit Testing
+- Visualization
+
 What do we start with?
 ===
 Going back to our original cell image
@@ -279,14 +306,54 @@ We have at least a few samples (or different regions), large number of metrics a
 
 ### How do we do something meaningful with it?
 
-Simple Model: Magic Coin
+Simple Model: Magic / Weighted Coin
 ===
+incremental: true
 
-Since most of the experiments in science are usually specific and often very complicated and are not usually good teaching examples
+Since most of the experiments in science are usually specific, noisy, and often very complicated and are not usually good teaching examples
 
 - Magic / Biased Coin
- - You buy a _magic_ count at a shop
- - How many times do you need to flip it to _prove_ it is magic?
+ - You buy a _magic_ coin at a shop
+ - How many times do you need to flip it to _prove_ it is not fair?
+ - If I flip it 10 times and another person flips it 10 times, is that the same as 20 flips?
+ - If I flip it 10 times and then multiple the results by 10 is that the same as 100 flips?
+ - If I buy 10 coins and want to know which ones are fair what do I do?
+ 
+ 
+Simple Model: Magic / Weighted Coin
+===
+
+1. Each coin represents a stochastic variable $\mathcal{X}$ and each flip represents an observation $\mathcal{X}_i$.
+1. The act of performing a coin flip $\mathcal{F}$ is an observation $\mathcal{X}_i = \mathcal{F}(\mathcal{X})$
+
+We normally assume
+
+1. A _fair_ coin has an expected value of $E(\mathcal{X})=0.5 \rightarrow$ 50% Heads, 50% Tails
+1. An _unbiased_ flip(er) means 
+ - each flip is independent of the others 
+ $$ P(\mathcal{F}_1(\mathcal{X})*\mathcal{F}_2(\mathcal{X}))= P(\mathcal{F}_1(\mathcal{X}))*P(\mathcal{F}_2(\mathcal{X}))$$
+ - the expected value of the flip is the same as that of the coin
+$$ E(\prod_{i=0}^\infty \mathcal{F}_i(\mathcal{X})) = E(\mathcal{X}) $$
+
+Simple Model to Reality
+===
+
+### Coin Flip
+
+1. Each flip gives us a small piece of information about the flipper and the coin
+1.  More flips provides more information
+ - Random / Stochastic variations in coin and flipper cancel out
+ - Systematic variations accumulate
+
+***
+
+### Real Experiment
+
+1. Each measurement tells us about our sample, out instrument, and our analysis
+2. More measurements provide more information
+ - Random / Stochasit variations in sample, instrument, and analysis cancel out
+ - _Normally_ the analysis has very little to no stochastic variation
+ - Systematic variations accumulate
 
 
 Reproducibility
@@ -314,7 +381,7 @@ Everyhing for analysis + taking a measurement several times (noise and exact ali
 Reproducible Analysis
 ===
 
-The basis for reproducible scripts and analysis are scripts and macros.
+The basis for reproducible scripts and analysis are scripts and macros. Since we will need to perform the same analysis many times to understand how reproducible it is.
 ```{bash}
 IMAGEFILE=$1
 THRESHOLD=130
@@ -323,11 +390,76 @@ matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
 
 
 
-Comparing Groups
+Comparing Groups: Tests
 ===
-- t-tests
-- 
 
+Once the reproducibility has been measured, it is possible to compare groups. The idea is to make a test to assess the likelihood that two groups are the same given the data
+1. List assumptions
+1. Establish a null hypothesis
+ - Usually both groups are the same
+1. Calculate the probability of the observations given the truth of the null hypothesis
+ - Requires knowledge of probability distribution of the data
+ - Modeling can be exceptionally complicated
+ 
+***
+
+### Loaded Coin
+We have 1 coin from a magic shop
+- our assumptions are
+ - we flip and observe flips of coins accurately and independently
+ - the coin is invariant and always has the same expected value
+- our null hypothesis is the coin is unbiased $E(\mathcal{X})=0.5$
+- we can calculate the likelihood of a given observation given the number of flips (p-value)
+
+```{r, results='asis'}
+n.flips<-c(1,5,10)
+cf.table<-data.frame(No.Flips=n.flips,PAH=paste(round(1000*0.5^n.flips)/10,"%"))
+names(cf.table)<-c("Number of Flips","Probability of All Heads Given Null Hypothesis (p-value)")
+kable(cf.table)
+```
+
+How good is good enough?
+
+Comparing Groups: Student's T Distribution
+===
+Since we do not usually know our distribution very well _or_ have enough samples to create a sufficient probability model
+
+### [Student T Distribution](http://en.wikipedia.org/wiki/Student's_t-distribution)
+We assume the distribution of our stochastic variable is normal (Gaussian) and the t-distribution provides an estimate for the mean of the underyling distribution based on few observations.
+
+- We estimate the likelihood of our observed values assuming they are coming from random observations of a normal process
+
+***
+
+### Student T-Test
+
+Incorporates this distribution and provides an easy method for assessing the likelihood that the two given set of observations are coming from the same underlying process (null hypothesis)
+
+- Assume unbiased observations
+- Assume normal distribution
+
+
+Multiple Testing Bias
+===
+
+Back to the magic coin, let's assume we are trying to publish a paper, we heard a p-value of < 0.05 (5%) was good enough. That means if we get 5 heads we are good!
+
+```{r, results='asis'}
+n.flips<-c(1,4,5)
+cf.table<-data.frame(No.Flips=n.flips,PAH=paste(round(1000*0.5^n.flips)/10,"%"))
+names(cf.table)<-c("Number of Flips","Probability of All Heads Given Null Hypothesis (p-value)")
+kable(cf.table)
+```
+
+***
+
+Clearly this is not the case, otherwise we could keep flipping coins or ask all of our friends to flip until we got 5 heads and publish
+
+The p-value is only meaningful when the experiment matches what we did. 
+- We didn't say the chance of getting 5 heads ever was < 5%
+- We said if we have exactly 5 observations and all of them are heads the likelihood that a fair coin produced that result is <5%
+
+Many [methods](http://en.wikipedia.org/wiki/Multiple_comparisons_problem) to correct, most just involve scaling $p$. The likelihood of a sequence of 5 heads in a row if you perform 10 flips is 5x higher.
 
 
 
@@ -514,5 +646,9 @@ splot+geom_line(aes(y=Count))+scale_y_log10()+
   geom_violin()+
   theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
 ```
+
+
+Unit Testing
+===
 
 
