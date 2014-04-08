@@ -1,0 +1,428 @@
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+require(knitr)
+# default settings, # settings for presentation version
+echo.val<-F
+fig.height<-5
+dpi<-80
+cache<-T
+fig.path<-"pres_figures/"
+cache.path<-"pres_cache/"
+
+if(exists("printed")) { # settings for printed version (if the variable exists)
+  echo.val<-T # show code
+  fig.height<-3
+  dpi<-100
+  cache<-T
+  fig.path<-"print_figures/"
+  cache.path<-"print_cache/"
+  }
+
+opts_chunk$set(dpi=dpi,cache=cache,
+               cache.path=cache.path,results='hide',
+               warning=F,fig.align='center',echo=echo.val,
+               fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+```
+
+```{r script_setup,results='hide',cache=FALSE}
+require(ggplot2)
+require(lattice) # nicer scatter plots
+require(plyr)
+require(grid) # contains the arrow function
+require(biOps)
+require(doMC) # for parallel code
+require(EBImage)
+require(reshape2) # for the melt function
+## To install EBImage
+# source("http://bioconductor.org/biocLite.R")
+# biocLite("EBImage")
+
+# start parallel environment
+registerDoMC()
+# functions for converting images back and forth
+im.to.df<-function(in.img) {
+  out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
+  out.im$val<-as.vector(in.img)
+  out.im
+  }
+df.to.im<-function(in.df,val.col="val",inv=F) {
+  in.vals<-in.df[[val.col]]
+  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
+  if(inv) in.vals<-255-in.vals
+  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
+  attr(out.mat,"type")<-"grey"
+  out.mat
+  }
+ddply.cutcols<-function(...,cols=1) {
+  # run standard ddply command 
+  cur.table<-ddply(...)
+  cutlabel.fixer<-function(oVal) {
+    sapply(oVal,function(x) {
+      cnv<-as.character(x)
+      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
+      })
+    }
+  cutname.fixer<-function(c.str) {
+    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
+    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
+    paste(t.str[c(1:length(t.str)-1)],collapse=",")
+    }
+  for(i in c(1:cols)) {
+    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
+    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
+    }
+  cur.table
+  }
+
+```
+
+```{r utility_functions,results='hide',cache=FALSE}
+## Standard image processing tools which I use for visualizing the examples in the script
+commean.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    weight.sum<-sum(c.cell$weight)
+    data.frame(xv=mean(c.cell$x),
+               yv=mean(c.cell$y),
+               xm=with(c.cell,sum(x*weight)/weight.sum),
+               ym=with(c.cell,sum(y*weight)/weight.sum)
+               )
+    })
+  }
+
+colMeans.df<-function(x,...) as.data.frame(t(colMeans(x,...)))
+
+pca.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.cov<-cov(c.cell[,c("x","y")])
+    c.cell.eigen<-eigen(c.cell.cov)
+    
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    out.df<-cbind(c.cell.mean,
+                  data.frame(vx=c.cell.eigen$vectors[1,],
+                             vy=c.cell.eigen$vectors[2,],
+                             vw=sqrt(c.cell.eigen$values),
+                             th.off=atan2(c.cell.eigen$vectors[2,],c.cell.eigen$vectors[1,]))
+                  )
+    })
+  }
+vec.to.ellipse<-function(pca.df) {
+  ddply(pca.df,.(val),function(cur.pca) {
+    # assume there are two vectors now
+    create.ellipse.points(x.off=cur.pca[1,"x"],y.off=cur.pca[1,"y"],
+                          b=sqrt(5)*cur.pca[1,"vw"],a=sqrt(5)*cur.pca[2,"vw"],
+                          th.off=pi/2-atan2(cur.pca[1,"vy"],cur.pca[1,"vx"]),
+                          x.cent=cur.pca[1,"x"],y.cent=cur.pca[1,"y"])
+    })
+  }
+
+# test function for ellipse generation
+# ggplot(ldply(seq(-pi,pi,length.out=100),function(th) create.ellipse.points(a=1,b=2,th.off=th,th.val=th)),aes(x=x,y=y))+geom_path()+facet_wrap(~th.val)+coord_equal()
+create.ellipse.points<-function(x.off=0,y.off=0,a=1,b=NULL,th.off=0,th.max=2*pi,pts=36,...) {
+  if (is.null(b)) b<-a
+  th<-seq(0,th.max,length.out=pts)
+  data.frame(x=a*cos(th.off)*cos(th)+b*sin(th.off)*sin(th)+x.off,
+             y=-1*a*sin(th.off)*cos(th)+b*cos(th.off)*sin(th)+y.off,
+             id=as.factor(paste(x.off,y.off,a,b,th.off,pts,sep=":")),...)
+  }
+deform.ellipse.draw<-function(c.box) {
+  create.ellipse.points(x.off=c.box$x[1],
+                        y.off=c.box$y[1],
+                        a=c.box$a[1],
+                        b=c.box$b[1],
+                        th.off=c.box$th[1],
+                        col=c.box$col[1])                    
+  }
+bbox.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    xmn<-emin(c.cell$x)
+    xmx<-emax(c.cell$x)
+    ymn<-emin(c.cell$y)
+    ymx<-emax(c.cell$y)
+    out.df<-cbind(c.cell.mean,
+                  data.frame(xi=c(xmn,xmn,xmx,xmx,xmn),
+                             yi=c(ymn,ymx,ymx,ymn,ymn),
+                             xw=xmx-xmn,
+                             yw=ymx-ymn
+                             ))
+    })
+  }
+
+# since the edge of the pixel is 0.5 away from the middle of the pixel
+emin<-function(...) min(...)-0.5
+emax<-function(...) max(...)+0.5
+extents.fun<-function(in.df) {
+  ddply(in.df,.(val), function(c.cell) {
+    c.cell.mean<-colMeans.df(c.cell[,c("x","y")])
+    out.df<-cbind(c.cell.mean,data.frame(xmin=c(c.cell.mean$x,emin(c.cell$x)),
+                                         xmax=c(c.cell.mean$x,emax(c.cell$x)),
+                                         ymin=c(emin(c.cell$y),c.cell.mean$y),
+                                         ymax=c(emax(c.cell$y),c.cell.mean$y)))
+    })
+  }
+
+th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))
+```
+
+
+
+Quantitative Big Imaging 
+========================================================
+author: Kevin Mader
+date: 10 April 2014
+width: 1440
+height: 900
+css: ../template.css
+transition: rotate
+
+ETHZ: 227-0966-00L
+# Statistics and Reproducibility
+
+Course Outline
+========================================================
+- 20th February - Introductory Lecture
+- 27th February - Filtering and Image Enhancement (A. Kaestner)
+- 6th March - Basic Segmentation, Discrete Binary Structures
+- 13th March - Advanced Segmentation
+- 20th March - Analyzing Single Objects
+- 27th March - Analyzing Complex Objects
+- 3rd April - Many Objects and Distributions
+- 10th April - **Statistics and Reproducibility**
+- 17th April - Dynamic Experiments
+- 8th May - Big Data
+- 15th May - Guest Lecture - In-Operando Imaging of Batteries (V. Wood)
+- 22th May - Project Presentations
+
+Literature / Useful References
+========================================================
+### Books
+- Jean Claude, Morphometry with R
+ - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+ - __Chapter 3__
+ - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
+- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
+ - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+- http://www.sagepub.com/upm-data/40007_Chapter8.pdf
+
+*** 
+### Papers / Sites
+
+- MCB 140 P-value lecture at UC Berkeley (Audio)
+ - https://itunes.apple.com/us/itunes-u/mcb-140-fall-2007-general/id461120088?mt=10
+- Correlation and Causation (Video)
+ - https://www.youtube.com/watch?v=YFC2KUmEebc
+ 
+ 
+Previously on QBI ...
+========================================================
+
+- Image Enhancment 
+ - Highlighting the contrast of interest in images
+ - Minimizing Noise
+- Understanding image histograms
+- Automatic Methods
+- Component Labeling
+- Single Shape Analysis
+- Complicated Shapes
+- Distribution Analysis
+
+Outline
+========================================================
+
+- Motivation (Why and How?)
+- Imaging Goals
+- Reproducibility
+- Statistical metrics and results
+- Parameterization
+ - Parameter sweep
+ - Sensitivity analysis
+- Unit Testing
+- Visualization
+ 
+Objectives
+===
+1. Scientific Studies all try to get to a single number
+ - Make sure this number is describing the structure well (what we have covered before)
+ - Making sure the number is meaningful __today!__
+1. How do we compare the number from different samples and groups?
+ - Within a sample or same type of samples
+ - Between samples
+1. How do we compare different processing steps like filter choice, minimum volume, resolution, etc?
+1. How do we evaluate our parameter selection?
+1. How can we ensure our techniques do what they are supposed to do?
+1. How can we visualize so much data? Are there rules?
+
+ 
+What do we start with?
+===
+Going back to our original cell image
+
+1. We have been able to get rid of the noise in the image and find all the cells (lecture 2-4)
+1. We have analyzed the shape of the cells using the shape tensor (lecture 5)
+1. We even separated cells joined together using Watershed (lecture 6)
+1. We have created even more metrics characterizing the distribution (lecture 7)
+
+We have at least a few samples (or different regions), large number of metrics and an almost as large number of parameters to _tune_
+
+### How do we do something meaningful with it?
+
+Simple Model: Magic Coin
+===
+
+Since most of the experiments in science are usually specific and often very complicated and are not usually good teaching examples
+
+- Magic / Biased Coin
+ - You buy a _magic_ count at a shop
+ - How many times do you need to flip it to _prove_ it is magic?
+
+
+Reproducibility
+===
+
+A very broad topic with plenty of sub-areas and deeper meanings. We mean two things by reproducibility
+
+### Analysis
+
+The process of going from images to numbers is detailed in a clear manner that _anyone_, _anywhere_ could follow and get the exact (within some tolerance) same numbers from your samples
+ - No platform dependence
+ - No proprietary or "in house" algorithms
+ - No manual _clicking_, _tweaking_, or _copying_
+ - One script to go from image to result
+ 
+***
+
+### Measurement
+
+Everyhing for analysis + taking a measurement several times (noise and exact alignment vary each time) does not change the statistics _significantly_
+- No sensitivity to mounting or rotation
+- No sensitivity to noise
+- No dependence on exact illumination
+
+Reproducible Analysis
+===
+
+The basis for reproducible scripts and analysis are scripts and macros.
+```{bash}
+IMAGEFILE=$1
+THRESHOLD=130
+matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
+```
+
+
+
+Comparing Groups
+===
+- t-tests
+- 
+
+
+
+
+Parameters
+===
+```{r, show_chain_block}
+make.im.proc.chain<-function(root.node="Raw\nImages",filters=c(),filter.parms=c(),
+                             segmentation=c(),segmentation.parms=c(),
+                             analysis=c(),analysis.parms=c()) {
+  node.names<-c("Raw\nImages",
+                filter.parms,filters,
+                segmentation.parms,segmentation,
+                analysis.parms,analysis
+                
+                )
+  
+  c.mat<-matrix(0,length(node.names),length(node.names))
+  colnames(c.mat)<-node.names
+  rownames(c.mat)<-node.names
+  
+  
+  for(cFilt in filters) {
+    c.mat["Raw\nImages",cFilt]<-1
+    for(cParm in filter.parms) c.mat[cParm,cFilt]<-1
+    for(cSeg in segmentation) {
+        c.mat[cFilt,cSeg]<-1
+        for(cParm in segmentation.parms) c.mat[cParm,cSeg]<-1
+        for(cAnal in analysis) {
+          c.mat[cSeg,cAnal]<-1
+          for(cParm in analysis.parms) c.mat[cParm,cAnal]<-1
+        }
+      }
+    }
+  
+  
+  g<-graph.adjacency(c.mat,mode="directed")
+  V(g)$degree <- degree(g)
+  V(g)$label <- V(g)$name
+  V(g)$color <- "lightblue"
+  V(g)["Raw\nImages"]$color<-"lightgreen"
+  for(cAnal in analysis) V(g)[cAnal]$color<-"pink"
+  V(g)$size<-30
+  for(cParam in c(filter.parms,segmentation.parms,analysis.parms)) {
+    V(g)[cParam]$color<-"grey"
+    V(g)[cParam]$size<-25
+  }
+  E(g)$width<-2
+  g
+  }
+```
+How does a standard image processing chain look?
+```{r , fig.height=9}
+g<-make.im.proc.chain(filters=c("Gaussian\nFilter"),
+                      filter.parms=c("3x3\nNeighbors","0.5 Sigma"),
+                      segmentation=c("Threshold"),
+                      segmentation.parms=c("100"),
+                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis")
+                      )
+plot(g)#,layout=layout.circle) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
+```
+
+***
+
+- Green are the images we start with (measurements)
+- Blue are processing steps
+- Gray are use input parameters
+- Pink are the outputs
+
+The Full Chain
+===
+```{r , fig.height=8,fig.width=18}
+library(igraph)
+g<-make.im.proc.chain(filters=c("Gaussian\nFilter","Median\nFilter","Diffusion\nFilter","No\nFilter",
+                                "Laplacian\nFilter"),
+                      segmentation=c("Threshold","Hysteresis\nThreshold","Automated"),
+                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis","Distribution\nAnalysis",
+                                 "Skeleton\nAnalysis","2 Point\nCorr","Curvature")
+                      )
+plot(g,layout=layout.reingold.tilford) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
+```
+
+
+The Full Chain (with Parameters)
+===
+```{r , fig.height=9,fig.width=9}
+g<-make.im.proc.chain(filters=c("Gaussian\nFilter","Median\nFilter","Diffusion\nFilter"),
+                      filter.parms=c("3x3\nNeighbors","5x5\nNeighbors","7x7\nNeighbors",
+                                     "0.5 Sigma","1.0 Sigma","1.2 Sigma"),
+                      segmentation=c("Threshold","Hysteresis\nThreshold","Automated"),
+                      segmentation.parms=paste(seq(90,110,length.out=3)),
+                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis","Distribution\nAnalysis","Skeleton\nAnalysis","2 Point\nCorr")
+                      )
+plot(g,layout=layout.lgl(g,maxiter=10000,root=1)) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
+```
+
+***
+
+- A __mess__, over 1080 combinations for just one sample (not even exploring a very large range of threshold values)
+- To calculate this for even one sample can take days (weeks, years) 
+ - 512 x 512 x 512 foam sample $\rightarrow$ 12 weeks of processing time
+ - 1024 x 1024 x 1024 femur bone $\rightarrow$ 1.9 years 
+- Not all samples are the same
+- Once the analysis is run we have a ton of data
+ - femur bone $\rightarrow$ 60 million shapes analyzed
+- What do we even want? 
+- How do we judge the different results?
+
+
+Without Parameters
+===
+
+
