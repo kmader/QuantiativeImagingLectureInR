@@ -470,7 +470,7 @@ where
 Intraclass Correlation Coefficient: Values
 ===
 
-```{r, fig.height=0}
+```{r, fig.height=9}
 library("ICC")
 
 test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
@@ -556,6 +556,12 @@ cf.table<-data.frame(No.Flips=n.flips,PAH=paste(round(1000*0.5^n.flips)/10,"%"))
 names(cf.table)<-c("Number of Flips","Probability of All Heads Given Null Hypothesis (p-value)")
 kable(cf.table)
 ```
+```{r, results='asis'}
+n.friends<-c(1,10,20,40,80)
+cfr.table<-data.frame(No.Friends=n.friends,PAH=paste(round((1000*(1-(1-0.5^5)^n.friends)))/10,"%"))
+names(cfr.table)<-c("Number of Friends Flipping","Probability Someone Flips 5 heads")
+kable(cfr.table)
+```
 
 ***
 
@@ -566,6 +572,131 @@ The p-value is only meaningful when the experiment matches what we did.
 - We said if we have exactly 5 observations and all of them are heads the likelihood that a fair coin produced that result is <5%
 
 Many [methods](http://en.wikipedia.org/wiki/Multiple_comparisons_problem) to correct, most just involve scaling $p$. The likelihood of a sequence of 5 heads in a row if you perform 10 flips is 5x higher.
+
+
+Multiple Testing Bias: Experiments
+===
+
+This is very bad news for us. We have the ability to quantify all sorts of interesting metrics 
+- cell distance to other cells
+- cell oblateness
+- cell distribution oblateness
+
+So lets throw them all into a magical statistics algorithm and push the __publish__ button
+
+***
+
+With our p value of less than 0.05 and a study with 10 samples in each group, how does increasing the number of variables affect our result
+
+```{r simcode}
+make.random.data<-function(n.groups=2,n.samples=10,n.vars=1,rand.fun=runif,group.off.fun=function(grp.id) 0) {
+  ldply(1:n.groups,function(c.group) {
+    data.frame(group=c.group,
+               do.call(cbind,llply(1:n.vars,function(c.var) group.off.fun(c.group)+rand.fun(n.samples)))
+               )
+  })
+}
+# only works for two groups
+all.t.test<-function(in.data) {
+  group1<-subset(in.data,group==1)[,-1,drop=F]
+  group2<-subset(in.data,group==2)[,-1,drop=F]
+  ldply(1:ncol(group1),function(var.id) {
+    tres<-t.test(group1[,var.id],group2[,var.id])
+    data.frame(var.col=var.id,
+              p.val=tres$p.value,
+               method=tres$method,
+              var.count=ncol(group1),
+              sample.count=nrow(in.data))
+    }
+  )
+}
+# run the entire analysis several times to get an average
+test.random.data<-function(n.test=10,...) {
+  ldply(1:n.test,function(c.test) cbind(test.num=c.test,all.t.test(make.random.data(...))))
+}
+```
+```{r rand.sim}
+var.range<-c(1,4,10,20,40)
+test.cnt<-40
+sim.data<-ldply(var.range,function(n.vars) test.random.data(test.cnt,n.vars=n.vars))
+sig.likelihood<-ddply(sim.data,.(var.count),function(c.tests) {
+  data.frame(sig.vars=nrow(subset(c.tests,p.val<=0.05))/length(unique(c.tests$test.num)))
+})
+```
+```{r, fig.height=5}
+
+ggplot(sig.likelihood,
+       aes(x=var.count,y=sig.vars))+
+  geom_point()+geom_line()+
+  labs(x="Number of Variables in Study",y="Number of Significant \n (P<0.05) Findings")+
+  theme_bw(20)
+```
+
+
+Multiple Testing Bias: Correction
+===
+Using the simple correction factor (number of tests performed), we can make the significant findings constant again
+```{r, fig.height=5}
+
+sig.likelihood.corr<-ddply(sim.data,.(var.count),function(c.tests) {
+  data.frame(sig.vars=nrow(subset(c.tests,p.val<=0.05/var.count))/length(unique(c.tests$test.num)))
+})
+ggplot(sig.likelihood.corr,
+       aes(x=var.count,y=sig.vars))+
+  geom_point()+geom_line(aes(color="Corrected"))+
+  geom_point(data=sig.likelihood)+
+  geom_line(data=sig.likelihood,aes(color="Non-Corrected"))+
+  geom_hline(yintercept=0.05,color="green",alpha=0.4,size=2)+
+  scale_y_sqrt()+
+  labs(x="Number of Variables in Study",y="Number of Significant \n (P<0.05) Findings")+
+  theme_bw(20)
+```
+
+***
+
+So no harm done there we just add this correction factor right?
+Well what if we have exactly one variable with shift of 10% on top of 0-mean Gaussian distributions
+
+```{r rand.sim.diff}
+var.range<-c(5,10,20,40,80,200)
+test.cnt<-40
+one.diff.sample<-function(grp.id) ifelse(grp.id==2,.1,0)
+sim.data.diff<-ldply(var.range,function(n.samples) 
+  test.random.data(test.cnt,n.samples=n.samples,
+                   rand.fun=function(n.cnt) rnorm(n.cnt,mean=1,sd=0.1),
+                   group.off.fun=one.diff.sample))
+```
+
+```{r, fig.height=5}
+ggplot(sim.data.diff,aes(x=sample.count,y=p.val))+
+  geom_point()+
+  geom_smooth(aes(color=" 1 Variable"))+
+  geom_hline(yintercept=0.05,color="green",alpha=0.4,size=2)+
+  scale_y_sqrt()+
+  labs(x="Number of Samples in Study",y="P-Value for a 10% Difference")+
+  theme_bw(20)
+
+```
+
+Multiple Testing Bias: Sample Size
+===
+```{r rand.sim.mcsample}
+var.range<-c(1,5,10,20) # variable count
+sim.data.psig<-ldply(var.range,function(c.vcnt) {
+  cbind(var.count=c.vcnt,ddply(sim.data.diff,.(sample.count),function(c.sample) 
+    data.frame(prob.sig=nrow(subset(c.sample,p.val<=0.05/c.vcnt))/nrow(c.sample))
+  ))
+})
+```
+```{r, fig.height=9}
+ggplot(sim.data.psig,aes(x=sample.count,y=100*prob.sig))+
+  geom_line(aes(color=as.factor(var.count)))+
+  scale_x_log10()+ylim(0,100)+
+  labs(x="Number of Samples in Study",y="Probability of Finding\n Significant Variable (%)",color="Variables")+
+  theme_bw(20)
+
+```
+
 
 
 
@@ -1038,3 +1169,17 @@ Separate the graph into its component parts
 1. Labels / Annotation
 
 Construct graphics by focusing on each portion independently.
+
+
+Wrapping up
+===
+- I am not a statistician
+- This is not a statistics course
+- If you have questions or concerns, Both ETHZ and Uni Zurich offer __free__ consultation with real statisticians
+ - They are rarely barers of good news
+ 
+***
+
+- Simulations are very helpful
+- Try and understand the tests you are performing
+ 
