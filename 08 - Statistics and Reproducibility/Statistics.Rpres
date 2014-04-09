@@ -226,6 +226,8 @@ Literature / Useful References
  - https://www.youtube.com/watch?v=YFC2KUmEebc
 - [Matlab Unit Testing Documentation](http://www.mathworks.ch/ch/help/matlab/matlab-unit-test-framework.html
 )
+- [Visualizing Genomic Data](http://circos.ca/documentation/course/visualizing-genomic-data.pdf) (General Visualization Techniques)
+- [NIMRod Parameter Studies](http://www.messagelab.monash.edu.au/nimrod)
  
  
 Previously on QBI ...
@@ -584,13 +586,23 @@ Given the complexity of the tree, we need to do some pruning
 
 ***
 
-```{r , fig.height=9,fig.width=9}
-title.fun<-function(file.name) strsplit(strsplit(strsplit(file.name,"/")[[1]][2],"-")[[1]][2],".png")[[1]][1]
+```{r , fig.height=9}
+title.fun<-function(file.name) ""
 show.pngs.as.grid(Sys.glob("ext-figures/poros*.png"),title.fun,zoom=0.5)
+
 ```
+
 
 Quantitative Metrics
 ===
+
+With a quantitative approach, we can calculate the specific shape or distribution metrics on the sample with each parameter and establish the relationship between parameter and metric. 
+
+### Parameter Sweep
+
+The way we do this is usually a parameter sweep which means taking one (or more) parameters and varying them between the reasonable bounds (judged qualitatively).
+
+***
 
 ```{r, load-metrics}
 source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
@@ -614,9 +626,35 @@ clpor.files<-Sys.glob(paste(rootDir,"/a*/lacun_0.csv",sep="/")) # list all of th
 all.lacun<-ldply(clpor.files,readfcn,.parallel=T)
 ```
 
+```{r , fig.height=5}
+ ggplot(all.lacun,aes(y=VOLUME*1e9,x=thresh))+
+  geom_jitter(alpha=0.1)+geom_smooth()+
+  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
+```
+
+Sensitivity
+===
+
+Sensitivity is defined in control system theory as the change in the value of an output against the change in the input.
+$$ S = \frac{|\Delta \textrm{Metric}|}{|\Delta \textrm{Parameter}|} $$
+
+Such a strict definition is not particularly useful for image processing since a threshold has a unit of intensity and a metric might be volume which has $m^3$ so the sensitivity becomes volume per intensity. 
+
+*** 
+
+### Practical Sensitivity
+
+A more common approach is to estimate the variation in this parameter between images or within a single image (automatic threshold methods can be useful for this) and define the sensitivity based on this variation. It is also common to normalize it with the mean value so the result is a percentage.
+
+$$ S = \frac{max(\textrm{Metric})-min(\textrm{Metric})}{avg(\textrm{Metric})} $$
 
 
-***
+
+Sensitivity: Real Measurements
+===
+
+In this graph it is magnitude of the slope. The steeper the slope the more the metric changes given a small change in the parameter
+
 ```{r , fig.height=5}
 poresum<-function(all.data) ddply(all.data,.(thresh),function(c.sample) {
   data.frame(Count=nrow(c.sample),
@@ -629,17 +667,15 @@ poresum<-function(all.data) ddply(all.data,.(thresh),function(c.sample) {
              Height=mean(c.sample$PROJ_PCA3*1000),
              Orientation=mean(abs(c.sample$PCA1_Z)))
 })
-comb.summary<-rbind(cbind(poresum(all.canal),Phase="Canal"),cbind(poresum(all.lacun),Phase="Lacuna"))
+comb.summary<-cbind(poresum(all.lacun),Phase="Lacuna")
 splot<-ggplot(comb.summary,aes(x=thresh,color=Phase))
-splot+geom_line(aes(y=Count))+scale_y_log10()+
+splot+geom_line(aes(y=Count))+geom_point(aes(y=Count))+scale_y_log10()+
   theme_bw(24)+labs(y="Object Count",x="Threshold",color="Phase")
 ```
 
-```{r , fig.height=5}
- ggplot(all.lacun,aes(y=VOLUME*1e9,x=thresh))+
-  geom_jitter(alpha=0.1)+geom_smooth()+
-  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
-```
+Is it always the same?
+===
+
 
 ```{r , fig.height=5}
  ggplot(subset(all.lacun,thresh %% 1000==0),aes(y=VOLUME*1e9,x=as.factor(thresh)))+
@@ -647,8 +683,230 @@ splot+geom_line(aes(y=Count))+scale_y_log10()+
   theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
 ```
 
+***
+
+```{r , fig.height=5}
+ ggplot(all.lacun,aes(y=PCA1_Z,x=thresh))+
+  geom_jitter(alpha=0.1)+geom_smooth()+
+  theme_bw(24)+labs(y="Orientation",x="Threshold Value",color="Threshold")+ylim(0,1000)
+```
+
 
 Unit Testing
 ===
+￼In computer programming, unit testing is a method by which individual units of source code, sets of one or more computer program modules together with associated control data, usage procedures, and operating procedures, are tested to determine if they are fit for use.
+
+- Intuitively, one can view a unit as the smallest testable part of an application
+- Unit testing is possible with every language
+- Most (Java, C++, Matlab, R, Python) have built in support for automated testing and reporting
+
+Unit Testing Continued
+===
+The first requirement for unit testing to work well is to have you tools divided up into small independent parts (functions)
+- Each part can then be tested independently (unit testing)
+ - If the tests are well done, units can be changed and tested independently
+ - Makes upgrading or expanding tools _easy_
+- The entire path can be tested (integration testing)
+ - Catches mistakes in integration or _glue_
 
 
+***
+
+Ideally with realistic but simulated test data
+- The utility of the testing is only as good as the tests you make
+### Example
+- Given the following function
+```function vxCnt=countVoxs(inImage)```
+- We can right the following tests
+ - testEmpty2d
+ 
+```assert countVoxs(zeros(3,3) == 0```
+ - testEmpty3d
+ 
+```assert countVoxs(zeros(3,3,3)) == 0```
+ - testDiag3d
+ 
+```assert countVoxs(eye(3)) == 3```
+
+Unit Testing: Examples
+===
+- Given the following function
+```function shapeTable=shapeAnalysis(inImage)```
+We should decompose the task into sub-components
+- ```function clImage=componentLabel(inImage)```
+
+- ```function objInfo=analyzeObject(inObject)```
+ - ```function vxCnt=countVoxs(inObject)``` 
+ - ```function covMat=calculateCOV(inObject)```
+ - ```function shapeT=calcShapeT(covMat)```
+ - ```function angle=calcOrientation(shapeT)```
+ - ```function aniso=calcAnisotropy(shapeT)```
+
+
+Unit Testing in ImageJ
+===
+
+<iframe src='https://github.com/imagej/ij1-tests/blob/master/src/test/java/ij/VirtualStackTest.java' width='100%' height='800'></iframe>
+
+Test Driven Programming
+===
+
+Test Driven programming is a style or approach to programming where the tests are written before the functional code. Like very concrete specifications. It is easy to estimate how much time is left since you can automatically see how many of the tests have been passed. You and your collaborators are clear on the utility of the system.
+
+1. shapeAnalysis must give an anisotropy of 0 when we input a sphere
+1. shapeAnalysis must give the center of volume within 0.5 pixels
+1. shapeAnalysis must run on a 1000x1000 image in 30 seconds
+
+
+
+Visualization
+===
+
+One of the biggest problems with _big_ sciences is trying to visualize a lot of heterogenous data. 
+- Tables are difficult to interpret
+- 3D Visualizations are very difficult to compare visually 
+- Contradictory necessity of simple single value results and all of the data to look for trends and find problems
+
+
+
+Bad Graphs
+=== 
+There are too many graphs which say
+- ‘my data is very complicated’
+- ‘I know how to use __ toolbox in Matlab/R/Mathematica’
+
+![3d Plots](ext-figures/badImage1.png)
+![Spectroscopy](ext-figures/badPlot4.png)
+
+***
+- Most programs by default make poor plots
+ - Good visualizations takes time
+![Linkage](ext-figures/badImage3.png)
+
+![Linkage 2](ext-figures/badImage2.png)
+
+
+Key Ideas
+===
+
+1. What is my message? 
+1. Does the graphic communicate it clearly?
+1. Is a graphic representation really necessary?
+ - 
+1. Does every line / color serve a purpose?
+ - Pretend ink is very expensive
+ 
+***
+
+### Simple Rules
+1. Never use 3D graphics when it can be avoided (unless you want to be delibrately misleading), our visual system is not well suited for comparing heights of different 
+![Dumb 3d](ext-figures/3dplot.png)
+1. Pie charts can also be hard to intepret
+1. Background color should almost always be white (not light gray)
+1. Use color palettes adapted to human visual sensitivity 
+
+What is my message
+===
+
+- Plots to "show the results" or "get a feeling" are usually not good
+
+```{r, fig.height=7}
+xd<-runif(80)
+test.data<-data.frame(x=xd,y=xd+runif(80),z=runif(80))
+plot(test.data)
+```
+
+***
+
+- Focus on a single, simple message
+ - X is a little bit correlated with Y
+```{r, fig.height=7}
+ggplot(test.data,aes(x,y))+
+  geom_point()+geom_smooth(method="lm")+
+  coord_equal()+
+  labs(title="X is weakly correlated with Y")+
+  theme_bw(20)
+```
+
+
+
+Does my graphic communicate it clearly?
+===
+- Too much data makes it very difficult to derive a clear message
+```{r, fig.height=7}
+xd<-runif(5000)
+test.data<-data.frame(x=xd,y=(xd-0.5)*runif(5000))
+ggplot(test.data,aes(x,y))+
+  geom_point()+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+- Filter and reduce information until it is extremely simple
+
+```{r, fig.height=4}
+
+ggplot(test.data,aes(x,y))+
+  stat_binhex(bins=20)+
+  geom_smooth(method="lm",aes(color="Fit"))+
+  coord_equal()+
+  theme_bw(20)+guides(color=F)
+```
+
+```{r, fig.height=4}
+
+ggplot(test.data,aes(x,y))+
+  geom_density2d(aes(color="Contour"))+
+  geom_smooth(method="lm",aes(color="Linear Fit"))+
+  coord_equal()+
+  labs(color="Type")+
+  theme_bw(20)
+```
+
+
+
+Grammar of Graphics
+===
+- What is a grammar?
+ - Set of rules for constructing and validating a sentence
+ - Specifies the relationship and order between the words constituting the sentence
+- How does this apply to graphics?
+ - If we develop a consistent way of expressing graphics (sentences) in terms of elements (words) we can compose and decompose graphics easily
+
+
+***
+
+~~The most important modern work in graphical grammars is “The Grammar of Graphics” by Wilkinson, Anand, and Grossman (2005). This work built on earlier work by Bertin (1983) and proposed a grammar that can be used to describe and construct a wide range of statistical graphics.~~
+
+
+<small> H. Wickham. ggplot2: elegant graphics for data analysis. Springer New York, 2009.</small>
+
+Grammar Explained
+===
+Normally we think of plots in terms of some sort of data which is fed into a plot command that produces a picture
+- In Excel you select a range and plot-type and click "Make"
+- In Matlab you run ```plot(xdata,ydata,color/shape)``` 
+
+1. These produces entire graphics (sentences) or at least phrases in one go and thus abstract away from the idea of grammar. 
+1. If you spoke by finding entire sentences in a book it would be very ineffective, it is much better to build up word by word
+
+***
+
+### Grammar
+
+Separate the graph into its component parts
+
+
+
+1. Data Mapping
+ - $var1 \rightarrow x$, $var2 \rightarrow y$
+
+![Graph Decomposed](ext-figures/grammarOfGraphics.png)
+
+1. Points
+1. Axes / Coordinate System
+1. Labels / Annotation
+
+Construct graphics by focusing on each portion independently.
