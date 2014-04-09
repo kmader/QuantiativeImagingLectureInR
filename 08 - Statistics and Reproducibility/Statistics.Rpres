@@ -228,7 +228,9 @@ Literature / Useful References
 )
 - [Visualizing Genomic Data](http://circos.ca/documentation/course/visualizing-genomic-data.pdf) (General Visualization Techniques)
 - [NIMRod Parameter Studies](http://www.messagelab.monash.edu.au/nimrod)
- 
+
+- M.E. Wolak, D.J. Fairbairn, Y.R. Paulsen (2012) Guidelines for Estimating Repeatability. Methods in Ecology and Evolution 3(1):129-137.
+
  
 Previously on QBI ...
 ========================================================
@@ -389,8 +391,12 @@ IMAGEFILE=$1
 THRESHOLD=130
 matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
 ```
+- __or__ 
+```java -jar ij.jar -macro TestMacro.ijm blobs.tif```
+- __or__
+```Rscript -e "library(plyr);..."```
 
-
+I
 
 Comparing Groups: Tests
 ===
@@ -421,6 +427,104 @@ kable(cf.table)
 ```
 
 How good is good enough?
+
+Comparing Groups: Intraclass Correlation Coefficient
+===
+The intraclass correlation coefficient basically looking at how similar objects within a group are compared to between groups
+```{r, fig.height=5}
+test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
+  data.frame(name=class.name,values=runif(40))
+})
+ggplot(test.data,aes(x=name,y=values))+
+  geom_point()+
+  labs(x="Groups",y="Value",title="Low Group Similarity")+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=5}
+test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
+  data.frame(name=class.name,values=nchar(class.name)+runif(40))
+})
+ggplot(test.data,aes(x=name,y=values))+
+  geom_point()+
+  labs(x="Groups",y="Value",title="High Group Similarity")+
+  theme_bw(20)
+```
+
+Intraclass Correlation Coefficient Definition
+===
+$$ ICC = \frac{S_A^2}{S_A^2+S_W^2} $$
+
+where 
+- $S_A^2$ is the variance among groups or classes
+ - Estimate with the standard deviations of the mean values for each group 
+- $S_W^2$ is the variance within groups or classes.
+ - Estimate with the average of standard deviations for each group
+ 
+- 1 means 100% of the variance is between classes
+- 0 means 0% of the variance is between classes
+
+
+Intraclass Correlation Coefficient: Values
+===
+
+```{r, fig.height=0}
+library("ICC")
+
+test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
+  data.frame(name=class.name,values=runif(40))
+})
+icVal<-ICCbare(name,values,data=test.data)$ICC
+ggplot(test.data,aes(x=name,y=values))+
+  geom_point()+
+  labs(x="Groups",y="Value",title=paste("Low Group Similarity\n ICC:",icVal))+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=9}
+test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
+  data.frame(name=class.name,values=nchar(class.name)+runif(40))
+})
+icVal<-ICCbare(name,values,data=test.data)$ICC
+ggplot(test.data,aes(x=name,y=values))+
+  geom_point()+
+  labs(x="Groups",y="Value",title=paste("High Group Similarity\n ICC:",icVal))+
+  theme_bw(20)
+```
+
+Intraclass Correlation Coefficient: Values for Coin-Flips
+===
+We have one biased coin and try to figure out how many flips we need for the ICC to tell the difference to the normal coin
+```{r, fig.height=7}
+library("ICC")
+name.list<-c("Coin A","Coin B")
+test.data<-ldply(c(1:length(name.list)),function(class.id) {
+  data.frame(name=name.list[class.id],values=runif(100,max=1+2*(class.id-1))>0.5)
+})
+icVal<-ICCbare(name,values,data=test.data)$ICC
+ggplot(test.data,aes(x=name,y=values))+
+  geom_jitter()+
+  labs(x="Groups",y="Value",title=paste("100 flips\n ICC:",icVal))+
+  theme_bw(20)
+```
+
+***
+With many thousands of flips we eventually see a very strong difference but unless it is very strongly biased ICC is a poor indicator for the differences
+```{r, fig.height=7}
+name.list<-c("Coin A","Coin B")
+test.data<-ldply(c(1:length(name.list)),function(class.id) {
+  data.frame(name=name.list[class.id],values=runif(20000,max=1+2*(class.id-1))>0.5)
+})
+icVal<-ICCbare(name,values,data=test.data)$ICC
+ggplot(test.data,aes(x=name,y=values))+
+  geom_jitter()+
+  labs(x="Groups",y="Value",title=paste("20,000 flips\n ICC:",icVal))+
+  theme_bw(20)
+```
 
 Comparing Groups: Student's T Distribution
 ===
@@ -668,10 +772,34 @@ poresum<-function(all.data) ddply(all.data,.(thresh),function(c.sample) {
              Orientation=mean(abs(c.sample$PCA1_Z)))
 })
 comb.summary<-cbind(poresum(all.lacun),Phase="Lacuna")
-splot<-ggplot(comb.summary,aes(x=thresh,color=Phase))
+splot<-ggplot(comb.summary,aes(x=thresh))
 splot+geom_line(aes(y=Count))+geom_point(aes(y=Count))+scale_y_log10()+
   theme_bw(24)+labs(y="Object Count",x="Threshold",color="Phase")
 ```
+
+***
+
+Comparing Different Variables we see that the best (lowest) value for the count sensitivity is the highest for the volume and anisotropy. 
+
+```{r , fig.height=5}
+calc.sens<-function(in.df) {
+  data.frame(sens.cnt=100*with(in.df,(max(Count)-min(Count))/mean(Count)),
+             sens.vol=100*with(in.df,(max(Volume)-min(Volume))/mean(Volume)),
+             sens.stretch=100*with(in.df,(max(Stretch)-min(Stretch))/mean(Stretch))
+             )
+}
+sens.summary<-ddply.cutcols(comb.summary,.(cut_interval(thresh,5)),calc.sens)
+ggplot(sens.summary,aes(x=thresh))+
+  geom_line(aes(y=sens.cnt,color="Count"))+
+  geom_line(aes(y=sens.vol,color="Volume"))+
+  geom_line(aes(y=sens.stretch,color="Anisotropy"))+
+  labs(x="Threshold",y="Sensitivity (%)",color="Metric")+
+  theme_bw(20)
+```
+
+### Which metric is more important?
+
+
 
 Is it always the same?
 ===
