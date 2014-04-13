@@ -183,14 +183,14 @@ th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 10 April 2014
+date: 17 April 2014
 width: 1440
 height: 900
 css: ../template.css
 transition: rotate
 
 ETHZ: 227-0966-00L
-# Statistics and Reproducibility
+# Dynamic Experiments
 
 Course Outline
 ========================================================
@@ -201,8 +201,8 @@ Course Outline
 - 20th March - Analyzing Single Objects
 - 27th March - Analyzing Complex Objects
 - 3rd April - Many Objects and Distributions
-- 10th April - **Statistics and Reproducibility**
-- 17th April - Dynamic Experiments
+- 10th April - Statistics and Reproducibility
+- 17th April - **Dynamic Experiments**
 - 8th May - Big Data
 - 15th May - Guest Lecture - In-Operando Imaging of Batteries (V. Wood)
 - 22th May - Project Presentations
@@ -212,26 +212,14 @@ Literature / Useful References
 ### Books
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
- - __Chapter 3__
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
-- [Hypothesis Testing Chapter](http://www.sagepub.com/upm-data/40007_Chapter8.pdf)
 
 *** 
-### Papers / Sites
-- Google/Stanford Statistics Intro
- - https://www.youtube.com/watch?v=YFC2KUmEebc
-- MCB 140 P-value lecture at UC Berkeley (Audio)
- - https://itunes.apple.com/us/itunes-u/mcb-140-fall-2007-general/id461120088?mt=10
-- Correlation and Causation (Video)
- - https://www.youtube.com/watch?v=YFC2KUmEebc
-- [Matlab Unit Testing Documentation](http://www.mathworks.ch/ch/help/matlab/matlab-unit-test-framework.html
-)
-- [Visualizing Genomic Data](http://circos.ca/documentation/course/visualizing-genomic-data.pdf) (General Visualization Techniques)
-- [NIMRod Parameter Studies](http://www.messagelab.monash.edu.au/nimrod)
 
-- M.E. Wolak, D.J. Fairbairn, Y.R. Paulsen (2012) Guidelines for Estimating Repeatability. Methods in Ecology and Evolution 3(1):129-137.
+### Papers / Sites
+
 
  
 Previously on QBI ...
@@ -275,29 +263,106 @@ So what is "big" imaging
  
 Objectives
 ===
-1. Scientific Studies all try to get to a single number
- - Make sure this number is describing the structure well (what we have covered before)
- - Making sure the number is meaningful (__today!__)
-1. How do we compare the number from different samples and groups?
- - Within a sample or same type of samples
- - Between samples
-1. How do we compare different processing steps like filter choice, minimum volume, resolution, etc?
-1. How do we evaluate our parameter selection?
-1. How can we ensure our techniques do what they are supposed to do?
-1. How can we visualize so much data? Are there rules?
+1. What sort of dynamic experiments do we have?
+1. How can we design good dynamic experiments?
+1. How can we track objects between points?
+ - How can we track shape?
+ - How can we track distribution?
+1. How can we track topology?
+1. How can we track voxels?
+1. How can we assess deformation and strain?
+1. How can assess more general cases?
 
 Outline
 ========================================================
 
 - Motivation (Why and How?)
 - Scientific Goals
-- Reproducibility
-- Statistical metrics and results
-- Parameterization
- - Parameter sweep
- - Sensitivity analysis
-- Unit Testing
-- Visualization
+- Experiments
+ - Simulations
+ - Experiment Design
+- Object Tracking
+- Distribution
+- Topology
+- Voxel-based Methods
+ - Cross Correlation
+ - DIC
+ - DIC + Physics
+- General Problems
+ - Thickness - Lung Tissue
+ - Curvature - Metal Systems
+ - Two Point Correlation - Volcanic Rock
+
+Motivation
+===
+
+- 3D images are already difficult to interpret on their own
+- 3D movies (4D) are almost impossible 
+
+<video controls>
+  <source src="ext-figures/dk31-plat.avi" type="video/avi">
+Your browser does not support the video tag.
+</video>
+
+***
+
+- 2D movies (3D) can also be challenging
+
+<video controls>
+  <source src="ext-figures/WaterJet.m4v" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+
+
+We can say that it looks like, but many pieces of quantitative information are difficult to extract
+- how fast is it going?
+- how many particles are present?
+- are their sizes constant?
+- are some moving faster?
+- are they rearranging?
+
+
+Scientific Goals
+===
+
+### Rheology
+
+***
+
+### Deformation
+
+
+Experiments
+===
+
+The first step of any of these analyses is proper experimental design. Since there is always
+- a limited field of view
+- a voxel size
+- a maximum rate of measurements
+- a non-zero cost for each measurement
+
+*** 
+
+There are always trade-offs to be made between getting the best possible high-resolution nanoscale dynamics and capturing the system level behavior. 
+- If we measure too fast
+ - sample damage
+ - miss out on long term changes
+ - have noisy data
+- Too slow
+ - miss small, rapid changes
+ - blurring and other motion artifacts
+- Too high resolution
+ - not enough unique structures in field of view to track
+- Too low resolution
+ - not sensitive to small changes
+
+Simulation
+===
+
+In many cases, experimental data is inherited and little can be done about the design, but when there is still the opportunity, simulations provide a powerful tool for tuning and balancing a large number parameters
+
+Simulations also provide the ability to pair post-processing to the experiments and determine the limits of tracking.
+
 
 What do we start with?
 ===
@@ -310,921 +375,174 @@ Going back to our original cell image
 
 We have at least a few samples (or different regions), large number of metrics and an almost as large number of parameters to _tune_
 
+
 ### How do we do something meaningful with it?
 
-Correlation and Causation
+Basic Simulation
 ===
 
-One of the most repeated criticisms of scientific work is that correlation and causation are confused. 
-
-1. Correlation 
- - means a statistical relationship
- - very easy to show (single calculation)
-2. Causation 
- - implies there is a mechanism between A and B
- - very difficult to show (impossible to prove)
-
-Controlled and Observational
-===
-There are two broad classes of data and scientific studies. 
-
-### Observational
- - Exploring large datasets looking for trends
- - Population is random
- - Not always hypothesis driven
- - Rarely leads to causation
-
-We examined 100 people and the ones with blue eyes were on average 10cm taller
-
-In 100 cake samples, we found a 0.9 correlation between cooking time and bubble size
+We start with a starting image
+```{r sphereimages}
+# Fill Image code
+# ... is for extra columns in the data set
+fill.img.fn<-function(in.img,step.size=1,...) {
+  xr<-range(in.img$x)
+  yr<-range(in.img$y)
+  ddply(expand.grid(x=seq(xr[1],xr[2],step.size),
+                  y=seq(yr[1],yr[2],step.size)),
+        .(x,y),
+      function(c.pos) {
+        ix<-c.pos$x[1]
+        iy<-c.pos$y[1]
+        nset<-subset(in.img,x==ix & y==iy)
+        if(nrow(nset)<1) nset<-data.frame(x=ix,y=iy,val=0,...)
+        nset
+        })
+}
+make.spheres<-function(sph.list,base.gr=seq(-1,1,length.out=40)) {
+  start.image<-expand.grid(x=base.gr,y=base.gr)
+  start.image$val<-c(0)
+  for(i in 1:nrow(sph.list)) {
+    start.image$val<-with(start.image,
+                          val + (
+                            ((x-sph.list[i,"x"])^2+(y-sph.list[i,"y"])^2)<
+                              sph.list[i,"r"]^2)
+      )
+  }
+  start.image$phase<-with(start.image,ifelse(val>0,TRUE,FALSE))
+  start.image
+}
+rand.list<-function(n.pts,r=0.15) data.frame(x=runif(n.pts,min=-1),y=runif(n.pts,min=-1),r=r)
+grid.list<-function(n.pts,r=0.15) cbind(expand.grid(x=seq(-1,1,length.out=n.pts),y=seq(-1,1,length.out=n.pts)),r=r)
+```
+- A number of sphere objects with the same radius scattered evenly across the field of view
+```{r, fig.height=7}
+test.grid<-grid.list(5)
+ggplot(make.spheres(test.grid),aes(x,y,fill=phase))+
+  geom_raster()+
+  coord_equal()+
+  theme_bw(20)
+```
 
 ***
-
-### Controlled
- - Most scientific studies fall into this category
- - Specifics of the groups are controlled
- - Can lead to causation
-
-We examined 50 mice with gene XYZ off and 50 gene XYZ on and as the foot size increased by 10%
-
-We increased the temperature and the number of pores in the metal increased by 10%
- 
-
-
-
-Simple Model: Magic / Weighted Coin
-===
-incremental: true
-
-Since most of the experiments in science are usually specific, noisy, and often very complicated and are not usually good teaching examples
-
-- Magic / Biased Coin
- - You buy a _magic_ coin at a shop
- - How many times do you need to flip it to _prove_ it is not fair?
- - If I flip it 10 times and another person flips it 10 times, is that the same as 20 flips?
- - If I flip it 10 times and then multiple the results by 10 is that the same as 100 flips?
- - If I buy 10 coins and want to know which ones are fair what do I do?
- 
- 
-Simple Model: Magic / Weighted Coin
-===
-
-1. Each coin represents a stochastic variable $\mathcal{X}$ and each flip represents an observation $\mathcal{X}_i$.
-1. The act of performing a coin flip $\mathcal{F}$ is an observation $\mathcal{X}_i = \mathcal{F}(\mathcal{X})$
-
-We normally assume
-
-1. A _fair_ coin has an expected value of $E(\mathcal{X})=0.5 \rightarrow$ 50% Heads, 50% Tails
-1. An _unbiased_ flip(er) means 
- - each flip is independent of the others 
- $$ P(\mathcal{F}_1(\mathcal{X})*\mathcal{F}_2(\mathcal{X}))= P(\mathcal{F}_1(\mathcal{X}))*P(\mathcal{F}_2(\mathcal{X}))$$
- - the expected value of the flip is the same as that of the coin
-$$ E(\prod_{i=0}^\infty \mathcal{F}_i(\mathcal{X})) = E(\mathcal{X}) $$
-
-Simple Model to Reality
-===
-
-### Coin Flip
-
-1. Each flip gives us a small piece of information about the flipper and the coin
-1.  More flips provides more information
- - Random / Stochastic variations in coin and flipper cancel out
- - Systematic variations accumulate
-
-***
-
-### Real Experiment
-
-1. Each measurement tells us about our sample, out instrument, and our analysis
-2. More measurements provide more information
- - Random / Stochastic variations in sample, instrument, and analysis cancel out
- - _Normally_ the analysis has very little to no stochastic variation
- - Systematic variations accumulate
-
-
-Reproducibility
-===
-
-A very broad topic with plenty of sub-areas and deeper meanings. We mean two things by reproducibility
 
 ### Analysis
 
-The process of going from images to numbers is detailed in a clear manner that _anyone_, _anywhere_ could follow and get the exact (within some tolerance) same numbers from your samples
- - No platform dependence
- - No proprietary or "in house" algorithms
- - No manual _clicking_, _tweaking_, or _copying_
- - One script to go from image to result
- 
-***
+- Threshold
+- Component Label
+- Shape Analysis
+- Distribution Analysis
 
-### Measurement
 
-Everything for analysis + taking a measurement several times (noise and exact alignment vary each time) does not change the statistics _significantly_
-- No sensitivity to mounting or rotation
-- No sensitivity to noise
-- No dependence on exact illumination
-
-Reproducible Analysis
+Describing Motion
 ===
+$$ \vec{v}(\vec{x})=\langle 0,0.1 \rangle $$
 
-The basis for reproducible scripts and analysis are scripts and macros. Since we will need to perform the same analysis many times to understand how reproducible it is.
-```{bash}
-IMAGEFILE=$1
-THRESHOLD=130
-matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
-```
-- __or__ 
-```java -jar ij.jar -macro TestMacro.ijm blobs.tif```
-- __or__
-```Rscript -e "library(plyr);..."```
-
-
-Comparing Groups: Intraclass Correlation Coefficient
-===
-The intraclass correlation coefficient basically looking at how similar objects within a group are compared to between groups
 ```{r, fig.height=7}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=runif(40))
-})
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title="Low Group Similarity")+
+ggplot(make.spheres(test.grid),aes(x,y))+
+  geom_raster(aes(fill=phase))+
+  geom_segment(data=cbind(test.grid,xv=0,yv=0.1),
+               aes(xend=x+xv,yend=y+yv),arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
   theme_bw(20)
 ```
 
 ***
 
+$$ \vec{v}(\vec{x})=0.3\frac{\vec{x}}{||\vec{x}||}\times \langle 0,0,1 \rangle $$
+
 ```{r, fig.height=7}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=nchar(class.name)+runif(40))
-})
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title="High Group Similarity")+
+test.grid$xyr<-with(test.grid,sqrt(x^2+y^2))
+ggplot(make.spheres(test.grid),aes(x,y))+
+  geom_raster(aes(fill=phase))+
+  geom_segment(data=with(test.grid,cbind(test.grid,xv=-0.3*y/xyr,yv=0.3*x/xyr)),
+               aes(xend=x+xv,yend=y+yv),arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
   theme_bw(20)
 ```
 
-Intraclass Correlation Coefficient Definition
+
+Many Frames
 ===
-$$ ICC = \frac{S_A^2}{S_A^2+S_W^2} $$
 
-where 
-- $S_A^2$ is the variance among groups or classes
- - Estimate with the standard deviations of the mean values for each group 
-- $S_W^2$ is the variance within groups or classes.
- - Estimate with the average of standard deviations for each group
- 
-- 1 means 100% of the variance is between classes
-- 0 means 0% of the variance is between classes
-
-
-Intraclass Correlation Coefficient: Values
-===
+$$ \vec{v}(\vec{x})=\langle 0,0.1 \rangle $$
 
 ```{r, fig.height=9}
-library("ICC")
-
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=runif(40))
+many.frames<-ldply(seq(0,2,length.out=9),function(in.offset) {
+  cbind(
+    make.spheres(data.frame(x=test.grid$x,y=test.grid$y+in.offset,r=test.grid$r)),
+    offset=in.offset
+    )
 })
-icVal<-ICCbare(name,values,data=test.data)$ICC
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title=paste("Low Group Similarity\n ICC:",icVal))+
+
+ggplot(many.frames,aes(x,y))+
+  geom_raster(aes(fill=phase))+
+  coord_equal()+
+  facet_wrap(~offset)+
+  labs(title="Different Frames in Linear Flow Image")+
   theme_bw(20)
 ```
 
 ***
+
+$$ \vec{v}(\vec{x})=0.3\frac{\vec{x}}{||\vec{x}||}\times \langle 0,0,1 \rangle $$
+
+```{r, fig.height=9,results='asis'}
+many.frames<-cbind(make.spheres(test.grid),offset=0)
+last.frame<-test.grid
+for(in.offset in seq(0,2,length.out=9)) {
+  last.frame$xyr<-with(last.frame,sqrt(x^2+y^2))
+  last.frame$xyr[which(last.frame$xyr==0)]<-1
+  last.frame<-with(last.frame,data.frame(x=x-0.05*y/xyr,y=y+0.05*x/xyr,r=r))
+  
+  many.frames<-rbind(many.frames,
+                     cbind(make.spheres(last.frame),offset=in.offset)
+                     )
+}
+ggplot(many.frames,aes(x,y))+
+  geom_raster(aes(fill=phase))+
+  coord_equal()+
+  facet_wrap(~offset)+
+  labs(title="Different Frames in Spiral Flow")+
+  theme_bw(20)
+```
+ 
+Jitter / Motion Noise
+===
+Even perfect spherical objects do not move in a straight line. The jitter can be seen as a stochastic variable with a random magnitude ($a$) and angle ($b$). This is then sampled at every point in the field
+
+$$ \vec{v}(\vec{x})=\vec{v}_L(\vec{x})+||a||\measuredangle b $$
+
+```{r, fig.height=7}
+ggplot(make.spheres(test.grid),aes(x,y))+
+  geom_raster(aes(fill=phase))+
+  geom_segment(data=cbind(test.grid,
+                          xv=0+runif(nrow(test.grid),min=-0.05,max=0.05),
+                          yv=0.1+runif(nrow(test.grid),min=-0.05,max=0.05)),
+               aes(xend=x+xv,yend=y+yv),arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+Over many frames this can change the path significantly
 
 ```{r, fig.height=9}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=nchar(class.name)+runif(40))
-})
-icVal<-ICCbare(name,values,data=test.data)$ICC
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title=paste("High Group Similarity\n ICC:",icVal))+
-  theme_bw(20)
-```
-
-Intraclass Correlation Coefficient: Values for Coin-Flips
-===
-We have one biased coin and try to figure out how many flips we need for the ICC to tell the difference to the normal coin
-```{r, fig.height=7}
-library("ICC")
-name.list<-c("Coin A","Coin B")
-test.data<-ldply(c(1:length(name.list)),function(class.id) {
-  data.frame(name=name.list[class.id],values=runif(100,max=1+2*(class.id-1))>0.5)
-})
-icVal<-ICCbare(name,values,data=test.data)$ICC
-ggplot(test.data,aes(x=name,y=values))+
-  geom_jitter()+
-  labs(x="Groups",y="Value",title=paste("100 flips\n ICC:",icVal))+
-  theme_bw(20)
-```
-
-***
-With many thousands of flips we eventually see a very strong difference but unless it is very strongly biased ICC is a poor indicator for the differences
-```{r, fig.height=7}
-name.list<-c("Coin A","Coin B")
-test.data<-ldply(c(1:length(name.list)),function(class.id) {
-  data.frame(name=name.list[class.id],values=runif(20000,max=1+2*(class.id-1))>0.5)
-})
-icVal<-ICCbare(name,values,data=test.data)$ICC
-ggplot(test.data,aes(x=name,y=values))+
-  geom_jitter()+
-  labs(x="Groups",y="Value",title=paste("20,000 flips\n ICC:",icVal))+
-  theme_bw(20)
-```
-
-Comparing Groups: Tests
-===
-
-Once the reproducibility has been measured, it is possible to compare groups. The idea is to make a test to assess the likelihood that two groups are the same given the data
-
-1. List assumptions
-1. Establish a null hypothesis
- - Usually both groups are the same
-1. Calculate the probability of the observations given the truth of the null hypothesis
- - Requires knowledge of probability distribution of the data
- - Modeling can be exceptionally complicated
- 
-***
-
-### Loaded Coin
-We have 1 coin from a magic shop
-- our assumptions are
- - we flip and observe flips of coins accurately and independently
- - the coin is invariant and always has the same expected value
-- our null hypothesis is the coin is unbiased $E(\mathcal{X})=0.5$
-- we can calculate the likelihood of a given observation given the number of flips (p-value)
-
-```{r, results='asis'}
-n.flips<-c(1,5,10)
-cf.table<-data.frame(No.Flips=n.flips,PAH=paste(round(1000*0.5^n.flips)/10,"%"))
-names(cf.table)<-c("Number of Flips","Probability of All Heads Given Null Hypothesis (p-value)")
-kable(cf.table)
-```
-
-How good is good enough?
-
-Comparing Groups: Student's T Distribution
-===
-Since we do not usually know our distribution very well _or_ have enough samples to create a sufficient probability model
-
-### [Student T Distribution](http://en.wikipedia.org/wiki/Student's_t-distribution)
-We assume the distribution of our stochastic variable is normal (Gaussian) and the t-distribution provides an estimate for the mean of the underlying distribution based on few observations.
-
-- We estimate the likelihood of our observed values assuming they are coming from random observations of a normal process
-
-***
-
-### Student T-Test
-
-Incorporates this distribution and provides an easy method for assessing the likelihood that the two given set of observations are coming from the same underlying process (null hypothesis)
-
-- Assume unbiased observations
-- Assume normal distribution
-
-
-Multiple Testing Bias
-===
-
-Back to the magic coin, let's assume we are trying to publish a paper, we heard a p-value of < 0.05 (5%) was good enough. That means if we get 5 heads we are good!
-
-```{r, results='asis'}
-n.flips<-c(1,4,5)
-cf.table<-data.frame(No.Flips=n.flips,PAH=paste(round(1000*0.5^n.flips)/10,"%"))
-names(cf.table)<-c("Number of Flips","Probability of All Heads Given Null Hypothesis (p-value)")
-kable(cf.table)
-```
-```{r, results='asis'}
-n.friends<-c(1,10,20,40,80)
-cfr.table<-data.frame(No.Friends=n.friends,PAH=paste(round((1000*(1-(1-0.5^5)^n.friends)))/10,"%"))
-names(cfr.table)<-c("Number of Friends Flipping","Probability Someone Flips 5 heads")
-kable(cfr.table)
-```
-
-***
-
-Clearly this is not the case, otherwise we could keep flipping coins or ask all of our friends to flip until we got 5 heads and publish
-
-The p-value is only meaningful when the experiment matches what we did. 
-- We didn't say the chance of getting 5 heads ever was < 5%
-- We said if we have exactly 5 observations and all of them are heads the likelihood that a fair coin produced that result is <5%
-
-Many [methods](http://en.wikipedia.org/wiki/Multiple_comparisons_problem) to correct, most just involve scaling $p$. The likelihood of a sequence of 5 heads in a row if you perform 10 flips is 5x higher.
-
-
-Multiple Testing Bias: Experiments
-===
-
-This is very bad news for us. We have the ability to quantify all sorts of interesting metrics 
-- cell distance to other cells
-- cell oblateness
-- cell distribution oblateness
-
-So lets throw them all into a magical statistics algorithm and push the __publish__ button
-
-***
-
-With our p value of less than 0.05 and a study with 10 samples in each group, how does increasing the number of variables affect our result
-
-```{r simcode}
-make.random.data<-function(n.groups=2,n.samples=10,n.vars=1,rand.fun=runif,group.off.fun=function(grp.id) 0) {
-  ldply(1:n.groups,function(c.group) {
-    data.frame(group=c.group,
-               do.call(cbind,llply(1:n.vars,function(c.var) group.off.fun(c.group)+rand.fun(n.samples)))
-               )
-  })
-}
-# only works for two groups
-all.t.test<-function(in.data) {
-  group1<-subset(in.data,group==1)[,-1,drop=F]
-  group2<-subset(in.data,group==2)[,-1,drop=F]
-  ldply(1:ncol(group1),function(var.id) {
-    tres<-t.test(group1[,var.id],group2[,var.id])
-    data.frame(var.col=var.id,
-              p.val=tres$p.value,
-               method=tres$method,
-              var.count=ncol(group1),
-              sample.count=nrow(in.data))
-    }
-  )
-}
-# run the entire analysis several times to get an average
-test.random.data<-function(n.test=10,...) {
-  ldply(1:n.test,function(c.test) cbind(test.num=c.test,all.t.test(make.random.data(...))))
-}
-```
-```{r rand.sim}
-var.range<-round(seq(1,60,length.out=15))
-test.cnt<-80
-sim.data<-ldply(var.range,function(n.vars) test.random.data(test.cnt,n.vars=n.vars))
-sig.likelihood<-ddply(sim.data,.(var.count),function(c.tests) {
-  data.frame(sig.vars=nrow(subset(c.tests,p.val<=0.05))/length(unique(c.tests$test.num)))
-})
-```
-```{r, fig.height=5}
-
-ggplot(sig.likelihood,
-       aes(x=var.count,y=sig.vars))+
-  geom_point()+geom_line()+
-  labs(x="Number of Variables in Study",y="Number of Significant \n (P<0.05) Findings")+
-  theme_bw(20)
-```
-
-
-Multiple Testing Bias: Correction
-===
-Using the simple correction factor (number of tests performed), we can make the significant findings constant again
-```{r, fig.height=5}
-
-sig.likelihood.corr<-ddply(sim.data,.(var.count),function(c.tests) {
-  data.frame(sig.vars=nrow(subset(c.tests,p.val<=0.05/var.count))/length(unique(c.tests$test.num)))
-})
-ggplot(sig.likelihood.corr,
-       aes(x=var.count,y=sig.vars))+
-  geom_point()+geom_line(aes(color="Corrected"))+
-  geom_point(data=sig.likelihood)+
-  geom_line(data=sig.likelihood,aes(color="Non-Corrected"))+
-  geom_hline(yintercept=0.05,color="green",alpha=0.4,size=2)+
-  scale_y_sqrt()+
-  labs(x="Number of Variables in Study",y="Number of Significant \n (P<0.05) Findings")+
-  theme_bw(20)
-```
-
-***
-
-So no harm done there we just add this correction factor right?
-Well what if we have exactly one variable with shift of 1.0 standard deviations from the other.
-
-```{r rand.sim.diff}
-var.range<-round(seq(10,60,length.out=10))
-test.cnt<-100
-one.diff.sample<-function(grp.id) ifelse(grp.id==2,.10,0)
-sim.data.diff<-ldply(var.range,function(n.samples) 
-  test.random.data(test.cnt,n.samples=n.samples,
-                   rand.fun=function(n.cnt) rnorm(n.cnt,mean=1,sd=0.1),
-                   group.off.fun=one.diff.sample))
-```
-
-```{r, fig.height=5}
-ggplot(sim.data.diff,aes(x=sample.count,y=p.val))+
-  geom_point()+
-  geom_smooth(aes(color=" 1 Variable"))+
-  geom_hline(yintercept=0.05,color="green",alpha=0.4,size=2)+
-  labs(x="Number of Samples in Study",y="P-Value for a 10% Difference")+
-  theme_bw(20)
-```
-
-Multiple Testing Bias: Sample Size
-===
-```{r rand.sim.mcsample}
-var.range<-c(1,5,10,20,100) # variable count
-sim.data.psig<-ldply(var.range,function(c.vcnt) {
-  cbind(var.count=c.vcnt,ddply(sim.data.diff,.(sample.count),function(c.sample) 
-    data.frame(prob.sig=nrow(subset(c.sample,p.val<=0.05/c.vcnt))/nrow(c.sample))
-  ))
-})
-
-```
-```{r, fig.height=9,fig.width=12}
-ggplot(sim.data.psig,aes(x=sample.count,y=100*prob.sig))+
-  geom_line(aes(color=as.factor(var.count)),size=2)+
-  ylim(0,100)+
-  labs(x="Number of Samples in Study",y="Probability of Finding\n Significant Variable (%)",color="Variables")+
-  theme_bw(20)
-
-```
-
-
-
-
-Parameters
-===
-```{r, show_chain_block}
-make.im.proc.chain<-function(root.node="Raw\nImages",filters=c(),filter.parms=c(),
-                             segmentation=c(),segmentation.parms=c(),
-                             analysis=c(),analysis.parms=c()) {
-  node.names<-c("Raw\nImages",
-                filter.parms,filters,
-                segmentation.parms,segmentation,
-                analysis.parms,analysis
-                
-                )
+many.frames<-cbind(make.spheres(test.grid),offset=0)
+last.frame<-test.grid
+for(in.offset in cumsum(rep(0.2,8))) {
+  last.frame<-with(last.frame,data.frame(x=x+runif(nrow(last.frame),min=-0.1,max=0.1),
+                                         y=y+0.2+runif(nrow(last.frame),min=-0.1,max=0.1),r=r))
   
-  c.mat<-matrix(0,length(node.names),length(node.names))
-  colnames(c.mat)<-node.names
-  rownames(c.mat)<-node.names
-  
-  
-  for(cFilt in filters) {
-    c.mat["Raw\nImages",cFilt]<-1
-    for(cParm in filter.parms) c.mat[cParm,cFilt]<-1
-    for(cSeg in segmentation) {
-        c.mat[cFilt,cSeg]<-1
-        for(cParm in segmentation.parms) c.mat[cParm,cSeg]<-1
-        for(cAnal in analysis) {
-          c.mat[cSeg,cAnal]<-1
-          for(cParm in analysis.parms) c.mat[cParm,cAnal]<-1
-        }
-      }
-    }
-  
-  
-  g<-graph.adjacency(c.mat,mode="directed")
-  V(g)$degree <- degree(g)
-  V(g)$label <- V(g)$name
-  V(g)$color <- "lightblue"
-  V(g)["Raw\nImages"]$color<-"lightgreen"
-  for(cAnal in analysis) V(g)[cAnal]$color<-"pink"
-  V(g)$size<-30
-  for(cParam in c(filter.parms,segmentation.parms,analysis.parms)) {
-    V(g)[cParam]$color<-"grey"
-    V(g)[cParam]$size<-25
-  }
-  E(g)$width<-2
-  g
-  }
-```
-How does a standard image processing chain look?
-```{r , fig.height=9}
-g<-make.im.proc.chain(filters=c("Gaussian\nFilter"),
-                      filter.parms=c("3x3\nNeighbors","0.5 Sigma"),
-                      segmentation=c("Threshold"),
-                      segmentation.parms=c("100"),
-                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis")
-                      )
-plot(g)#,layout=layout.circle) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
-```
-
-***
-
-- Green are the images we start with (measurements)
-- Blue are processing steps
-- Gray are use input parameters
-- Pink are the outputs
-
-The Full Chain
-===
-```{r , fig.height=8,fig.width=18}
-library(igraph)
-g<-make.im.proc.chain(filters=c("Gaussian\nFilter","Median\nFilter","Diffusion\nFilter","No\nFilter",
-                                "Laplacian\nFilter"),
-                      segmentation=c("Threshold","Hysteresis\nThreshold","Automated"),
-                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis","Distribution\nAnalysis",
-                                 "Skeleton\nAnalysis","2 Point\nCorr","Curvature")
-                      )
-plot(g,layout=layout.reingold.tilford) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
-```
-
-
-The Full Chain (with Parameters)
-===
-```{r , fig.height=9,fig.width=9}
-g<-make.im.proc.chain(filters=c("Gaussian\nFilter","Median\nFilter","Diffusion\nFilter"),
-                      filter.parms=c("3x3\nNeighbors","5x5\nNeighbors","7x7\nNeighbors",
-                                     "0.5 Sigma","1.0 Sigma","1.2 Sigma"),
-                      segmentation=c("Threshold","Hysteresis\nThreshold","Automated"),
-                      segmentation.parms=paste(seq(90,110,length.out=3)),
-                      analysis=c("Shape\nAnalysis","Thickness\nAnalysis","Distribution\nAnalysis","Skeleton\nAnalysis","2 Point\nCorr")
-                      )
-plot(g,layout=layout.lgl(g,maxiter=10000,root=1)) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
-```
-
-***
-
-- A __mess__, over 1080 combinations for just one sample (not even exploring a very large range of threshold values)
-- To calculate this for even one sample can take days (weeks, years) 
- - 512 x 512 x 512 foam sample $\rightarrow$ 12 weeks of processing time
- - 1024 x 1024 x 1024 femur bone $\rightarrow$ 1.9 years 
-- Not all samples are the same
-- Once the analysis is run we have a ton of data
- - femur bone $\rightarrow$ 60 million shapes analyzed
-- What do we even want? 
-- How do we judge the different results?
-
-
-Qualitative vs Quantitative
-===
-
-Given the complexity of the tree, we need to do some pruning
-
-### Qualitative Assessment
- - Evaluating metrics using visual feedback
- - Compare with expectations from other independent techniques or approach
- - Are there artifacts which are included in the output?
- - Do the shapes look correct?
- - Are they distributed as expected?
- - Is their orientation meaningful?
- 
-
-***
-
-```{r , fig.height=9}
-title.fun<-function(file.name) ""
-show.pngs.as.grid(Sys.glob("ext-figures/poros*.png"),title.fun,zoom=0.5)
-
-```
-
-
-Quantitative Metrics
-===
-
-With a quantitative approach, we can calculate the specific shape or distribution metrics on the sample with each parameter and establish the relationship between parameter and metric. 
-
-### Parameter Sweep
-
-The way we do this is usually a parameter sweep which means taking one (or more) parameters and varying them between the reasonable bounds (judged qualitatively).
-
-***
-
-```{r, load-metrics}
-source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
-source('~/Dropbox/TIPL/src/R/commonReportFunctions.R')
-# read and correct the coordinate system
-thresh.fun<-function(x) {
-  t<-sample.name.fcn(9,3)(x)
-  as.numeric(substring(t,2,nchar(t)))
+  many.frames<-rbind(many.frames,
+                     cbind(make.spheres(last.frame),offset=in.offset)
+                     )
 }
-readfcn<-function(x) cbind(compare.foam.corrected(x,
-                                                  checkProj=F
-                                                  #force.scale=0.011 # force voxel size to be 11um
-                                                  ),
-                           thresh=thresh.fun(x) # how to parse the sample names
-                           )
-# Where are the csv files located
-rootDir<-"/Users/mader/Dropbox/WorkRelated/Casanova/mcastudy" 
-clpor.files<-Sys.glob(paste(rootDir,"/a*/lacun_0.csv",sep="/")) # list all of the files
-
-# Read in all of the files
-all.lacun<-ldply(clpor.files,readfcn,.parallel=T)
-```
-
-```{r , fig.height=5}
- ggplot(all.lacun,aes(y=VOLUME*1e9,x=thresh))+
-  geom_jitter(alpha=0.1)+geom_smooth()+
-  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
-```
-
-Is it always the same?
-===
-
-
-```{r , fig.height=5}
- ggplot(subset(all.lacun,thresh %% 1000==0),aes(y=VOLUME*1e9,x=as.factor(thresh)))+
-  geom_violin()+
-  theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
-```
-
-***
-
-```{r , fig.height=5}
- ggplot(all.lacun,aes(y=PCA1_Z,x=thresh))+
-  geom_jitter(alpha=0.1)+geom_smooth()+
-  theme_bw(24)+labs(y="Orientation",x="Threshold Value",color="Threshold")
-```
-
-
-Sensitivity
-===
-
-Sensitivity is defined in control system theory as the change in the value of an output against the change in the input.
-$$ S = \frac{|\Delta \textrm{Metric}|}{|\Delta \textrm{Parameter}|} $$
-
-Such a strict definition is not particularly useful for image processing since a threshold has a unit of intensity and a metric might be volume which has $m^3$ so the sensitivity becomes volume per intensity. 
-
-*** 
-
-### Practical Sensitivity
-
-A more common approach is to estimate the variation in this parameter between images or within a single image (automatic threshold methods can be useful for this) and define the sensitivity based on this variation. It is also common to normalize it with the mean value so the result is a percentage.
-
-$$ S = \frac{max(\textrm{Metric})-min(\textrm{Metric})}{avg(\textrm{Metric})} $$
-
-
-
-Sensitivity: Real Measurements
-===
-
-In this graph it is magnitude of the slope. The steeper the slope the more the metric changes given a small change in the parameter
-
-```{r , fig.height=5}
-poresum<-function(all.data) ddply(all.data,.(thresh),function(c.sample) {
-  data.frame(Count=nrow(c.sample),
-             Volume=mean(c.sample$VOLUME*1e9),
-             Stretch=mean(c.sample$AISO),
-             Oblateness=mean(c.sample$OBLATENESS),
-             #Lacuna_Density_mm=1/mean(c.sample$DENSITY_CNT),
-             Length=mean(c.sample$PROJ_PCA1*1000),
-             Width=mean(c.sample$PROJ_PCA2*1000),
-             Height=mean(c.sample$PROJ_PCA3*1000),
-             Orientation=mean(abs(c.sample$PCA1_Z)))
-})
-comb.summary<-cbind(poresum(all.lacun),Phase="Lacuna")
-splot<-ggplot(comb.summary,aes(x=thresh))
-splot+geom_line(aes(y=Count))+geom_point(aes(y=Count))+scale_y_log10()+
-  theme_bw(24)+labs(y="Object Count",x="Threshold",color="Phase")
-```
-
-***
-
-Comparing Different Variables we see that the best (lowest) value for the count sensitivity is the highest for the volume and anisotropy. 
-
-```{r , fig.height=5}
-calc.sens<-function(in.df) {
-  data.frame(sens.cnt=100*with(in.df,(max(Count)-min(Count))/mean(Count)),
-             sens.vol=100*with(in.df,(max(Volume)-min(Volume))/mean(Volume)),
-             sens.stretch=100*with(in.df,(max(Stretch)-min(Stretch))/mean(Stretch))
-             )
-}
-sens.summary<-ddply.cutcols(comb.summary,.(cut_interval(thresh,5)),calc.sens)
-ggplot(sens.summary,aes(x=thresh))+
-  geom_line(aes(y=sens.cnt,color="Count"))+
-  geom_line(aes(y=sens.vol,color="Volume"))+
-  geom_line(aes(y=sens.stretch,color="Anisotropy"))+
-  labs(x="Threshold",y="Sensitivity (%)",color="Metric")+
-  theme_bw(20)
-```
-
-### Which metric is more important?
-
-
-
-Unit Testing
-===
-￼In computer programming, unit testing is a method by which individual units of source code, sets of one or more computer program modules together with associated control data, usage procedures, and operating procedures, are tested to determine if they are fit for use.
-
-- Intuitively, one can view a unit as the smallest testable part of an application
-- Unit testing is possible with every language
-- Most (Java, C++, Matlab, R, Python) have built in support for automated testing and reporting
-
-Unit Testing Continued
-===
-The first requirement for unit testing to work well is to have you tools divided up into small independent parts (functions)
-- Each part can then be tested independently (unit testing)
- - If the tests are well done, units can be changed and tested independently
- - Makes upgrading or expanding tools _easy_
-- The entire path can be tested (integration testing)
- - Catches mistakes in integration or _glue_
-
-
-***
-
-Ideally with realistic but simulated test data
-- The utility of the testing is only as good as the tests you make
-
-### Example
-
-- Given the following function
-```function vxCnt=countVoxs(inImage)```
-- We can right the following tests
- - testEmpty2d
- 
-```assert countVoxs(zeros(3,3)) == 0```
- - testEmpty3d
- 
-```assert countVoxs(zeros(3,3,3)) == 0```
- - testDiag3d
- 
-```assert countVoxs(eye(3)) == 3```
-
-Unit Testing: Examples
-===
-- Given the following function
-```function shapeTable=shapeAnalysis(inImage)```
-We should decompose the task into sub-components
-- ```function clImage=componentLabel(inImage)```
-
-- ```function objInfo=analyzeObject(inObject)```
- - ```function vxCnt=countVoxs(inObject)``` 
- - ```function covMat=calculateCOV(inObject)```
- - ```function shapeT=calcShapeT(covMat)```
- - ```function angle=calcOrientation(shapeT)```
- - ```function aniso=calcAnisotropy(shapeT)```
-
-
-Unit Testing in ImageJ
-===
-
-[On this page](https://github.com/imagej/ij1-tests/blob/master/src/test/java/ij/VirtualStackTest.java)
-
-<iframe src='https://raw.githubusercontent.com/imagej/ij1-tests/master/src/test/java/ij/VirtualStackTest.java' width='100%' height='800'></iframe>
-
-Test Driven Programming
-===
-
-Test Driven programming is a style or approach to programming where the tests are written before the functional code. Like very concrete specifications. It is easy to estimate how much time is left since you can automatically see how many of the tests have been passed. You and your collaborators are clear on the utility of the system.
-
-1. shapeAnalysis must give an anisotropy of 0 when we input a sphere
-1. shapeAnalysis must give the center of volume within 0.5 pixels
-1. shapeAnalysis must run on a 1000x1000 image in 30 seconds
-
-
-
-Visualization
-===
-
-One of the biggest problems with _big_ sciences is trying to visualize a lot of heterogeneous data. 
-- Tables are difficult to interpret
-- 3D Visualizations are very difficult to compare visually 
-- Contradictory necessity of simple single value results and all of the data to look for trends and find problems
-
-
-
-Bad Graphs
-=== 
-There are too many graphs which say
-- ‘my data is very complicated’
-- ‘I know how to use __ toolbox in Matlab/R/Mathematica’
-
-![3d Plots](ext-figures/badImage1.png)
-![Spectroscopy](ext-figures/badPlot4.png)
-
-***
-- Most programs by default make poor plots
- - Good visualizations takes time
-![Linkage](ext-figures/badImage3.png)
-
-![Linkage 2](ext-figures/badImage2.png)
-
-
-Key Ideas
-===
-
-1. What is my message? 
-1. Does the graphic communicate it clearly?
-1. Is a graphic representation really necessary?
- - 
-1. Does every line / color serve a purpose?
- - Pretend ink is very expensive
- 
-***
-
-### Simple Rules
-1. Never use 3D graphics when it can be avoided (unless you want to be deliberately misleading), our visual system is not well suited for comparing heights of different 
-![Dumb 3d](ext-figures/3dplot.png)
-1. Pie charts can also be hard to interpret
-1. Background color should almost always be white (not light gray)
-1. Use color palettes adapted to human visual sensitivity 
-
-What is my message
-===
-
-- Plots to "show the results" or "get a feeling" are usually not good
-
-```{r, fig.height=7}
-xd<-runif(80)
-test.data<-data.frame(x=xd,y=xd+runif(80),z=runif(80))
-plot(test.data)
-```
-
-***
-
-- Focus on a single, simple message
- - X is a little bit correlated with Y
-```{r, fig.height=7}
-ggplot(test.data,aes(x,y))+
-  geom_point()+geom_smooth(method="lm")+
+ggplot(many.frames,aes(x,y))+
+  geom_raster(aes(fill=phase))+
   coord_equal()+
-  labs(title="X is weakly correlated with Y")+
+  facet_wrap(~offset)+
+  labs(title="Different Frames in Linear Flow Image")+
   theme_bw(20)
 ```
-
-
-
-Does my graphic communicate it clearly?
-===
-- Too much data makes it very difficult to derive a clear message
-```{r, fig.height=7}
-xd<-runif(5000)
-test.data<-data.frame(x=xd,y=(xd-0.5)*runif(5000))
-ggplot(test.data,aes(x,y))+
-  geom_point()+
-  coord_equal()+
-  theme_bw(20)
-```
-
-***
-
-- Filter and reduce information until it is extremely simple
-
-```{r, fig.height=4}
-
-ggplot(test.data,aes(x,y))+
-  stat_binhex(bins=20)+
-  geom_smooth(method="lm",aes(color="Fit"))+
-  coord_equal()+
-  theme_bw(20)+guides(color=F)
-```
-
-```{r, fig.height=4}
-
-ggplot(test.data,aes(x,y))+
-  geom_density2d(aes(color="Contour"))+
-  geom_smooth(method="lm",aes(color="Linear Fit"))+
-  coord_equal()+
-  labs(color="Type")+
-  theme_bw(20)
-```
-
-
-
-Grammar of Graphics
-===
-- What is a grammar?
- - Set of rules for constructing and validating a sentence
- - Specifies the relationship and order between the words constituting the sentence
-- How does this apply to graphics?
- - If we develop a consistent way of expressing graphics (sentences) in terms of elements (words) we can compose and decompose graphics easily
-
-
-***
-
-~~The most important modern work in graphical grammars is “The Grammar of Graphics” by Wilkinson, Anand, and Grossman (2005). This work built on earlier work by Bertin (1983) and proposed a grammar that can be used to describe and construct a wide range of statistical graphics.~~
-
-
-<small> H. Wickham. ggplot2: elegant graphics for data analysis. Springer New York, 2009.</small>
-
-Grammar Explained
-===
-Normally we think of plots in terms of some sort of data which is fed into a plot command that produces a picture
-- In Excel you select a range and plot-type and click "Make"
-- In Matlab you run ```plot(xdata,ydata,color/shape)``` 
-
-1. These produces entire graphics (sentences) or at least phrases in one go and thus abstract away from the idea of grammar. 
-1. If you spoke by finding entire sentences in a book it would be very ineffective, it is much better to build up word by word
-
-***
-
-### Grammar
-
-Separate the graph into its component parts
-
-
-
-1. Data Mapping
- - $var1 \rightarrow x$, $var2 \rightarrow y$
-
-![Graph Decomposed](ext-figures/grammarOfGraphics.png)
-
-1. Points
-1. Axes / Coordinate System
-1. Labels / Annotation
-
-Construct graphics by focusing on each portion independently.
-
-
-Wrapping up
-===
-- I am not a statistician
-- This is not a statistics course
-- If you have questions or concerns, Both ETHZ and Uni Zurich offer __free__ consultation with real statisticians
- - They are rarely bearers of good news
- 
-***
-
-- Simulations are very helpful
-- Try and understand the tests you are performing
- 
