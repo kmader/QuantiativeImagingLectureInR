@@ -418,8 +418,8 @@ grid.list<-function(n.pts,r=0.15) cbind(expand.grid(x=seq(-1,1,length.out=n.pts)
 - A number of sphere objects with the same radius scattered evenly across the field of view
 ```{r, fig.height=7}
 test.grid<-grid.list(5)
-ggplot(make.spheres(test.grid),aes(x,y,fill=phase))+
-  geom_raster()+
+ggplot(subset(make.spheres(test.grid),phase),aes(x,y,fill=phase))+
+  geom_raster(fill="gray50",alpha=0.75)+
   coord_equal()+
   theme_bw(20)
 ```
@@ -439,8 +439,8 @@ Describing Motion
 $$ \vec{v}(\vec{x})=\langle 0,0.1 \rangle $$
 
 ```{r, fig.height=7}
-ggplot(make.spheres(test.grid),aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(make.spheres(test.grid),phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   geom_segment(data=cbind(test.grid,xv=0,yv=0.1),
                aes(xend=x+xv,yend=y+yv),arrow=arrow(length = unit(0.3,"cm")))+
   coord_equal()+
@@ -453,8 +453,8 @@ $$ \vec{v}(\vec{x})=0.3\frac{\vec{x}}{||\vec{x}||}\times \langle 0,0,1 \rangle $
 
 ```{r, fig.height=7}
 test.grid$xyr<-with(test.grid,sqrt(x^2+y^2))
-ggplot(make.spheres(test.grid),aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(make.spheres(test.grid),phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   geom_segment(data=with(test.grid,cbind(test.grid,xv=-0.3*y/xyr,yv=0.3*x/xyr)),
                aes(xend=x+xv,yend=y+yv),arrow=arrow(length = unit(0.3,"cm")))+
   coord_equal()+
@@ -475,8 +475,8 @@ many.frames<-ldply(seq(0,2,length.out=9),function(in.offset) {
     )
 })
 
-ggplot(many.frames,aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(many.frames,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   coord_equal()+
   facet_wrap(~offset)+
   labs(title="Different Frames in Linear Flow Image")+
@@ -499,14 +499,47 @@ for(in.offset in seq(0,2,length.out=9)) {
                      cbind(make.spheres(last.frame),offset=in.offset)
                      )
 }
-ggplot(many.frames,aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(many.frames,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   coord_equal()+
   facet_wrap(~offset)+
   labs(title="Different Frames in Spiral Flow")+
   theme_bw(20)
 ```
- 
+
+Random Appearance / Disappearance
+===
+
+Under perfect imaging and experimental conditions objects should not appear and reappear but due to 
+- noise
+- limited fields of view / depth of field
+- discrete segmentation approachs
+- motion artifacts
+ - blurred objects often have lower intensity values than still objects
+
+It is common for objects to appear and vanish regularly in an experiment.
+
+***
+
+```{r, fig.height=9}
+many.frames<-ldply(seq(0,1.,length.out=9),function(in.offset) {
+  c.grid<-test.grid[sample(nrow(test.grid), 18), ]
+  cbind(
+    make.spheres(data.frame(x=c.grid$x,y=c.grid$y+in.offset,r=c.grid$r)),
+    offset=in.offset
+    )
+})
+ggplot(subset(many.frames,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  facet_wrap(~offset)+
+  labs(title="Different Frames in Linear Flow Image")+
+  theme_bw(20)
+```
+
+
+
+
 Jitter / Motion Noise
 ===
 Even perfect spherical objects do not move in a straight line. The jitter can be seen as a stochastic variable with a random magnitude ($a$) and angle ($b$). This is then sampled at every point in the field
@@ -514,8 +547,8 @@ Even perfect spherical objects do not move in a straight line. The jitter can be
 $$ \vec{v}(\vec{x})=\vec{v}_L(\vec{x})+||a||\measuredangle b $$
 
 ```{r, fig.height=7}
-ggplot(make.spheres(test.grid),aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(make.spheres(test.grid),phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   geom_segment(data=cbind(test.grid,
                           xv=0+runif(nrow(test.grid),min=-0.05,max=0.05),
                           yv=0.1+runif(nrow(test.grid),min=-0.05,max=0.05)),
@@ -524,25 +557,76 @@ ggplot(make.spheres(test.grid),aes(x,y))+
   theme_bw(20)
 ```
 
-***
+Jitter (Continued)
+===
 
 Over many frames this can change the path significantly
 
 ```{r, fig.height=9}
-many.frames<-cbind(make.spheres(test.grid),offset=0)
-last.frame<-test.grid
+last.frame<-test.grid[,c("x","y","r")]
+last.frame$id<-1:nrow(last.frame)
+many.frames<-cbind(make.spheres(last.frame),offset=0)
+many.grids<-cbind(last.frame,offset=0)
+
 for(in.offset in cumsum(rep(0.2,8))) {
-  last.frame<-with(last.frame,data.frame(x=x+runif(nrow(last.frame),min=-0.1,max=0.1),
-                                         y=y+0.2+runif(nrow(last.frame),min=-0.1,max=0.1),r=r))
+  last.frame<-with(last.frame,
+                   data.frame(x=x+runif(nrow(last.frame),min=-0.1,max=0.1),
+                              y=y+0.2+runif(nrow(last.frame),min=-0.1,max=0.1),
+                              r=r)
+                   )
+  
+  last.frame$id<-1:nrow(last.frame)
   
   many.frames<-rbind(many.frames,
                      cbind(make.spheres(last.frame),offset=in.offset)
                      )
+  
+  many.grids<-rbind(many.grids,
+                    cbind(last.frame,offset=in.offset)
+                    )
 }
-ggplot(many.frames,aes(x,y))+
-  geom_raster(aes(fill=phase))+
+ggplot(subset(many.frames,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
   coord_equal()+
   facet_wrap(~offset)+
   labs(title="Different Frames in Linear Flow Image")+
   theme_bw(20)
 ```
+
+***
+
+The simulation can be represented in a more clear fashion by using single lines to represent each spheroid 
+```{r, fig.height=9}
+ggplot(many.grids,aes(x,y,))+
+  geom_path(aes(color=id,group=id))+
+  coord_equal()+
+  labs(title="Different Paths in Linear Jittered Flow Image")+
+  scale_color_gradientn(colours=rainbow(10))+
+  theme_bw(20)
+```
+
+Limits of Tracking
+===
+
+We see that visually tracking samples can be difficult and there are a number of parameters which affect the ability for us to clearly see the tracking.
+- flow rate
+- flow type
+- density
+- jitter
+- particle uniqueness
+
+***
+
+We thus try to quantify the limits of these parameters for different tracking methods in order to design experiments better. 
+
+### Acquisition-based Parameters
+
+- acquisition rate $\rightarrow$ flow rate
+- resolution $\rightarrow$ density
+
+### Experimental Parameters
+
+
+
+
+
