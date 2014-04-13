@@ -220,7 +220,16 @@ Literature / Useful References
 
 ### Papers / Sites
 
-
+- Comparsion of Tracking Methods in Biology
+ - Chenouard, N., Smal, I., de Chaumont, F., Maška, M., Sbalzarini, I. F., Gong, Y., … Meijering, E. (2014). Objective comparison of particle tracking methods. Nature Methods, 11(3), 281–289. doi:10.1038/nmeth.2808
+ - Maska, M., Ulman, V., Svoboda, D., Matula, P., Matula, P., Ederra, C., … Ortiz-de-Solorzano, C. (2014). A benchmark for comparison of cell tracking algorithms. Bioinformatics (Oxford, England), btu080–. doi:10.1093/bioinformatics/btu080
+ 
+- Multiple Hypothesis Testing
+ - Coraluppi, S. & Carthel, C. Multi-stage multiple-hypothesis tracking.
+J. Adv. Inf. Fusion 6, 57–67 (2011).
+ - Chenouard, N., Bloch, I. & Olivo-Marin, J.-C. Multiple hypothesis
+tracking in microscopy images. in Proc. IEEE Int. Symp. Biomed. Imaging
+1346–1349 (IEEE, 2009).
  
 Previously on QBI ...
 ========================================================
@@ -538,8 +547,6 @@ ggplot(subset(many.frames,phase),aes(x,y))+
 ```
 
 
-
-
 Jitter / Motion Noise
 ===
 Even perfect spherical objects do not move in a straight line. The jitter can be seen as a stochastic variable with a random magnitude ($a$) and angle ($b$). This is then sampled at every point in the field
@@ -612,8 +619,10 @@ We see that visually tracking samples can be difficult and there are a number of
 - flow rate
 - flow type
 - density
+- appearance and disappearance rate 
 - jitter
 - particle uniqueness
+
 
 ***
 
@@ -621,12 +630,69 @@ We thus try to quantify the limits of these parameters for different tracking me
 
 ### Acquisition-based Parameters
 
-- acquisition rate $\rightarrow$ flow rate
-- resolution $\rightarrow$ density
+- acquisition rate $\rightarrow$ flow rate, jitter (per frame)
+- resolution $\rightarrow$ density, appearance rate
+
 
 ### Experimental Parameters
 
+- experimental setup (pressure, etc) $\rightarrow$ flow rate/type 
+- polydispersity $\rightarrow$ particle uniqueness
+- vibration/temperature $\rightarrow$ jitter
+- mixture $\rightarrow$ density
+
+Tracking: Nearest Neighbor
+===
+While there exist a number of different methods and complicated approaches for tracking, for experimental design it is best to start with the simplist, easiest understood method. The limits of this can be found and components added as needed until it is possible to realize the experiment
+- If a dataset can only be analyzed with a multiple-hypothesis testing neural network model then it might not be so reliable
+
+We then return to _nearest neighbor_ which means we track a point ($\vec{P}_0$) from an image ($I_0$) at $t_0$ to a point ($\vec{P}_1$) in image ($I_1$) at $t_1$ by 
+
+$$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0-\vec{y}|| \forall \vec{y}\in I_1) $$
+
+Scoring Tracking
+===
+
+In the following examples we will use simple metrics for scoring fits where the objects are matched and the number of misses is counted.
+
+There are a number of more sensitive scoring metrics which can be used, by finding the best submatch for a given particle since the number of matches and particles does not always correspond. 
+
+Extending Nearest Neighbor
+===
+
+### Bijective Requirement
+$$ \vec{P}_f=\textrm{argmin}(||\vec{P}_0-\vec{y} || \forall \vec{y}\in I_1) $$
+$$ \vec{P}_i=\textrm{argmin}(||\vec{P}_f-\vec{y} || \forall \vec{y}\in I_0) $$
+
+$$ \vec{P}_i \stackrel{?}{=} \vec{P}_0 $$
+
+### Maximum Displacement
+
+$$ \vec{P}_1=\begin{cases} 
+||\vec{P}_0-\vec{y} ||<\textrm{MAXD}, & \textrm{argmin}(||\vec{P}_0-\vec{y} || \forall \vec{y}\in I_1) \\
+\textrm{Otherwise}, & \emptyset \end{cases}$$
 
 
+***
+
+### Prior / Expected Movement
+
+$$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0+\vec{v}_{offset}-\vec{y} || \forall \vec{y}\in I_1) $$
+
+
+Beyond Nearest Neighbor
+===
+
+While nearest neighbor provides a useful starting tool it is not sufficient for truly complicated flows and datasets.
+### Better Approaches
+
+1. Multiple Hypothesis Testing
+Nearest neighbor just compares the points between two frames and there is much more information available in most time-resolved datasets. This approach allows for multiple possible paths to be explored at the same time and the best chosen only after all frames have been examined
+
+***
+
+### Shortcomings
+1. Merging and Splitting Particles
+The simplicity of the nearest neighbor model does really allow for particles to merge and split (relaxing the bijective requirement allows such behavior, but the method is still not suited for such tracking). For such systems a more specific, physically-based is required to encapsulate this behavior.
 
 
