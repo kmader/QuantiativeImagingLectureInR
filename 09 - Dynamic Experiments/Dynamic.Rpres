@@ -909,7 +909,137 @@ The simplicity of the nearest neighbor model does really allow for particles to 
 
 Voxel-based Approaches
 ===
-Digital Image and Digital Volume Correlation. 
+For voxel-based approachs the most common analyses are digital image correlation (or for 3D images digital volume correlation), where the correlation is calculated between two images or volumes.
+
+
+Standard Image Correlation
+===
+Given images $I_0(\vec{x})$ and $I_1(\vec{x})$ at time $t_0$ and $t_1$ respectively. The correlation between these two images can be calculated
+
+$$ C_{I_0,I_1}(\vec{r})=\langle I_0(\vec{x}) I_1(\vec{x}+\vec{r}) \rangle $$
+
+```{r, fig.height=5}
+start.grid<-grid.list(5)
+start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
+
+final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
+final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
+
+ggplot(subset(start.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=5}
+ggplot(subset(final.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+```{r cross_corrfun}
+#' Calculate the cross correlation 
+#' @author Kevin Mader (kevin.mader@gmail.com)
+#' Generates flow with given object count, frame count and randomness
+#' the box and crop are introduced to allow for objects entering and 
+#' leaving the field of view
+#'
+#' @param img.a is the starting or I_0 image
+#' @param img.b is the destination or I_1 image
+#' @param tr.x is the function transforming the x coordinate
+#' 
+cc.imfun<-function(img.a,img.b,tr.x=function(x,y) x,tr.y=function(x,y) y) {
+  tr.img.b<-img.b
+  tr.img.b$x<-with(img.b,tr.x(x,y))
+  tr.img.b$y<-with(img.b,tr.y(x,y))
+  matches<-ddply(rbind(cbind(img.a,label="A"),cbind(tr.img.b,label="B")),.(x,y), function(c.pos) {
+    if(nrow(c.pos)>1) data.frame(e.val=prod(c.pos$phase))
+    else data.frame(e.val=c())
+  })
+  data.frame(e.val=mean(matches$e.val),count=nrow(matches))
+}
+```
+
+```{r }
+gr.spacing<-diff(unique(start.img$x))[1]
+cc.points<-expand.grid(vx=seq(-5,5,1)*gr.spacing,vy=seq(-5,5,1)*gr.spacing)
+cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
+  tr.x<-function(x,y) (x+c.pt[1,"vx"])
+  tr.y<-function(x,y) (y+c.pt[1,"vy"])
+  cc.imfun(start.img,final.img,tr.x=tr.x,tr.y=tr.y)
+},.parallel=T)
+```
+
+```{r, fig.height=5}
+ggplot(cc.img,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d()+
+  labs(x="u",y="v",fill="Correlation",title="Correlation vs R")+
+  scale_fill_gradient2(high="red")+
+  theme_bw(25)
+```
+
+
+Random Image Positions
+===
+With highly structured / periodic samples identfying a best correlation is difficult since there are multiple maxima. 
+
+```{r, fig.height=5}
+start.grid<-rand.list(5)
+start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
+
+final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
+final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
+
+ggplot(subset(start.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=5}
+ggplot(subset(final.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+```{r, fig.height=5}
+gr.spacing<-diff(unique(start.img$x))[1]
+cc.points<-expand.grid(vx=seq(-5,5,1)*gr.spacing,vy=seq(-5,5,1)*gr.spacing)
+cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
+  tr.x<-function(x,y) (x+c.pt[1,"vx"])
+  tr.y<-function(x,y) (y+c.pt[1,"vy"])
+  cc.imfun(start.img,final.img,tr.x=tr.x,tr.y=tr.y)
+},.parallel=T)
+```
+
+```{r, fig.height=5}
+ggplot(cc.img,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d()+
+  labs(x="u",y="v",fill="Correlation",title="Correlation vs R")+
+  scale_fill_gradient2(high="red")+
+  theme_bw(25)
+```
+
+Extending Correlation
+===
+
+### Scaling and Rotation Generalization
+$$ C_{I_0,I_1}(\vec{r},s,\theta)= $$
+$$ \langle I_0(\vec{x}) I_1(
+\begin{bmatrix}
+s\cos\theta & -s\sin\theta\\
+s\sin\theta & s\cos\theta
+\end{bmatrix}
+\vec{x}+\vec{r}) \rangle  $$
+
+More Complicated Changes
+===
 
 ```{r, fig.height=7}
 start.grid<-grid.list(5)
@@ -964,7 +1094,6 @@ ggplot()+
 Too large of a window
 ===
 ```{r, fig.height=7}
-
 start.img.blocks<-blockify.img(start.img,2,2)
 ggplot(subset(start.img.blocks,phase),aes(x,y))+
   geom_raster(fill="gray50",alpha=0.75)+
@@ -986,7 +1115,6 @@ ggplot()+
 Too small of a window
 ===
 ```{r, fig.height=7}
-
 start.img.blocks<-blockify.img(start.img,6,6)
 ggplot(subset(start.img.blocks,phase),aes(x,y))+
   geom_raster(fill="gray50",alpha=0.75)+
