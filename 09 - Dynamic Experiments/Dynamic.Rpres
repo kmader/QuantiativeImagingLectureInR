@@ -886,6 +886,10 @@ $$ \vec{P}_1=\begin{cases}
 
 $$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0+\vec{v}_{offset}-\vec{y} || \forall \vec{y}\in I_1) $$
 
+### Adaptive Movement
+Can then be calculated in an iterative fashion where the offset is the average from all of the $\vec{P}_1-\vec{P}_0$ vectors. It can also be performed 
+$$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0+\vec{v}_{offset}-\vec{y} || \forall \vec{y}\in I_1) $$
+
 
 Beyond Nearest Neighbor
 ===
@@ -903,4 +907,101 @@ Nearest neighbor just compares the points between two frames and there is much m
 The simplicity of the nearest neighbor model does really allow for particles to merge and split (relaxing the bijective requirement allows such behavior, but the method is still not suited for such tracking). For such systems a more specific, physically-based is required to encapsulate this behavior.
 
 
+Voxel-based Approaches
+===
+Digital Image and Digital Volume Correlation. 
+
+```{r, fig.height=7}
+start.grid<-grid.list(5)
+start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=100))
+
+final.grid<-data.frame(x=with(start.grid,sign(x)*abs(x)^1.5),y=with(start.grid,sign(y)*abs(y)^1.5),r=start.grid$r)
+final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=100))
+
+ggplot(subset(start.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=7}
+ggplot(subset(final.img,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+
+Choosing a window size
+===
+```{r, fig.height=7}
+blockify.img<-function(in.img,nx=5,ny=5) {
+  out.img<-ddply(in.img,.(cut_interval(x,nx),cut_interval(y,ny)),function(c.block) c.block)
+  names(out.img)[c(1:2)]<-c("x.block","y.block")
+  out.img$label.block<-with(out.img,paste(x.block,y.block,sep=","))
+  out.img
+}
+start.img.blocks<-blockify.img(start.img,4,4)
+ggplot(subset(start.img.blocks,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  theme_bw(10)
+```
+
+***
+```{r, fig.height=7}
+final.img.blocks<-blockify.img(final.img,4,4)
+ggplot()+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  labs(fill="Time")+
+  theme_bw(10)
+```
+
+Too large of a window
+===
+```{r, fig.height=7}
+
+start.img.blocks<-blockify.img(start.img,2,2)
+ggplot(subset(start.img.blocks,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  theme_bw(10)
+```
+
+***
+```{r, fig.height=7}
+final.img.blocks<-blockify.img(final.img,2,2)
+ggplot()+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  labs(fill="Time")+
+  theme_bw(10)
+```
+
+Too small of a window
+===
+```{r, fig.height=7}
+
+start.img.blocks<-blockify.img(start.img,6,6)
+ggplot(subset(start.img.blocks,phase),aes(x,y))+
+  geom_raster(fill="gray50",alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  theme_bw(10)
+```
+
+***
+```{r, fig.height=7}
+final.img.blocks<-blockify.img(final.img,6,6)
+ggplot()+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
+  coord_equal()+facet_wrap(~label.block,scale="free")+
+  labs(fill="Time")+
+  theme_bw(10)
+```
 
