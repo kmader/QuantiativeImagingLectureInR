@@ -421,8 +421,8 @@ make.spheres<-function(sph.list,base.gr=seq(-1,1,length.out=40)) {
   start.image$phase<-with(start.image,ifelse(val>0,TRUE,FALSE))
   start.image
 }
-rand.list<-function(n.pts,r=0.15) data.frame(x=runif(n.pts,min=-1),y=runif(n.pts,min=-1),r=r)
-grid.list<-function(n.pts,r=0.15) cbind(expand.grid(x=seq(-1,1,length.out=n.pts),y=seq(-1,1,length.out=n.pts)),r=r)
+rand.list<-function(n.pts,r=0.15,min=-1,max=1) data.frame(x=runif(n.pts,min=-1,max=1),y=runif(n.pts,min=-1,max=1),r=r)
+grid.list<-function(n.pts,r=0.15,min=-1,max=1) cbind(expand.grid(x=seq(min,max,length.out=n.pts),y=seq(min,max,length.out=n.pts)),r=r)
 ```
 - A number of sphere objects with the same radius scattered evenly across the field of view
 ```{r, fig.height=7}
@@ -831,9 +831,9 @@ Density and Jitter
 n.iters<-20
 registerDoMC(8) # divide the jobs better
 
-jitter.vals<-seq(0,2,length.out=8)
+jitter.vals<-seq(0,2,length.out=4)
 irseq<-function(a,b,length.out) {1/seq(1/b^(1/3),1/a^(1/3),length.out=length.out)^3} # seq for inverted numbers
-obj.count<-irseq(25,2500,length.out=6)
+obj.count<-irseq(25,2500,length.out=3)
 
 jit.bub<-merge(obj.count,jitter.vals)
 jd.vals<-mapply(list,rep(jit.bub[,1],n.iters),rep(jit.bub[,2],n.iters),SIMPLIFY=F)
@@ -911,32 +911,24 @@ Voxel-based Approaches
 ===
 For voxel-based approachs the most common analyses are digital image correlation (or for 3D images digital volume correlation), where the correlation is calculated between two images or volumes.
 
+### Standard Image Correlation
 
-Standard Image Correlation
-===
 Given images $I_0(\vec{x})$ and $I_1(\vec{x})$ at time $t_0$ and $t_1$ respectively. The correlation between these two images can be calculated
 
 $$ C_{I_0,I_1}(\vec{r})=\langle I_0(\vec{x}) I_1(\vec{x}+\vec{r}) \rangle $$
 
-```{r, fig.height=5}
-start.grid<-grid.list(5)
-start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
-
-final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
-final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
-
-ggplot(subset(start.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+
-  theme_bw(20)
-```
-
 ***
 
 ```{r, fig.height=5}
-ggplot(subset(final.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
+start.grid<-grid.list(5)
+start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
+final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
+final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+
+  labs(fill="time")+
   theme_bw(20)
 ```
 
@@ -975,7 +967,7 @@ cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
 
 ```{r, fig.height=5}
 ggplot(cc.img,aes(vx,vy,fill=e.val))+
-  geom_raster()+geom_density2d()+
+  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val))+
   labs(x="u",y="v",fill="Correlation",title="Correlation vs R")+
   scale_fill_gradient2(high="red")+
   theme_bw(25)
@@ -986,29 +978,24 @@ Random Image Positions
 ===
 With highly structured / periodic samples identfying a best correlation is difficult since there are multiple maxima. 
 
-```{r, fig.height=5}
-start.grid<-rand.list(5)
+```{r, fig.height=8}
+start.grid<-rand.list(12)
 start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
 
 final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
 final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
 
-ggplot(subset(start.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+
+  labs(fill="time")+
   theme_bw(20)
 ```
 
 ***
 
-```{r, fig.height=5}
-ggplot(subset(final.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+
-  theme_bw(20)
-```
-
-```{r, fig.height=5}
+```{r, fig.height=9}
 gr.spacing<-diff(unique(start.img$x))[1]
 cc.points<-expand.grid(vx=seq(-5,5,1)*gr.spacing,vy=seq(-5,5,1)*gr.spacing)
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
@@ -1020,16 +1007,16 @@ cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
 
 ```{r, fig.height=5}
 ggplot(cc.img,aes(vx,vy,fill=e.val))+
-  geom_raster()+geom_density2d()+
-  labs(x="u",y="v",fill="Correlation",title="Correlation vs R")+
+  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val^2))+
+  labs(x="u",y="v",fill="Correlation",title="Correlation vs r")+
   scale_fill_gradient2(high="red")+
   theme_bw(25)
 ```
 
 Extending Correlation
 ===
+The correlation function can be extended by adding rotation and scaling terms to the offset making the tool more flexible but also more computationally expensive for large search spaces. 
 
-### Scaling and Rotation Generalization
 $$ C_{I_0,I_1}(\vec{r},s,\theta)= $$
 $$ \langle I_0(\vec{x}) I_1(
 \begin{bmatrix}
@@ -1048,46 +1035,85 @@ start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=100))
 final.grid<-data.frame(x=with(start.grid,sign(x)*abs(x)^1.5),y=with(start.grid,sign(y)*abs(y)^1.5),r=start.grid$r)
 final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=100))
 
-ggplot(subset(start.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+
+  labs(fill="time")+
   theme_bw(20)
 ```
 
 ***
 
-```{r, fig.height=7}
-ggplot(subset(final.img,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+
-  theme_bw(20)
+```{r, fig.height=9}
+gr.spacing<-diff(unique(start.img$x))[1]
+cc.points<-expand.grid(vx=seq(-6,6,1)*gr.spacing,vy=seq(-6,6,1)*gr.spacing)
+cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
+  tr.x<-function(x,y) (x+c.pt[1,"vx"])
+  tr.y<-function(x,y) (y+c.pt[1,"vy"])
+  cc.imfun(start.img,final.img,tr.x=tr.x,tr.y=tr.y)
+},.parallel=T)
 ```
 
+```{r, fig.height=5}
+ggplot(cc.img,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val^2))+
+  labs(x="u",y="v",fill="Correlation",title="Correlation vs r")+
+  scale_fill_gradient2(high="red")+
+  theme_bw(25)
+```
+
+Subdividing the data
+===
+We can approach the problem by subdividing the data into smaller blocks and then apply the digital volume correlation independently to each block.
+- information on changes in different regions
+- less statistics than a larger box
 
 Choosing a window size
 ===
-```{r, fig.height=7}
-blockify.img<-function(in.img,nx=5,ny=5) {
-  out.img<-ddply(in.img,.(cut_interval(x,nx),cut_interval(y,ny)),function(c.block) c.block)
+```{r blockify_code}
+blockify.img<-function(in.img,nx=5,ny=5,block.fn=function(c.block) c.block) {
+  out.img<-ddply(in.img,.(cut_interval(x,nx),cut_interval(y,ny)),block.fn)
   names(out.img)[c(1:2)]<-c("x.block","y.block")
   out.img$label.block<-with(out.img,paste(x.block,y.block,sep=","))
   out.img
 }
+```
+
+```{r, fig.height=7}
 start.img.blocks<-blockify.img(start.img,4,4)
-ggplot(subset(start.img.blocks,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
+final.img.blocks<-blockify.img(final.img,4,4)
+comb.img<-rbind(cbind(start.img,time=0),
+                cbind(final.img,time=1))
+ggplot(subset(comb.img,phase),aes(x,y,fill=time))+
+  geom_raster(alpha=0.75)+
+  geom_raster(alpha=0.75)+
+  coord_equal()+facet_grid(x.block~y.block,scale="free")+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
 ***
+```{r block.corr}
+block.corr.fun<-function(bulk.img,nsize=5) {
+    gr.spacing<-diff(unique(bulk.img$x))[1]
+    cc.points<-expand.grid(vx=seq(-nsize,nsize,1)*gr.spacing,vy=seq(-nsize,nsize,1)*gr.spacing)
+    s.img<-subset(bulk.img,time=0)
+    f.img<-subset(bulk.img,time=1)
+    ddply(cc.points,.(vx,vy),function(c.pt) {
+        tr.x<-function(x,y) (x+c.pt[1,"vx"])
+        tr.y<-function(x,y) (y+c.pt[1,"vy"])
+        cc.imfun(s.img,f.img,tr.x=tr.x,tr.y=tr.y)
+    })
+}
+```
+
 ```{r, fig.height=7}
-final.img.blocks<-blockify.img(final.img,4,4)
-ggplot()+
-  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
-  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
-  labs(fill="Time")+
+corr.img.blocks<-blockify.img(comb.img,block.fn=block.corr.fun)
+ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val^2))+
+  coord_equal()+facet_grid(x.block~y.block)+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
@@ -1105,10 +1131,10 @@ ggplot(subset(start.img.blocks,phase),aes(x,y))+
 ```{r, fig.height=7}
 final.img.blocks<-blockify.img(final.img,2,2)
 ggplot()+
-  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
-  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+facet_wrap(~label.block,scale="free")+
-  labs(fill="Time")+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
@@ -1126,10 +1152,10 @@ ggplot(subset(start.img.blocks,phase),aes(x,y))+
 ```{r, fig.height=7}
 final.img.blocks<-blockify.img(final.img,6,6)
 ggplot()+
-  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="Start"),alpha=0.75)+
-  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="Final"),alpha=0.75)+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+facet_wrap(~label.block,scale="free")+
-  labs(fill="Time")+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
