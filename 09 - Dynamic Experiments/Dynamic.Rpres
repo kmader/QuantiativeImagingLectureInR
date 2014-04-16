@@ -920,16 +920,25 @@ $$ C_{I_0,I_1}(\vec{r})=\langle I_0(\vec{x}) I_1(\vec{x}+\vec{r}) \rangle $$
 ***
 
 ```{r, fig.height=5}
+# so everything is on an integer lattice (interpolation makes everything messier)
+fix.grid<-function(in.grid) { 
+  cols.nopos<-!(names(in.grid) %in% c("x","y"))
+  out.grid<-in.grid[,cols.nopos]
+  out.grid$x<-as.numeric(as.factor(in.grid$x))
+  out.grid$y<-as.numeric(as.factor(in.grid$y))
+  out.grid
+}
 start.grid<-grid.list(5)
-start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
-final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
-final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=40)))
+final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.1),r=start.grid$r)
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=40)))
 ggplot()+
   geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
   geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
   coord_equal()+
   labs(fill="time")+
   theme_bw(20)
+
 ```
 
 ```{r cross_corrfun}
@@ -942,22 +951,46 @@ ggplot()+
 #' @param img.a is the starting or I_0 image
 #' @param img.b is the destination or I_1 image
 #' @param tr.x is the function transforming the x coordinate
+#' @param 
 #' 
 cc.imfun<-function(img.a,img.b,tr.x=function(x,y) x,tr.y=function(x,y) y) {
+  # get the positions in image a
+  x.vals<-unique(img.a$x)
+  y.vals<-unique(img.a$y)
+  
+  # transform image b
   tr.img.b<-img.b
-  tr.img.b$x<-with(img.b,tr.x(x,y))
-  tr.img.b$y<-with(img.b,tr.y(x,y))
-  matches<-ddply(rbind(cbind(img.a,label="A"),cbind(tr.img.b,label="B")),.(x,y), function(c.pos) {
-    if(nrow(c.pos)>1) data.frame(e.val=prod(c.pos$phase))
-    else data.frame(e.val=c())
-  })
-  data.frame(e.val=mean(matches$e.val),count=nrow(matches))
-}
+  # round is used to put everything back on an integer lattice
+  tr.img.b$x<-round(with(img.b,tr.x(x,y)))
+  tr.img.b$y<-round(with(img.b,tr.y(x,y)))
+  # count the overlapping pixels in the window to normalize
+  tr.img.b<-subset(tr.img.b,
+                   ((x %in% x.vals) & (y %in% y.vals))
+                   )
+  norm.f<-nrow(tr.img.b)
+  if(norm.f<1) norm.f<-1
+  
+  # keep only the in phase objects
+  tr.img.a<-subset(img.a,phase)
+  tr.img.b<-subset(tr.img.b,phase)
+  
+  if (nrow(tr.img.a)>0 & nrow(tr.img.b)>0) {
+    matches<-ddply(rbind(cbind(tr.img.a,label="A"),cbind(tr.img.b,label="B")),.(x,y),
+                   function(c.pos) {
+                     if(nrow(c.pos)>1) data.frame(e.val=1)
+                     else data.frame(e.val=c())
+                     })
+    data.frame(e.val=sum(matches$e.val)/norm.f,count=nrow(matches),size=norm.f)
+    } else {
+      data.frame(e.val=0,count=0,size=norm.f)
+    }
+  
+  }
+
 ```
 
 ```{r }
-gr.spacing<-diff(unique(start.img$x))[1]
-cc.points<-expand.grid(vx=seq(-5,5,1)*gr.spacing,vy=seq(-5,5,1)*gr.spacing)
+cc.points<-expand.grid(vx=seq(-5,5,1),vy=seq(-5,5,1))
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
   tr.x<-function(x,y) (x+c.pt[1,"vx"])
   tr.y<-function(x,y) (y+c.pt[1,"vy"])
@@ -980,10 +1013,10 @@ With highly structured / periodic samples identfying a best correlation is diffi
 
 ```{r, fig.height=8}
 start.grid<-rand.list(12)
-start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=40))
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=30)))
 
 final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y+0.2),r=start.grid$r)
-final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=40))
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=30)))
 
 ggplot()+
   geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
@@ -996,8 +1029,8 @@ ggplot()+
 ***
 
 ```{r, fig.height=9}
-gr.spacing<-diff(unique(start.img$x))[1]
-cc.points<-expand.grid(vx=seq(-5,5,1)*gr.spacing,vy=seq(-5,5,1)*gr.spacing)
+
+cc.points<-expand.grid(vx=seq(-5,5,1),vy=seq(-5,5,1))
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
   tr.x<-function(x,y) (x+c.pt[1,"vx"])
   tr.y<-function(x,y) (y+c.pt[1,"vy"])
@@ -1029,11 +1062,11 @@ More Complicated Changes
 ===
 
 ```{r, fig.height=7}
-start.grid<-grid.list(5)
-start.img<-make.spheres(start.grid,base.gr=seq(-1,1,length.out=100))
+start.grid<-rand.list(20)
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=30)))
 
 final.grid<-data.frame(x=with(start.grid,sign(x)*abs(x)^1.5),y=with(start.grid,sign(y)*abs(y)^1.5),r=start.grid$r)
-final.img<-make.spheres(final.grid,base.gr=seq(-1,1,length.out=100))
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=30)))
 
 ggplot()+
   geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
@@ -1046,17 +1079,16 @@ ggplot()+
 ***
 
 ```{r, fig.height=9}
-gr.spacing<-diff(unique(start.img$x))[1]
-cc.points<-expand.grid(vx=seq(-6,6,1)*gr.spacing,vy=seq(-6,6,1)*gr.spacing)
+cc.points<-expand.grid(vx=seq(-6,6,1),vy=seq(-6,6,1))
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
   tr.x<-function(x,y) (x+c.pt[1,"vx"])
   tr.y<-function(x,y) (y+c.pt[1,"vy"])
   cc.imfun(start.img,final.img,tr.x=tr.x,tr.y=tr.y)
-},.parallel=T)
+},.parallel=T)                            
 ```
 
-```{r, fig.height=5}
-ggplot(cc.img,aes(vx,vy,fill=e.val))+
+```{r, fig.height=5}                                                                                                                                                                                                                                                                
+ggplot(subset(cc.img,count>0),aes(vx,vy,fill=e.val))+
   geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val^2))+
   labs(x="u",y="v",fill="Correlation",title="Correlation vs r")+
   scale_fill_gradient2(high="red")+
@@ -1072,10 +1104,18 @@ We can approach the problem by subdividing the data into smaller blocks and then
 Choosing a window size
 ===
 ```{r blockify_code}
-blockify.img<-function(in.img,nx=5,ny=5,block.fn=function(c.block) c.block) {
-  out.img<-ddply(in.img,.(cut_interval(x,nx),cut_interval(y,ny)),block.fn)
+blockify.img<-function(in.img,nx=5,ny=5,block.fn=function(c.block) c.block,...) {
+  out.img<-ddply(in.img,.(cut_interval(x,nx),cut_interval(y,ny)),block.fn,...)
   names(out.img)[c(1:2)]<-c("x.block","y.block")
   out.img$label.block<-with(out.img,paste(x.block,y.block,sep=","))
+  cutlabel.fixer<-function(oVal) {
+    sapply(oVal,function(x) {
+      cnv<-as.character(x)
+      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
+      })
+    }
+  out.img$x.center<-cutlabel.fixer(out.img$x.block)
+  out.img$y.center<-cutlabel.fixer(out.img$y.block)
   out.img
 }
 ```
@@ -1083,79 +1123,190 @@ blockify.img<-function(in.img,nx=5,ny=5,block.fn=function(c.block) c.block) {
 ```{r, fig.height=7}
 start.img.blocks<-blockify.img(start.img,4,4)
 final.img.blocks<-blockify.img(final.img,4,4)
-comb.img<-rbind(cbind(start.img,time=0),
-                cbind(final.img,time=1))
-ggplot(subset(comb.img,phase),aes(x,y,fill=time))+
+
+comb.img.blocks<-rbind(cbind(start.img.blocks,time=0),
+                cbind(final.img.blocks,time=1))
+
+ggplot(subset(comb.img.blocks,phase),aes(x,y,fill=as.factor(time)))+
   geom_raster(alpha=0.75)+
-  geom_raster(alpha=0.75)+
-  coord_equal()+facet_grid(x.block~y.block,scale="free")+
-  labs(fill="time")+
+  facet_grid(y.block~x.block,scales="free",as.table=F)+
   theme_bw(10)
 ```
 
 ***
+
 ```{r block.corr}
-block.corr.fun<-function(bulk.img,nsize=5) {
-    gr.spacing<-diff(unique(bulk.img$x))[1]
-    cc.points<-expand.grid(vx=seq(-nsize,nsize,1)*gr.spacing,vy=seq(-nsize,nsize,1)*gr.spacing)
-    s.img<-subset(bulk.img,time=0)
-    f.img<-subset(bulk.img,time=1)
+#' Calculate the cross correlation 
+#' @author Kevin Mader (kevin.mader@gmail.com)
+#' Generates flow with given object count, frame count and randomness
+#' the box and crop are introduced to allow for objects entering and 
+#' leaving the field of view
+#'
+#' @param bulk.img the image passed from the blockify command
+#' @param f.img is the template image to compare against (since we want the whole image not just a region)
+#' @param nsize is the size of the region to search
+#' @param nstep is the step to use
+block.corr.fun<-function(bulk.img,s.img,nsize=7,nstep=2) {
+    cc.points<-expand.grid(vx=seq(-nsize,nsize,nstep),vy=seq(-nsize,nsize,nstep))
     ddply(cc.points,.(vx,vy),function(c.pt) {
         tr.x<-function(x,y) (x+c.pt[1,"vx"])
         tr.y<-function(x,y) (y+c.pt[1,"vy"])
-        cc.imfun(s.img,f.img,tr.x=tr.x,tr.y=tr.y)
+        cc.imfun(s.img,bulk.img,tr.x=tr.x,tr.y=tr.y)
     })
 }
+w.bcf<-function(s.img,nsize=7,nstep=2) function(cur.block) block.corr.fun(cur.block,s.img,nsize=nsize,nstep=nstep)
+max.corr.val<-function(in.blocks) ddply(in.blocks,.(x.center,y.center),function(in.block) {
+  subset(in.block,e.val>=max(in.block$e.val) & count>0)
+})
 ```
 
 ```{r, fig.height=7}
-corr.img.blocks<-blockify.img(comb.img,block.fn=block.corr.fun)
+corr.img.blocks<-blockify.img(final.img,4,4,block.fn=w.bcf(start.img),.parallel=T)
 ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
-  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val^2))+
-  coord_equal()+facet_grid(x.block~y.block)+
-  labs(fill="time")+
+  geom_raster()+geom_density2d(data=subset(corr.img.blocks,e.val>0),aes(weight=e.val^2))+
+  coord_equal()+facet_grid(y.block~x.block,as.table=F)+
+  scale_fill_gradient2(high="red")+
+  labs(fill="Correlation")+
   theme_bw(10)
+
+```
+
+Overlap
+===
+```{r, fig.height=9,fig.width=14}
+max.block.vals<-max.corr.val(corr.img.blocks)
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  geom_point(data=max.block.vals,aes(x.center,y.center),color="green",size=2)+
+  geom_segment(data=max.block.vals,aes(x.center,y.center,xend=x.center+vx,yend=y.center+vy),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
 ```
 
 Too large of a window
 ===
 ```{r, fig.height=7}
 start.img.blocks<-blockify.img(start.img,2,2)
-ggplot(subset(start.img.blocks,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
+final.img.blocks<-blockify.img(final.img,2,2)
+ggplot()+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
+  facet_grid(y.block~x.block,scales="free",as.table=F)+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
 ***
 ```{r, fig.height=7}
-final.img.blocks<-blockify.img(final.img,2,2)
-ggplot()+
-  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
-  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
-  labs(fill="time")+
+corr.img.blocks<-blockify.img(final.img,2,2,block.fn=w.bcf(start.img),.parallel=T)
+ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d(data=subset(corr.img.blocks,e.val>0),aes(weight=e.val^2))+
+  coord_equal()+facet_grid(y.block~x.block,as.table=F)+
+  scale_fill_gradient2(high="red")+
+  labs(fill="Correlation")+
   theme_bw(10)
 ```
+
+Overlap
+===
+```{r, fig.height=9,fig.width=14}
+max.block.vals<-max.corr.val(corr.img.blocks)
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  geom_point(data=max.block.vals,aes(x.center,y.center),color="green",size=2)+
+  geom_segment(data=max.block.vals,aes(x.center,y.center,xend=x.center+vx,yend=y.center+vy),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
 
 Too small of a window
 ===
 ```{r, fig.height=7}
 start.img.blocks<-blockify.img(start.img,6,6)
-ggplot(subset(start.img.blocks,phase),aes(x,y))+
-  geom_raster(fill="gray50",alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
+final.img.blocks<-blockify.img(final.img,6,6)
+ggplot()+
+  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
+  facet_grid(y.block~x.block,scales="free",as.table=F)+
+  labs(fill="time")+
   theme_bw(10)
 ```
 
 ***
 ```{r, fig.height=7}
-final.img.blocks<-blockify.img(final.img,6,6)
-ggplot()+
-  geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
-  geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
-  coord_equal()+facet_wrap(~label.block,scale="free")+
-  labs(fill="time")+
+corr.img.blocks<-blockify.img(final.img,6,6,block.fn=w.bcf(start.img),.parallel=T)
+ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
+  geom_raster()+geom_density2d(data=subset(corr.img.blocks,e.val>0),aes(weight=e.val^2))+
+  coord_equal()+facet_grid(y.block~x.block,as.table=F)+
+  scale_fill_gradient2(high="red")+
+  labs(fill="Correlation")+
   theme_bw(10)
 ```
+
+Overlap
+===
+```{r, fig.height=9,fig.width=14}
+max.block.vals<-max.corr.val(corr.img.blocks)
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  geom_point(data=max.block.vals,aes(x.center,y.center),color="green",size=2)+
+  geom_segment(data=max.block.vals,aes(x.center,y.center,xend=x.center+vx,yend=y.center+vy),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
+Shearing
+===
+
+```{r, fig.height=7}
+start.grid<-rand.list(25)
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=30)))
+
+final.grid<-data.frame(x=with(start.grid,x+y/5),y=with(start.grid,y),r=start.grid$r)
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=30)))
+
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
+Compression
+===
+
+```{r, fig.height=7}
+start.grid<-rand.list(20)
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=30)))
+
+final.grid<-data.frame(x=with(start.grid,x/1.5),y=with(start.grid,y/1.5),r=start.grid$r/1.5)
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=30)))
+
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
+Distribution Metrics
+===
+
+As we covered before distribution metrics like the distribution tensor can be used for tracking changes inside a sample. 
+
+
+Texture Tensor
+===
 
