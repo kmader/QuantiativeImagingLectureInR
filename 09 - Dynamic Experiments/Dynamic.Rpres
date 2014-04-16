@@ -339,9 +339,22 @@ Scientific Goals
 
 ### Rheology
 
+Understanding the flow of liquids and mixtures is important for many processes
+- blood movement in arteries, veins, and capillaries
+- oil movement through porous rock
+- air through dough when cooking bread
+- magma and gas in a volcano
+
 ***
 
 ### Deformation
+
+Deformation is similarly important since it plays a significant role in the following scenarios
+
+- red blood cell lysis in artificial heart valves
+- microfractures growing into stress fractures in bone
+- toughening in certain wood types
+
 
 
 Experiments
@@ -737,8 +750,6 @@ ggplot(do.call(rbind,in.frames),
   theme_bw(20)
 ```
 
-
-
 Quantifying Tracking Rate
 ===
 We can then quantify the success rate of each algorithm on the data set using the very simple match and mismatch metrics
@@ -865,6 +876,13 @@ ggplot(jd.summary,aes(x=100*jitter,y=100*mean_obj_spacing,fill=Matched))+
   theme_bw(24)
 
 ```
+
+Specifications
+===
+```{r, results='asis'}
+kable(jd.summary)
+```
+
 
 Designing Experiments
 ===
@@ -1306,7 +1324,7 @@ ggplot()+
 
 ***
 ```{r, fig.height=7}
-corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img),.parallel=T)
+corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img,4),.parallel=T)
 ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
   geom_raster()+geom_density2d(data=subset(corr.img.blocks,e.val>0),aes(weight=e.val^2))+
   coord_equal()+facet_grid(y.block~x.block,as.table=F)+
@@ -1500,3 +1518,35 @@ $$ \mathbf{E} = \begin{bmatrix}
    \varepsilon_{21} & \varepsilon_{22} & \varepsilon_{23} \\
    \varepsilon_{31} & \varepsilon_{32} & \varepsilon_{33}
 \end{bmatrix} $$
+
+
+Thickness - Lung Tissue
+===
+__ Data provided by Goran Lovric and Rajmund Mokso __
+Since lung 
+![Lung Tissue](ext-figures/LungImages.png)
+
+Curvature - Metal Systems
+===
+__ Data provided by Julie Fife __
+
+Two Point Correlation - Volcanic Rock
+===
+__ Data provided by Mattia Pistone and Julie Fife __
+The air phase changes from small very anisotropic bubbles to one large connected pore network. The same tools cannot be used to quantify those systems. Furthermore there are motion artifacts which are difficult to correct.
+
+<video controls>
+  <source src="ext-figures/roicurv.avi" type="video/avi">
+Your browser does not support the video tag.
+</video>
+
+***
+
+We can utilize the two point correlation function of the material to characterize the shape generically for each time step and then compare.
+
+<video controls>
+  <source src="ext-figures/roirdf.avi" type="video/avi">
+Your browser does not support the video tag.
+</video>
+
+
