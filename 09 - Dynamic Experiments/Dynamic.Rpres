@@ -990,7 +990,7 @@ cc.imfun<-function(img.a,img.b,tr.x=function(x,y) x,tr.y=function(x,y) y) {
 ```
 
 ```{r }
-cc.points<-expand.grid(vx=seq(-5,5,1),vy=seq(-5,5,1))
+cc.points<-expand.grid(vx=seq(-8,8,1),vy=seq(-8,8,1))
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
   tr.x<-function(x,y) (x+c.pt[1,"vx"])
   tr.y<-function(x,y) (y+c.pt[1,"vy"])
@@ -1030,7 +1030,7 @@ ggplot()+
 
 ```{r, fig.height=9}
 
-cc.points<-expand.grid(vx=seq(-5,5,1),vy=seq(-5,5,1))
+cc.points<-expand.grid(vx=seq(-8,8,1),vy=seq(-8,8,1))
 cc.img<-ddply(cc.points,.(vx,vy),function(c.pt) {
   tr.x<-function(x,y) (x+c.pt[1,"vx"])
   tr.y<-function(x,y) (y+c.pt[1,"vy"])
@@ -1057,6 +1057,47 @@ s\cos\theta & -s\sin\theta\\
 s\sin\theta & s\cos\theta
 \end{bmatrix}
 \vec{x}+\vec{r}) \rangle  $$
+
+***
+
+```{r, fig.height=5}
+
+start.grid<-rand.list(15)
+rot.th<-pi/4
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=60)))
+final.grid<-data.frame(x=0.9*with(start.grid,cos(rot.th)*x-sin(rot.th)*y),
+                       y=0.9*with(start.grid,cos(rot.th)*y+sin(rot.th)*x),r=start.grid$r)
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=60)))
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+
+```
+
+
+```{r }
+cc.points<-expand.grid(theta=seq(0,pi/2,length.out=8),a=seq(0.7,1,length.out=5))
+mid.pt<-c(20,20)
+cc.img<-ddply(cc.points,.(theta,a),function(c.pt) {
+  tr.x<-function(x,y) 
+    (c.pt[1,"a"]*(cos(c.pt[1,"theta"])*(x-mid.pt[1])-sin(c.pt[1,"theta"])*(y-mid.pt[2]))+mid.pt[1])
+  tr.y<-function(x,y) 
+    (c.pt[1,"a"]*(sin(c.pt[1,"theta"])*(x-mid.pt[1])+cos(c.pt[1,"theta"])*(y-mid.pt[2]))+mid.pt[1])
+  cc.imfun(start.img,final.img,tr.x=tr.x,tr.y=tr.y)
+},.parallel=T)
+```
+
+```{r, fig.height=5}
+ggplot(cc.img,aes(theta*180/pi,a*100,fill=e.val))+
+  geom_raster()+geom_density2d(data=subset(cc.img,e.val>0),aes(weight=e.val))+
+  labs(x="Rotation (deg)",y="Scale (%)",fill="Correlation",title="Correlation vs R")+
+  scale_fill_gradient2(high="red")+
+  theme_bw(25)
+```
+
 
 More Complicated Changes
 ===
@@ -1146,7 +1187,7 @@ ggplot(subset(comb.img.blocks,phase),aes(x,y,fill=as.factor(time)))+
 #' @param f.img is the template image to compare against (since we want the whole image not just a region)
 #' @param nsize is the size of the region to search
 #' @param nstep is the step to use
-block.corr.fun<-function(bulk.img,s.img,nsize=7,nstep=2) {
+block.corr.fun<-function(bulk.img,s.img,nsize=6,nstep=2) {
     cc.points<-expand.grid(vx=seq(-nsize,nsize,nstep),vy=seq(-nsize,nsize,nstep))
     ddply(cc.points,.(vx,vy),function(c.pt) {
         tr.x<-function(x,y) (x+c.pt[1,"vx"])
@@ -1283,19 +1324,51 @@ ggplot()+
   theme_bw(20)
 ```
 
+***
+
+```{r, fig.height=9,fig.width=14}
+corr.img.blocks<-blockify.img(final.img,5,5,block.fn=w.bcf(start.img,4,2),.parallel=T)
+max.block.vals<-max.corr.val(corr.img.blocks)
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  geom_point(data=max.block.vals,aes(x.center,y.center),color="green",size=2)+
+  geom_segment(data=max.block.vals,aes(x.center,y.center,xend=x.center+vx,yend=y.center+vy),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
 Compression
 ===
 
 ```{r, fig.height=7}
-start.grid<-rand.list(20)
-start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=30)))
+start.grid<-rand.list(40)
+start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=40)))
 
-final.grid<-data.frame(x=with(start.grid,x/1.5),y=with(start.grid,y/1.5),r=start.grid$r/1.5)
-final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=30)))
+final.grid<-data.frame(x=with(start.grid,x),y=with(start.grid,y),r=start.grid$r/2)
+final.img<-fix.grid(make.spheres(final.grid,base.gr=seq(-1,1,length.out=40)))
 
 ggplot()+
   geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
   geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  coord_equal()+
+  labs(fill="time")+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=9,fig.width=14}
+corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img,5),.parallel=T)
+max.block.vals<-max.corr.val(corr.img.blocks)
+ggplot()+
+  geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
+  geom_raster(data=subset(final.img,phase),aes(x,y,fill="1"),alpha=0.75)+
+  geom_point(data=max.block.vals,aes(x.center,y.center),color="green",size=2)+
+  geom_segment(data=max.block.vals,aes(x.center,y.center,xend=x.center+vx,yend=y.center+vy),
+               arrow=arrow(length = unit(0.3,"cm")))+
   coord_equal()+
   labs(fill="time")+
   theme_bw(20)
@@ -1310,3 +1383,101 @@ As we covered before distribution metrics like the distribution tensor can be us
 Texture Tensor
 ===
 
+
+Quantifying Deformation: Strain 
+===
+
+We can take any of these approaches and quantify the deformation using a tool called the strain tensor. Strain is defined in mechanics for the simple 1D case as the change in the length against the change in the original length.
+$$ e = \frac{\Delta L}{L} $$ 
+While this defines the 1D case well, it is difficult to apply such metrics to voxel, shape, and tensor data. 
+
+Strain Tensor
+===
+There are a number of different ways to calculate strain and the strain tensor, but the most applicable for general image based applications is called the [infinitesimal strain tensor](http://en.wikipedia.org/wiki/Infinitesimal_strain_theory), because the element matches well to square pixels and cubic voxels.
+
+```{r, fig.height=6}
+b.sq.ele<-0.4*data.frame(dx=c(-1,1,1,-1,-1),dy=c(-1,-1,1,1,-1))
+s.grid<-expand.grid(x=c(0:3),y=c(0:3))
+sq.eles<-ddply(cbind(s.grid,id=1:nrow(s.grid)),.(x,y),function(in.pt) {
+  data.frame(x=in.pt[1,"x"]+b.sq.ele$dx,
+             y=in.pt[1,"y"]+b.sq.ele$dy,
+             id=in.pt[1,"id"])
+})
+ggplot(sq.eles,aes(x,y))+
+  geom_polygon(aes(group=id))+
+  coord_equal()+
+  theme_bw(25)
+```
+
+***
+A given strain can then be applied and we can quantify the effects by examining the change in the small element. 
+```{r, fig.height=6}
+s.grid<-expand.grid(x=c(0:3),y=c(0:3))
+rh.eles<-ddply(cbind(s.grid,id=1:nrow(s.grid)),.(x,y),function(in.pt) {
+  out.df<-data.frame(x=in.pt[1,"x"]+b.sq.ele$dx/(in.pt[1,"x"]+1),
+             y=in.pt[1,"y"]+b.sq.ele$dy/(in.pt[1,"y"]+1),
+             id=in.pt[1,"id"],
+             x.rel.sz=1,
+             y.rel.sz=1,
+             x.sz=1/(in.pt[1,"y"]+1),
+             y.sz=1/(in.pt[1,"x"]+1))
+  out.df$e11<-with(out.df,(x.sz-x.rel.sz)/x.rel.sz)
+  out.df$e22<-with(out.df,(y.sz-y.rel.sz)/y.rel.sz)
+  out.df$e12<-0.5*with(out.df,(x.sz-x.rel.sz)/y.rel.sz+(y.sz-y.rel.sz)/x.rel.sz)
+  
+  out.df$vol<-with(out.df,e11+e22)
+  out.df$dva<-with(out.df,sqrt((e11-vol/2)^2+(e22-vol/2)^2))
+  out.df
+})
+ggplot(rh.eles,aes(x,y))+
+  geom_polygon(aes(group=id))+
+  coord_equal()+
+  theme_bw(25)
+```
+
+
+Types of Strain
+===
+We catagorize the types of strain into two main catagories:
+
+$$ \underbrace{\mathbf{E}}_{\textrm{Total Strain}} = \underbrace{\varepsilon_M \mathbf{I_3}}_{\textrm{Volumetric}} + \underbrace{\mathbf{E}^\prime}_{\textrm{Deviatoric}} $$
+
+### Volumetric / Dilational
+
+The isotropic change in size or scale of the object. 
+
+### Deviatoric
+
+The change in the proportions of the object (similar to anisotropy) independent of the final scale
+
+***
+
+```{r, fig.height=4}
+ggplot(rh.eles,aes(x,y))+
+  geom_polygon(aes(group=id,fill=vol),color="black")+
+  coord_equal()+
+  labs(fill="Volumetric\nStrain")+
+  scale_fill_gradient2()+
+  theme_bw(25)
+```
+
+```{r, fig.height=4}
+ggplot(rh.eles,aes(x,y))+
+  geom_polygon(aes(group=id,fill=dva),color="black")+
+  coord_equal()+
+  labs(fill="Deviatoric\nStrain")+
+  scale_fill_gradient2()+
+  theme_bw(25)
+```
+
+
+
+
+Strain Tensor
+===
+
+$$ \mathbf{E} = \begin{bmatrix}
+\varepsilon_{11} & \varepsilon_{12} & \varepsilon_{13} \\
+   \varepsilon_{21} & \varepsilon_{22} & \varepsilon_{23} \\
+   \varepsilon_{31} & \varepsilon_{32} & \varepsilon_{33}
+\end{bmatrix} $$
