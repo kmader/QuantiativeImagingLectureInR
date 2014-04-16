@@ -203,7 +203,7 @@ Course Outline
 - 3rd April - Many Objects and Distributions
 - 10th April - Statistics and Reproducibility
 - 17th April - **Dynamic Experiments**
-- 8th May - Big Data
+- 8th May - Scaling Up / Big Data
 - 15th May - Guest Lecture - In-Operando Imaging of Batteries (V. Wood)
 - 22th May - Project Presentations
 
@@ -293,6 +293,9 @@ Outline
 - Object Tracking
 - Distribution
 - Topology
+
+***
+
 - Voxel-based Methods
  - Cross Correlation
  - DIC
@@ -863,6 +866,26 @@ ggplot(jd.summary,aes(x=100*jitter,y=100*mean_obj_spacing,fill=Matched))+
 
 ```
 
+Designing Experiments
+===
+
+### How does this help us to design experiments?
+- density can be changed by adjusting the concentration of the substances being examined or the field of view
+- flow per frame (image velocity) can usually be adjusted by changing pressure or acquisition time
+- jitter can be estimated from images
+
+***
+
+### How much is enough?
+- difficult to create one number for every experiment
+- 5% error in bubble position 
+ - $\rightarrow$ <5% in flow field
+ - $\rightarrow$ >20% error in topology
+- 5% error in shape or volume
+ - $\rightarrow$ 5% in distribution or changes
+ - $\rightarrow$ >5% in individual bubble changes
+ - $\rightarrow$ >15% for single bubble strain tensor calculations
+
 
 Extending Nearest Neighbor
 ===
@@ -1063,7 +1086,7 @@ s\sin\theta & s\cos\theta
 ```{r, fig.height=5}
 
 start.grid<-rand.list(15)
-rot.th<-pi/4
+rot.th<--pi/4
 start.img<-fix.grid(make.spheres(start.grid,base.gr=seq(-1,1,length.out=60)))
 final.grid<-data.frame(x=0.9*with(start.grid,cos(rot.th)*x-sin(rot.th)*y),
                        y=0.9*with(start.grid,cos(rot.th)*y+sin(rot.th)*x),r=start.grid$r)
@@ -1270,8 +1293,8 @@ ggplot()+
 Too small of a window
 ===
 ```{r, fig.height=7}
-start.img.blocks<-blockify.img(start.img,6,6)
-final.img.blocks<-blockify.img(final.img,6,6)
+start.img.blocks<-blockify.img(start.img,8,8)
+final.img.blocks<-blockify.img(final.img,8,8)
 ggplot()+
   geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
   geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
@@ -1282,7 +1305,7 @@ ggplot()+
 
 ***
 ```{r, fig.height=7}
-corr.img.blocks<-blockify.img(final.img,6,6,block.fn=w.bcf(start.img),.parallel=T)
+corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img),.parallel=T)
 ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
   geom_raster()+geom_density2d(data=subset(corr.img.blocks,e.val>0),aes(weight=e.val^2))+
   coord_equal()+facet_grid(y.block~x.block,as.table=F)+
@@ -1361,7 +1384,7 @@ ggplot()+
 ***
 
 ```{r, fig.height=9,fig.width=14}
-corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img,5),.parallel=T)
+corr.img.blocks<-blockify.img(final.img,10,10,block.fn=w.bcf(start.img,4),.parallel=T)
 max.block.vals<-max.corr.val(corr.img.blocks)
 ggplot()+
   geom_raster(data=subset(start.img,phase),aes(x,y,fill="0"),alpha=0.75)+
@@ -1377,11 +1400,9 @@ ggplot()+
 Distribution Metrics
 ===
 
-As we covered before distribution metrics like the distribution tensor can be used for tracking changes inside a sample. 
+As we covered before distribution metrics like the distribution tensor can be used for tracking changes inside a sample. Of these the most relevant is the texture tensor from cellular materials and liquid foam. The texture tensor is the same as the distribution tensor except that the edges (or faces) represent physically connected / touching objects rather than touching Voronoi faces (or conversely Delaunay triangles).
 
-
-Texture Tensor
-===
+These metrics can also be used for tracking the behavior of a system without tracking the single points since most deformations of a system also deform the distribution tensor and can thus be extracted by comparing the distribution tensor at different time steps. 
 
 
 Quantifying Deformation: Strain 
@@ -1470,12 +1491,9 @@ ggplot(rh.eles,aes(x,y))+
   theme_bw(25)
 ```
 
-
-
-
 Strain Tensor
 ===
-
+This can then be expressed more concretely in the form of a strain tensor which can be broken down into volumetric and deviatoric strain
 $$ \mathbf{E} = \begin{bmatrix}
 \varepsilon_{11} & \varepsilon_{12} & \varepsilon_{13} \\
    \varepsilon_{21} & \varepsilon_{22} & \varepsilon_{23} \\
