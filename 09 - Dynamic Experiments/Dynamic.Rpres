@@ -1295,6 +1295,7 @@ Too small of a window
 ```{r, fig.height=7}
 start.img.blocks<-blockify.img(start.img,8,8)
 final.img.blocks<-blockify.img(final.img,8,8)
+
 ggplot()+
   geom_raster(data=subset(start.img.blocks,phase),aes(x,y,fill="0"),alpha=0.75)+
   geom_raster(data=subset(final.img.blocks,phase),aes(x,y,fill="1"),alpha=0.75)+
