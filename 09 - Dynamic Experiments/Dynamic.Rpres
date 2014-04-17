@@ -20,8 +20,8 @@ if(exists("printed")) { # settings for printed version (if the variable exists)
 opts_chunk$set(dpi=dpi,cache=cache,
                cache.path=cache.path,results='hide',
                warning=F,fig.align='center',echo=echo.val,
-               fig.height=fig.height,fig.path=fig.path,message=F,autodep=TRUE) #dev="CairoPNG"
-dep_auto()
+               fig.height=fig.height,fig.path=fig.path,message=F) #,autodep=TRUE) #dev="CairoPNG"
+#dep_auto()
 ```
 
 ```{r script_setup,results='hide',cache=FALSE}
@@ -750,6 +750,15 @@ ggplot(do.call(rbind,in.frames),
   theme_bw(20)
 ```
 
+Registration
+===
+
+Before any meaningful tracking tasks can be performed, the first step is to register the measurements so they are all on the same coordinate system. 
+
+Often the registration can be done along with the tracking by separating the movement into actual sample movement and other (camera, setup, etc) if the motion of either the sample or the other components can be well modeled.
+
+
+
 Quantifying Tracking Rate
 ===
 We can then quantify the success rate of each algorithm on the data set using the very simple match and mismatch metrics
@@ -861,9 +870,10 @@ jd.summary<-ddply(jd.full,.(jitter,mean_obj_spacing,Matching),function(c.subset)
              obj.found=100*with(c.subset,sum(Obj.Matched)/(n.iters*(n.frames-1)*obj.count[1])))
 })
 ```
+
 ```{r, fig.height=9,fig.width=7}
  ggplot(jd.summary,aes(x=100*jitter,y=Matched,color=as.factor(round(100*mean_obj_spacing))))+
-  geom_line()+geom_point()+facet_wrap(~Matching)+
+  geom_line()+geom_point()+facet_grid(~Matching)+
   theme_bw(24)+labs(x="Position Jitter (% of Velocity)",y="% of Obj Matched",color="Obj.Spacing\n(% of Velocity)")
 ```
 
@@ -871,16 +881,10 @@ jd.summary<-ddply(jd.full,.(jitter,mean_obj_spacing,Matching),function(c.subset)
 
 ```{r, fig.height=9,fig.width=7}
 ggplot(jd.summary,aes(x=100*jitter,y=100*mean_obj_spacing,fill=Matched))+
-  geom_tile()+facet_wrap(~Matching)+
+  geom_tile()+facet_grid(~Matching)+
   labs(x="Position Jitter (% of Velocity)",fill="% of Obj Matched",y="Obj.Spacing (% of Velocity)")+
-  theme_bw(24)
+  theme_bw(10)
 
-```
-
-Specifications
-===
-```{r, results='asis'}
-kable(jd.summary)
 ```
 
 
@@ -914,6 +918,8 @@ $$ \vec{P}_i=\textrm{argmin}(||\vec{P}_f-\vec{y} || \forall \vec{y}\in I_0) $$
 
 $$ \vec{P}_i \stackrel{?}{=} \vec{P}_0 $$
 
+***
+
 ### Maximum Displacement
 
 $$ \vec{P}_1=\begin{cases} 
@@ -921,11 +927,14 @@ $$ \vec{P}_1=\begin{cases}
 \textrm{Otherwise}, & \emptyset \end{cases}$$
 
 
-***
+Extending Nearest Neighbor (Continued)
+===
 
 ### Prior / Expected Movement
 
 $$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0+\vec{v}_{offset}-\vec{y} || \forall \vec{y}\in I_1) $$
+
+***
 
 ### Adaptive Movement
 Can then be calculated in an iterative fashion where the offset is the average from all of the $\vec{P}_1-\vec{P}_0$ vectors. It can also be performed 
@@ -1416,6 +1425,22 @@ ggplot()+
   theme_bw(20)
 ```
 
+Introducing Physics
+===
+
+DIC or DVC by themselves include no _sanity check_ for realistic offsets in the correlation itself. The method can, however be integrated with physical models to find a more optimal solutions.
+
+- information from surrounding points
+- smoothness criteria
+- maximum deformation / force
+- material properties
+
+***
+
+$$ C_{\textrm{cost}} = \underbrace{C_{I_0,I_1}(\vec{r})}_{\textrm{Correlation Term}} + \underbrace{\lambda ||\vec{r}||}_{\textrm{deformation term}} $$
+
+
+
 Distribution Metrics
 ===
 
@@ -1510,29 +1535,20 @@ ggplot(rh.eles,aes(x,y))+
   theme_bw(25)
 ```
 
-Strain Tensor
-===
-This can then be expressed more concretely in the form of a strain tensor which can be broken down into volumetric and deviatoric strain
-$$ \mathbf{E} = \begin{bmatrix}
-\varepsilon_{11} & \varepsilon_{12} & \varepsilon_{13} \\
-   \varepsilon_{21} & \varepsilon_{22} & \varepsilon_{23} \\
-   \varepsilon_{31} & \varepsilon_{32} & \varepsilon_{33}
-\end{bmatrix} $$
 
 
 Thickness - Lung Tissue
 ===
-__ Data provided by Goran Lovric and Rajmund Mokso __
-Since lung 
+
+__Data provided by Goran Lovric and Rajmund Mokso__
+
+Since the changes in these tissues are difficult to track and measure, it is easier to quantify the changes in global metrics like thickness than trying to track small branches and other aspects.
 ![Lung Tissue](ext-figures/LungImages.png)
 
-Curvature - Metal Systems
-===
-__ Data provided by Julie Fife __
 
 Two Point Correlation - Volcanic Rock
 ===
-__ Data provided by Mattia Pistone and Julie Fife __
+__Data provided by Mattia Pistone and Julie Fife__
 The air phase changes from small very anisotropic bubbles to one large connected pore network. The same tools cannot be used to quantify those systems. Furthermore there are motion artifacts which are difficult to correct.
 
 <video controls>
