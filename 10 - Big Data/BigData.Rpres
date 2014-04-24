@@ -71,15 +71,15 @@ ddply.cutcols<-function(...,cols=1) {
 }
 ```
 
-Scaling Up
+Quantitative Big Data
 ========================================================
-author: Kevin Mader
+author: Kevin Mader 
 date: 25 March 2014
 width: 1440
 height: 900
 transition: rotate
 css: ../template.css
-## TOMCAT Progress Report
+## Scaling Up / Big Data
 
 
 Outline

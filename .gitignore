@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+*.pdf
+*.DS_Store
+*.md
+*.html
+*.tif
+*.jpg
+*.png
+*.Rcache
+*.js
+*.css
+*.RData
+*.rd*
