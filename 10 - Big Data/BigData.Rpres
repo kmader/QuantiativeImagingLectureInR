@@ -81,15 +81,38 @@ transition: rotate
 css: ../template.css
 ## Scaling Up / Big Data
 
+ 
+ Course Outline
+========================================================
+- 20th February - Introductory Lecture
+- 27th February - Filtering and Image Enhancement (A. Kaestner)
+- 6th March - Basic Segmentation, Discrete Binary Structures
+- 13th March - Advanced Segmentation
+- 20th March - Analyzing Single Objects
+- 27th March -  Analyzing Complex Objects
+- 3rd April -  Spatial Distribution
+- 10th April -  Statistics and Reproducibility
+- 17th April - Dynamic Experiments
+- 8th May - **Big Data**
+- 15th May - Guest Lecture - Applications in Material Science
+- 22th May - Project Presentations
+
+Literature / Useful References
+========================================================
+- [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
+ - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
+- [Scalable Systems Course](https://courses.cs.washington.edu/courses/cse490h/08au/)
+- [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
+- [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
 
 Outline
 ========================================================
 - Motivation
-- Key Projects
-- Parallel and Distributed Computing
-- Scaling Imaging
-- Scaling Post-processing
+- Computer Science Principles
+ - Parallel and Distributed Computing
+
 - Beyond
+
 
 
 Motivation
@@ -115,6 +138,40 @@ There are three different types of problems that we will run into.
 - Not sure what we are looking for
 - Easy to develop new analyses
 - Quick to test hypotheses
+
+What is wrong with usual approaches?
+===
+Normally when problems are approached they are solved for a single task as quickly as possible
+- I need to filter my image with a median filter with a neighborhood of 5 x 5 and a square kernel
+- then make a threshold of 10
+- label the components
+- then count how many voxels are in each component
+- save it to a file
+
+```{matlab}
+im_in=imread('test.jpg');
+im_filter=medfilt2(im_in,[5,5]);
+cl_img=bwlabel(im_filter>10);
+cl_count=hist(cl_img,1:100);
+dlmwrite(cl_count,'out.txt')
+```
+
+***
+
+
+
+
+
+Computer Science Principles
+===
+### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
+- Parallel and Distributed Computing
+- Threads
+- Shared-Memory
+- Race Conditions
+- Synchronization
+ - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+ 
 
 Key Projects
 ===
@@ -689,43 +746,6 @@ Spark Preview
 <iframe src='ext-figures/FilterTest - Spark Stages.html' width='100%' height='800'></iframe>
 
 
-Acknowledgements
-===
-- AIT at PSI
-- TOMCAT Group
-![Tomcat Group](ext-figures/tgp.png)
 
 
-Principles
-===
-### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a scant introduction
-- Parallel and Distributed Computing
-- Threads
-- Shared-Memory
-- Race Conditions
-- Synchronization
- - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
- 
- 
- Course Outline
-========================================================
-- 20th February - Introductory Lecture
-- 27th February - Filtering and Image Enhancement (A. Kaestner)
-- 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - Advanced Segmentation
-- 20th March - Analyzing Single Objects
-- 27th March -  Analyzing Complex Objects
-- 3rd April -  Spatial Distribution
-- 10th April -  Statistics and Reproducibility
-- 17th April - Dynamic Experiments
-- 8th May - **Big Data**
-- 15th May - Guest Lecture - Applications in Material Science
-- 22th May - Project Presentations
 
-Literature / Useful References
-========================================================
-- [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
- - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
-- [Scalable Systems Course](https://courses.cs.washington.edu/courses/cse490h/08au/)
-- [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
-- [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
