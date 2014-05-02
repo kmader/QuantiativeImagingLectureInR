@@ -109,10 +109,24 @@ Outline
 ========================================================
 - Motivation
 - Computer Science Principles
- - Parallel and Distributed Computing
+ - Parallelism
+ - Distributed Computing
+ - Imperative Programming
+ - Declarative Programming
+- Organization
+ - Parameterization
+ - Databases
+- Applications
+ - GPU Computing
+ - Cluster Computing
+ 
+***
 
-- Beyond
-
+- Big Data
+ - MapReduce
+ - Spark
+ - Streaming
+- Beyond / The future
 
 
 Motivation
@@ -139,41 +153,7 @@ There are three different types of problems that we will run into.
 - Easy to develop new analyses
 - Quick to test hypotheses
 
-What is wrong with usual approaches?
-===
-Normally when problems are approached they are solved for a single task as quickly as possible
-- I need to filter my image with a median filter with a neighborhood of 5 x 5 and a square kernel
-- then make a threshold of 10
-- label the components
-- then count how many voxels are in each component
-- save it to a file
-
-```{matlab}
-im_in=imread('test.jpg');
-im_filter=medfilt2(im_in,[5,5]);
-cl_img=bwlabel(im_filter>10);
-cl_count=hist(cl_img,1:100);
-dlmwrite(cl_count,'out.txt')
-```
-
-***
-
-
-
-
-
-Computer Science Principles
-===
-### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
-- Parallel and Distributed Computing
-- Threads
-- Shared-Memory
-- Race Conditions
-- Synchronization
- - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
- 
-
-Key Projects
+Example Projects
 ===
 
 ### Zebra fish Phenotyping Project
@@ -203,54 +183,48 @@ Your browser does not support the video tag.
 - Blood vessel structure and networks
 - Registration with fMRI, histology
 
-Definition: Big Data
+What is wrong with usual approaches?
 ===
-### Velocity, Volume, Variety
-When a ton of heterogeneous is coming in fast.
+Normally when problems are approached they are solved for a single task as quickly as possible
+- I need to filter my image with a median filter with a neighborhood of 5 x 5 and a square kernel
+- then make a threshold of 10
+- label the components
+- then count how many voxels are in each component
+- save it to a file
 
-__Performant, scalable, and flexible__
+```{matlab}
+im_in=imread('test.jpg');
+im_filter=medfilt2(im_in,[5,5]);
+cl_img=bwlabel(im_filter>10);
+cl_count=hist(cl_img,1:100);
+dlmwrite(cl_count,'out.txt')
+```
 
-### When scaling isn't scary
-10X, 100X, 1000X is the same amount of effort
-
-### When you are starving for enough data
-Director of AMPLab said their rate limiting factor is always enough interesting data
-
-### O 'clicks' per sample
-
-But Kevin you've already done big data!
-===
-incremental: true
-- Umm, __no__.
-- My samples were sized 1024 x 1024 x 1024 $\approx$ 1 GVx.
-- They had two nice phases that were always the same (homogeneous)
-- They were analyzed on single computers using 4-6 cores and took 12-24 hours for the full analysis.
-- Zebra Fish Project
- - need computers with at least 20X as much memory (__400GB__)
- - it would take __240 hours__ per sample...
- - best case scenario GWS-3 consumed 100% for 3 days
-- Brain Project
- - need computers with 1000X as much memory (__20TB.__)
- - it would take __16 months__ per sample...
- 
-But what did you do then?
-===
-
-- TIPL is a flexible (if not __so__ scalable) framework for image processing and testing
- - modular design
- - verification and testing
- - reproduction of results from parameters 
- - cluster integration
-
-- Report Generation
- - parametric assessment
- - pipelined analysis
- - Rendering subregions for movies
- - Displaying multidimensional data efficiently
- 
 ***
 
-![TIPL](ext-figures/TIPLoutline.png)
+- What if you want to compare Gaussian and Median?
+- What if you want to look at 3D instead of 2D images?
+- What if you want to run the same analysis for a folder of images?
+
+
+**You have to rewrite everything, everytime**
+
+**If you start with a bad approach, it is very difficult to fix, big data and reproducibility must be considered from the beginning**
+
+
+
+ 
+Computer Science Principles
+===
+### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
+- Parallel and Distributed Computing
+- Threads
+- Shared-Memory
+- Race Conditions
+- Synchronization
+ - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+ 
+
 
 What is parallelism?
 ===
@@ -295,7 +269,7 @@ Approaches
 
 
 
-Parallel Problems
+Parallel Challenges
 ===
 
 ### Coordination
@@ -307,7 +281,7 @@ The second major issue is mutability, if you have two cores / computers trying t
 ### Blocking
 The simple act of taking turns and waiting for every independent process to take its turn can completely negate the benefits of parallel computing
 
-Distributed Problems
+Distributed Challenges
 ===
 
 Inherits all of the problems of parallel programming with a whole variety of new issues.
@@ -322,7 +296,7 @@ If you have 1000 computers working on solving a problem and one fails, you do no
 How can you access and process data from many different computers quickly without very expensive infrastructure
 
 
-General Problems
+Development Challenges
 ===
 
 ### Implementation
@@ -333,6 +307,40 @@ Each parallel library requires different tools with different constraints CUDA, 
 - _Lock in_: Transitioning from one code-base to another is at best nightmarish
 - Testing and profiling code locally can be very difficult
 - None of them are flexible allowing extra-processing power to "jump" in intense complications when it is needed
+
+
+
+
+
+
+Definition: Big Data
+===
+### Velocity, Volume, Variety
+When a ton of heterogeneous is coming in fast.
+
+__Performant, scalable, and flexible__
+
+### When scaling isn't scary
+10X, 100X, 1000X is the same amount of effort
+
+### When you are starving for enough data
+Director of AMPLab said their rate limiting factor is always enough interesting data
+
+### O 'clicks' per sample
+
+MapReduce
+===
+
+
+Hadoop / MapReduce
+===
+
+Hadoop is the underlying infrastructure and filesystem that handles storing and distributing data so each machine stores some of the data locally and processing jobs run where the data is stored. 
+- No expensive Infini-Band required.
+ - Non-local data is copied over the network. 
+- Storage is automatically expanded with processing power.
+- It's how Google, Amazon, Microsoft, Yahoo, Facebook, ... deal with exabytes of data
+
 
 The Solution: Spark / Resilient Distributed Datasets
 ===
@@ -356,14 +364,6 @@ The Solution: Spark / Resilient Distributed Datasets
  - Even scheduling is handled automatically
 - Results can be stored in memory, on disk, redundant or not
 
-Hadoop / MapReduce
-===
-
-Hadoop is the underlying infrastructure and filesystem that handles storing and distributing data so each machine stores some of the data locally and processing jobs run where the data is stored. 
-- No expensive Infini-Band required.
- - Non-local data is copied over the network. 
-- Storage is automatically expanded with processing power.
-- It's how Google, Amazon, Microsoft, Yahoo, Facebook, ... deal with exabytes of data
 
 Starting Spark
 ===
@@ -457,7 +457,24 @@ outLabels.filter(roiFunc).saveImage('test.tif')
 
 Real Spark Performance
 ===
-```{r, fig.cap="Real Performance",fig.height=6}
+
+
+Near Future Imaging Goals
+===
+
+### Needs
+- Scale up to 1000GVx samples (eventually)
+- Analyze standard measurements 14GVx regularly in a day
+- Analyze as fast as we usually measure 15 minutes / scan
+
+### Would be nice
+
+- Analyze scans as fast as we measure now (1 scan / minute)
+- Analyze scans as fast as we could measure with Gigafrost (10 scans / minute)
+
+***
+
+```{r, load_results}
 map.data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/MapReduce3D/ext-data"
 pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
  read.fcn<-function(filename) {
@@ -480,47 +497,10 @@ pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
   in.table$dim<-with(in.table,paste(fc(x),fc(y),fc(z),sep=","))
   in.table
 }
-fit.data<-rbind(cbind(read.fcn(pmd("dist_filter.csv")),source="Distributed"),
-                cbind(read.fcn(pmd("merlinl02_filter.csv")),source="Single",mapsteps=-1))
-
-fit.data$voxpersec<-with(fit.data,iters*as.numeric(x)*y*z/(RunTime/1000))
-ggplot(fit.data,aes(x=nodes,y=voxpersec
-                    )
-       )+
-  geom_point(aes(shape=source,
-                 color=as.factor(paste(formatC(round(as.numeric(x)*y*z/1e8)/10,width=6,format="f",digits=1)," GVx"))))+
-  geom_smooth()+
-  labs(title="Filter Performance",x="Cores",y="Voxels per Second",color="Data Size",shape="Operation Mode")+
-  theme_bw(20)
 ```
-
-***
-
-```{r, fig.cap="Overhead Costs",fig.height=6}
-table.ready<-ddply.cutcols(fit.data,.(x,cut_interval(nodes,6)),function(c.blocks) c.blocks[1,])
-ggplot(subset(table.ready,source=="Distributed"),
-       aes(y=formatC(round(as.numeric(x)*y*z),format="e",digits=3),x=as.factor(round(nodes))))+
-  geom_tile(aes(fill=MapTime/(RunTime*nodes)*100))+
-  geom_text(aes(label=paste(round(MapTime/(RunTime*nodes)*100),"%",sep="")),color="red")+
-  theme_bw(20)+labs(y="Voxels",x="Cores",fill="Time spent\n in Map (%)",title="Utilization / Overhead Estimates")
-```
-
-TOMCAT Imaging Goals
-===
-
-### Needs
-- Scale up to 1000GVx samples (eventually)
-- Analyze standard measurements 14GVx regularly in a day
-- Analyze as fast as we usually measure 15 minutes / scan
-
-### Would be nice
-
-- Analyze scans as fast as we measure now (1 scan / minute)
-- Analyze scans as fast as we could measure with Gigafrost (10 scans / minute)
-
-***
 
 ```{r, fig.cap="Tomcat Goals",fig.height=4}
+
 distfilter.csv<-read.fcn(pmd("dist_filter.csv"))
 fit.data<-distfilter.csv
 fit.data$voxpersec<-with(fit.data,iters*as.numeric(x)*y*z/(RunTime/1000))
@@ -551,6 +531,7 @@ ggplot(predict.table,aes(x=nodes,y=est.voxpersec*3600/1e9)
   labs(x="Nodes Used",y="Gigavoxels per hour",shape="Cluster",color="Goal\nOps/s",title="Linear Scale")+
   xlim(0,400)+ylim(0,200)+theme_bw(15)
 ```
+
 
 
 Post-processing: Statistical Analysis
@@ -663,52 +644,10 @@ The exact same code can be used for real-time analysis and static code
 ### Scalability
 
 #### Connect more computers. 
-#### Start workers on these computer (~~Full Stop~~).
+#### Start workers on these computer.
 
-***
 
-Source could the camera server itself or a watched directory on a machine.
 
-```{r , fig.height=7}
-library(igraph)
-node.names<-c("Projection\nImages","Most Recent\n1500 images","ROI\nTracking","Exposure\nAdaption",
-              "Flat-field\nCorrection","Sinogram\nGeneration","GridRec","Filtering",
-              "Segmentation","Histogram","Center\nEstimation","Shape\nAnalysis")
-c.mat<-matrix(0,length(node.names),length(node.names))
-colnames(c.mat)<-node.names
-rownames(c.mat)<-node.names
-c.mat["Projection\nImages","Flat-field\nCorrection"]<-1
-c.mat["Projection\nImages","Exposure\nAdaption"]<-1
-c.mat["Flat-field\nCorrection","Most Recent\n1500 images"]<-1
-c.mat["Most Recent\n1500 images","Sinogram\nGeneration"]<-1
-c.mat["Flat-field\nCorrection","ROI\nTracking"]<-1
-c.mat["Sinogram\nGeneration","GridRec"]<-1
-c.mat["Sinogram\nGeneration","Center\nEstimation"]<-1
-c.mat["Center\nEstimation","GridRec"]<-1
-c.mat["GridRec","Filtering"]<-1
-c.mat["Filtering","Histogram"]<-1
-c.mat["Filtering","Segmentation"]<-1
-c.mat["Segmentation","Shape\nAnalysis"]<-1
-g<-graph.adjacency(c.mat,mode="directed")
-V(g)$degree <- degree(g)
-V(g)$label <- V(g)$name
-V(g)$color <- "lightblue"
-V(g)["Projection\nImages"]$color<-"red"
-V(g)["Flat-field\nCorrection"]$color<-"green"
-V(g)["Exposure\nAdaption"]$color<-"green"
-V(g)["Sinogram\nGeneration"]$color<-"green"
-V(g)["ROI\nTracking"]$color<-"green"
-V(g)["Center\nEstimation"]$color<-"green"
-V(g)["GridRec"]$color<-"green"
-V(g)["Most Recent\n1500 images"]$color<-"green"
-V(g)["Most Recent\n1500 images"]$frame.width<-2
-V(g)$size<-35
-E(g)$width<-2
-E(g)$color<-"black"
-E(g)[8]$width<-5
-E(g)[8]$color<-"red"
-plot(g,  layout=layout.fruchterman.reingold)# layout.kamada.kawai) #layout=layout.circle)#
-```
 
 Beyond: Approximate Results
 ===
@@ -722,28 +661,7 @@ For real-time image processing it might be the only feasible solution and could 
 
 
 
-Beyond: Image SQL
-===
-Structure Query Language (SQL) forms the basis for almost all database languages that exist today.
-- Standard language that allows the computer and cluster to query as it sees fit
-- Used for Big (Hive, Impala) and Small (SQLite) data-alike
 
-```{sql}
-SELECT customer_name, sum(price_paid) FROM sales_db GROUP BY customer_name
-```
-
-***
-
-Image SQL would be an image processing domain specific language (DSL) allowing image processing to be written as simple commands and computers / clusters divide and run the jobs
-
-```
-SELECT mean(VOLUME) FROM GAUSSIAN_FILTER(input_image) GROUP BY COMPONENT_LABEL
-```
-
-Spark Preview
-===
-
-<iframe src='ext-figures/FilterTest - Spark Stages.html' width='100%' height='800'></iframe>
 
 
 
