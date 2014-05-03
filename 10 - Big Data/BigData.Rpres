@@ -71,10 +71,10 @@ ddply.cutcols<-function(...,cols=1) {
 }
 ```
 
-Quantitative Big Data
+Quantitative Big Imaging
 ========================================================
 author: Kevin Mader 
-date: 25 March 2014
+date: 8 May 2014
 width: 1440
 height: 900
 transition: rotate
@@ -93,17 +93,20 @@ css: ../template.css
 - 3rd April -  Spatial Distribution
 - 10th April -  Statistics and Reproducibility
 - 17th April - Dynamic Experiments
-- 8th May - **Big Data**
-- 15th May - Guest Lecture - Applications in Material Science
+- 8th May - **Scaling Up / Big Data**
+- 15th May - Guest Lecture - Dynamic Imaging of Battery Systems (V. Wood)
 - 22th May - Project Presentations
 
 Literature / Useful References
 ========================================================
+
 - [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
  - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
+ - [MapReduce Paper](http://citeseerx.ist.psu.edu/viewdoc/summary;jsessionid=110C01079B22F1138DBDB74A20F65AF4?doi=10.1.1.135.4448): Jeffrey Dean, et al. (n.d.). MapReduce: Simplified Data Processing on Large Clusters.
 - [Scalable Systems Course](https://courses.cs.washington.edu/courses/cse490h/08au/)
 - [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
 - [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
+
 
 Outline
 ========================================================
@@ -247,28 +250,6 @@ Distributed computing is very similar to parallel computing, but a bit more part
 
 The distributed has some important implications since once you are no longer on the same machine the number of variables like network delay, file system issues, and other users becomes a major problem.
 
-Approaches
-===
-
-### Imperative 
-- Languages like C, C++, Java, Matlab
-- Exact orders are given
-- Data management is manually controlled
-- Job and task scheduling is manual
-- Potential to tweak and optimize performance
-
-
-***
-
-### Declarative 
-- Languages like SQL, Erlang, Haskell, Scala, Python, R
-- Goals are stated rather than specific details
-- Data is automatically managed and copied
-- Scheduling is automatic but slow
-
-
-
-
 Parallel Challenges
 ===
 
@@ -294,6 +275,106 @@ If you have 1000 computers working on solving a problem and one fails, you do no
 ### Data Storage
 
 How can you access and process data from many different computers quickly without very expensive infrastructure
+
+
+Imperative Programming
+===
+
+Directly coordinating tasks on a computer. 
+
+- Languages like C, C++, Java, Matlab
+- Exact orders are given (implicit time ordering)
+- Data management is manually controlled
+- Job and task scheduling is manual
+- Potential to tweak and optimize performance
+
+***
+
+### Making a soup
+
+1. Buy vegetables at market
+1. _then_ Buy meat at butcher
+1. _then_ Chop carrots into pieces
+1. _then_ Chop potatos into pieces
+1. _then_ Heat water
+1. _then_ Wait until boiling then add chopped vegetables
+1. _then_ Wait 5 minutes and add meat
+
+
+Declarative 
+===
+
+- Languages like SQL, Erlang, Haskell, Scala, Python, R can be declarative
+- Goals are stated rather than specific details
+- Data is automatically managed and copied
+- Scheduling is automatic but not always _efficient_
+
+***
+
+### Making a soup
+- Buy vegetables at market $\rightarrow shop_{veggies}$ 
+- Buy meat at butcher $\rightarrow shop_{meat}$ 
+- Wait for $shop_{veggies}$: Chop carrots into pieces $\rightarrow chopped_{carrots}$
+- Wait for $shop_{veggies}$: Chop potatos into pieces $\rightarrow chopped_{potatos}$
+- Heat water
+- Wait for $boiling water$,$chopped_{carrots}$,$chopped_{potatos}$: Add chopped vegetables
+ - Wait 5 minutes and add meat
+ 
+Comparison
+===
+They look fairly similar, so what is the difference? The second is needlessly complicated for one person, but what if you have a team, how can several people make an imparitive soup faster (chopping vegetables together?)
+
+### Imperative soup
+
+1. Buy {carrots, peas, tomatoes} at market
+1. _then_ Buy meat at butcher
+1. _then_ Chop carrots into pieces
+1. _then_ Chop potatos into pieces
+1. _then_ Heat water
+1. _then_ Wait until boiling then add chopped vegetables
+1. _then_ Wait 5 minutes and add meat
+
+***
+
+How can many people make a declarative soup faster? Give everyone a different task (not completely efficient since some tasks have to wait on others)
+
+### Declarative soup
+- Buy {carrots, peas, tomatoes} at market $\rightarrow shop_{veggies}$ 
+- Buy meat at butcher $\rightarrow shop_{meat}$ 
+- Wait for $shop_{veggies}$: Chop carrots into pieces $\rightarrow chopped_{carrots}$
+- Wait for $shop_{veggies}$: Chop potatos into pieces $\rightarrow chopped_{potatos}$
+- Heat water
+- Wait for $boiling_{water}$,$chopped_{carrots}$,$chopped_{potatos}$: Add chopped vegetables
+ - Wait 5 minutes and add meat
+ 
+Results
+===
+
+### Imperative
+- optimize specific tasks (chopping vegetables, mixing) so that many people can do it faster
+ - Matlab/Python do this with fast-fourier-transforms (automatically uses many cores to compute faster)
+- make many soups at the same time (independent)
+ - This leads us to cluster-based computing
+ 
+***
+
+### Declarative
+- run everything at once
+- each core (computer) takes a task and runs it
+- execution order does not matter
+ - wait for portions to be available (dependency)
+
+### Lazy Evaluation
+- do not run anything at all
+- until something needs to be exported or saved
+- run only the tasks that are needed for the final result
+ - never buy tomatoes since they are not in the final soup
+
+
+
+
+
+
 
 
 Development Challenges
@@ -328,21 +409,138 @@ Director of AMPLab said their rate limiting factor is always enough interesting 
 
 ### O 'clicks' per sample
 
+A brief oversimplified story
+===
+
+Google ran into 'big data' and its associated problems years ago: Peta- and exabytes of websites to collect and make sense of. Google uses an algorithm called PageRank(tm) for evaluating the quality of websites. They could have probably used existing tools if page rank were some magic program that could read and determine the quality of a site
+
+```{java}
+for every_site_on_internet
+  current_site.rank=secret_pagerank_function(current_site)
+end
+```
+
+Just divide all the websites into a bunch of groups and have each computer run a group, **easy!**
+
+PageRank
+===
+While the actual internals of PageRank are not public, the general idea is that sites are ranked based on how many sites link to them
+```{Java}
+for current_site in every_site_on_internet
+  current_pagerank = new SecretPageRankObj(current_site);
+  for other_site in every_site_on_internet
+    if current_site is_linked_to other_site
+      current_pagerank.add_site(other_site);
+    end
+  end
+  current_site.rank=current_pagerank.rank();
+end
+```
+How do you divide this task? 
+- Maybe try and divide the sites up: english_sites, chinese_sites, ...
+ - Run pagerank and run them separately.
+ - What happens when a chinese_site links to an english_site? 
+- Buy a really big, really fast computer?
+ - On the most-powerful computer in the world, one loop would take months
+
+It gets better
+===
+- What happens if one computer / hard-drive crashes?
+ - Have a backup computer replace it (A backup computer for every single system)
+ - With a few computers ok, with hundreds of thousands of computers?
+ - What if there is an earthquake and all the computers go down?
+- PageRank doesn't just count
+ - Uses the old rankings for that page
+ - Run pagerank many times until the ranks converge
+
+
+Google's Solution: MapReduce (part of it)
+===
+~~some people claim to have had the idea before, Google is certainly the first to do it at scale~~
+
+Several engineers at Google recognized common elements in many of the tasks being performed. They then proceeded to divide all tasks into two classes **Map** and **Reduce**
+
+### Map
+Map is where a function is applied to every element in the list and the function depends only on exactly that element
+$$ \vec{L} = \begin{bmatrix} 1,2,3,4,5 \end{bmatrix} $$
+$$ f(x) = x^2 $$
+$$ map(f \rightarrow \vec{L}) = \begin{bmatrix} 1,4,9,16,25 \end{bmatrix} $$
+
+***
+
+### Reduce
+
+Reduce is more complicated and involves aggregating a number of different elements and summarizing them. For example the $\Sigma$ function can be written as a reduce function
+$$ \vec{L} = \begin{bmatrix} 1,2,3,4,5 \end{bmatrix} $$
+$$ g(a,b)  = a+b $$
+Reduce then applies the function to the first two elements, and then to the result of the first two with the third and so on until all the elements are done
+$$ reduce(f \rightarrow \vec{L}) = g(g(g(g(1,2),3),4),5) $$
+
 MapReduce
 ===
+They designed a framework for handling distributing and running these types of jobs on clusters. So for each job a dataset ($\vec{L}$), Map-task ($f$), a grouping, and Reduce-task ($g$) are specified
+
+- Partition input data ($\vec{L}$) into chunks across all machines in the cluster
+$$ \downarrow $$
+- Apply **Map** ($f$) to each element
+$$ \downarrow $$
+- Shuffle and Repartition or Group Data 
+$$ \downarrow $$
+- Apply **Reduce** ($g$) to each group
+$$ \downarrow $$
+- Collect all of the results and write to disk
+
+***
+
+All of the steps in between can be written once in a robust, safe manner and then used for every task which can be described using this MapReduce paradigm. These tasks $\langle \vec{L}, f(x), g(a,b) \rangle$ is refered to as a job. 
 
 
-Hadoop / MapReduce
+Key-Value Pairs / Grouping
+===
+The initial job was very basic, for more complicated jobs, a new notion of Key-value (KV) pairs must be introduced. A KV pair is made up of a key and value. A key must be comparable / hashable (a number, string, immutable list of numbers, etc) and is used for grouping data. The value is the associated information to this key. 
+
+
+Counting Words
+===
+Using MapReduce on a folder full of text-documents. 
+- $$ \vec{L} = \begin{bmatrix} "\textrm{Info}\cdots", "\textrm{Expenses}\cdots",\cdots \end{bmatrix} $$
+- **Map** is then a function $f$ which takes in a long string and returns a list of all of the words (text seperated by spaces) as key-value pairs with the value being the number of times that word appeared
+- ```f(x) = [(word,1) for word in  x.split(" ")]```
+- Grouping is then performed by keys (group all words together)
+- **Reduce** adds up the values for each word
+
+***
+
+```
+L = ["cat dog car",
+  "dog car dog"]
+```
+$$ \downarrow \textbf{ Map } : f(x) $$
+```
+[("cat",1),("dog",1),("car",1),("dog",1),("car",1),("dog",1)]
+```
+$$ \downarrow \textrm{ Shuffle / Group} $$
+```
+"cat": (1)
+"dog": (1,1,1)
+"car": (1,1)
+```
+$$ \downarrow \textbf{ Reduce } : g(a,b) $$
+```
+[("cat",1),("dog",3),("car",2)]
+```
+
+
+Hadoop
 ===
 
-Hadoop is the underlying infrastructure and filesystem that handles storing and distributing data so each machine stores some of the data locally and processing jobs run where the data is stored. 
-- No expensive Infini-Band required.
- - Non-local data is copied over the network. 
+Hadoop is the opensource version of MapReduce developed by Yahoo and released as an Apache project. It provides underlying infrastructure and filesystem that handles storing and distributing data so each machine stores some of the data locally and processing jobs run where the data is stored. 
+- Non-local data is copied over the network. 
 - Storage is automatically expanded with processing power.
-- It's how Google, Amazon, Microsoft, Yahoo, Facebook, ... deal with exabytes of data
+- It's how Amazon, Microsoft, Yahoo, Facebook, ... deal with exabytes of data
 
 
-The Solution: Spark / Resilient Distributed Datasets
+Spark / Resilient Distributed Datasets
 ===
 
 ### Technical Specifications
