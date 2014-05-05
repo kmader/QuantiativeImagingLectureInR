@@ -100,6 +100,7 @@ css: ../template.css
 Literature / Useful References
 ========================================================
 
+### Big Data
 - [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
  - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
  - [MapReduce Paper](http://citeseerx.ist.psu.edu/viewdoc/summary;jsessionid=110C01079B22F1138DBDB74A20F65AF4?doi=10.1.1.135.4448): Jeffrey Dean, et al. (n.d.). MapReduce: Simplified Data Processing on Large Clusters.
@@ -107,6 +108,19 @@ Literature / Useful References
 - [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
 - [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
 
+***
+### Cluster Computing
+- Altintas, I. (2013). Workflow-driven programming paradigms for distributed analysis of biological big data. In 2013 IEEE 3rd International Conference on Computational Advances in Bio and medical Sciences (ICCABS) (pp. 1–1). IEEE. doi:10.1109/ICCABS.2013.6629243
+- Condor Documentation at ITET
+- Sun Grid Engine
+
+### Databases
+- Ollion, J., Cochennec, J., Loll, F., Escudé, C., & Boudier, T. (2013). [TANGO](http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=3702251&tool=pmcentrez&rendertype=abstract): a generic tool for high-throughput 3D image analysis for studying nuclear organization. Bioinformatics (Oxford, England), 29(14), 1840–1. doi:10.1093/bioinformatics/btt276
+
+### Cloud Computing
+- Amazon S3
+- Sitaram, D., & Manjunath, G. (2012). Moving To The Cloud. null (Vol. null). Elsevier. doi:10.1016/B978-1-59749-725-1.00006-8
+- Duan, P., Wang, W., Zhang, W., Gong, F., Zhang, P., & Rao, Y. (2013). Food Image Recognition Using Pervasive Cloud Computing. In 2013 IEEE International Conference on Green Computing and Communications and IEEE Internet of Things and IEEE Cyber, Physical and Social Computing (pp. 1631–1637). IEEE. doi:10.1109/GreenCom-iThings-CPSCom.2013.296
 
 Outline
 ========================================================
@@ -129,6 +143,7 @@ Outline
  - MapReduce
  - Spark
  - Streaming
+- Cloud Computing
 - Beyond / The future
 
 
@@ -216,7 +231,6 @@ dlmwrite(cl_count,'out.txt')
 
 
 
- 
 Computer Science Principles
 ===
 ### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
@@ -371,9 +385,125 @@ Results
  - never buy tomatoes since they are not in the final soup
 
 
+Organization
+===
+
+One of the major challenges of scaling up experiments and analysis is keeping all of the results organized in a clear manner. As we have seen in the last lectures, many of the results produced many text files
+- many files are difficult to organize
+- Matlab, R are designed for in-memory computation
+- Datasets can have many parameters and be complicated
+- Transitioning from Excel to Matlab or R means rewriting everything
 
 
 
+Queue Computing
+===
+
+Queue processing systems (like Sun Grid Engine, Oracle Grid Engine, Apple XGrid, Condor, etc) are used to manage 
+- resources (computers, memory, storage)
+- jobs (tasks to be run)
+- users
+Based on a set of rules for how to share the resources to the users to run tasks. 
+
+***
+
+### Resources
+- a collection of processors (CPU and GPU)
+- memory, local storage 
+- for a given period of time
+### Jobs
+- specific task to run
+- necessary (minimal/maximal) resources to run with
+ - including execution time
+### Users
+- accounts submitting jobs
+- it can be undesirable for one user to dominate all of the resources all the time
+
+Structure of Cluster
+===
+
+### Scheduler
+- the actual process that decides which jobs will run using which resources at which time
+
+
+Databases
+===
+
+A database is a collection of data stored in the format of tables. A table consists of a number of columns and rows.
+### Sales
+```{r, results='asis'}
+kable(data.frame(Date=c("Mon","Tue","Tue"),
+                 Customer=c("Tom","Tom","Ann"),
+                 Item=c("Banana","Apple","Banana"),
+                 Cost=c(1,2,0.95)
+                 ))
+```
+
+Relational-databases can store relationships between different ables
+### Customers
+```{r, results='asis'}
+kable(data.frame(
+                 Name=c("Tom","Ann","Joe"),
+                 Phone=c(5547,3323,9214)
+                 ))
+```
+
+***
+
+```{r}
+library(igraph)
+node.names<-c("Sales","Customers","Date","Customer","Item","Cost","Name","Phone")
+c.mat<-matrix(0,length(node.names),length(node.names))
+colnames(c.mat)<-node.names
+rownames(c.mat)<-node.names
+c.mat["Sales","Date"]<-1
+c.mat["Sales","Customer"]<-1
+c.mat["Sales","Item"]<-1
+c.mat["Sales","Cost"]<-1
+c.mat["Customers","Name"]<-1
+c.mat["Customers","Phone"]<-1
+c.mat["Customer","Name"]<-1
+c.mat["Name","Customer"]<-1
+g<-graph.adjacency(c.mat,mode="directed")
+V(g)$degree <- degree(g)
+V(g)$label <- V(g)$name
+V(g)$color <- "lightblue"
+V(g)["Sales"]$color<-"red"
+V(g)["Customers"]$color<-"red"
+V(g)["Sales"]$frame.width<-2
+V(g)["Customers"]$frame.width<-2
+V(g)$size<-50
+E(g)$width<-2
+E(g)[2]$width<-2
+E(g)$color<-"black"
+cut.seq<-function(...,length.out,rem.edges=1) {
+  out.seq<-seq(...,length.out=length.out+2*rem.edges)
+  out.seq[c((rem.edges+1):(length.out+rem.edges))]
+}
+tf<-function(x) as.matrix(
+  data.frame(x=c(0,0,rep(10,6)),
+  y=c(-x,x,cut.seq(-2*x,0,length.out=4),cut.seq(0,2*x,length.out=2))))
+plot(g,  layout=tf(20))# layout.kamada.kawai) #layout=layout.circle)#
+```
+
+
+SQL
+===
+
+SQL (pronounced Sequel) stands for structured query language and is _nearly_ universal for both searching (called querying) and adding (called inserting) data into databases. SQL is used in various forms from Firefox storing its preferences locally (using SQLite) to Facebook storing some of its user information (MySQL and Hive). 
+So refering to the two tables we defined in the last entry, we can use SQL to get information about the tables independently of how they are stored (a single machine, a supercomputer, or in the cloud)
+
+***
+
+```SELECT Cost FROM Customer```
+$$ \rightarrow \begin{bmatrix} 1,2,0.95\end{bmatrix} $$
+
+```SELECT Cost FROM Customer WHERE Item = "BANANA" ```
+$$ \rightarrow \begin{bmatrix} 1,0.95\end{bmatrix} $$
+
+
+NoSQL
+===
 
 
 
@@ -388,9 +518,6 @@ Each parallel library requires different tools with different constraints CUDA, 
 - _Lock in_: Transitioning from one code-base to another is at best nightmarish
 - Testing and profiling code locally can be very difficult
 - None of them are flexible allowing extra-processing power to "jump" in intense complications when it is needed
-
-
-
 
 
 
@@ -475,6 +602,7 @@ $$ \vec{L} = \begin{bmatrix} 1,2,3,4,5 \end{bmatrix} $$
 $$ g(a,b)  = a+b $$
 Reduce then applies the function to the first two elements, and then to the result of the first two with the third and so on until all the elements are done
 $$ reduce(f \rightarrow \vec{L}) = g(g(g(g(1,2),3),4),5) $$
+
 
 MapReduce
 ===
@@ -562,99 +690,6 @@ Spark / Resilient Distributed Datasets
  - Even scheduling is handled automatically
 - Results can be stored in memory, on disk, redundant or not
 
-
-Starting Spark
-===
-[Spin up your own cluster in an hour](https://amplab.cs.berkeley.edu/2013/10/23/got-a-minute-spin-up-a-spark-cluster-on-your-laptop-with-docker/)
-
-1. Start a master node ```start-master.sh``` 
-1. Start several worker nodes 
-
-```start-worker.sh spark://master-ip:7077 -c #CORES -m #MEM```
-
-1. Start the Spark-Shell ```spark-shell.sh```
-1. Write code in Scala, Java, Python, or R
-
-Perform a threshold
-===
-
-```
-val threshVal=127
-val labelImg=inImg.filter(_._2>threshVal)
-```
-
-- Runs on 1 core on your laptop or 1000 cores in the cloud or on Merlin or the beamline.
-- If one computer crashes or disconnects it __automatically__ continues on another one. 
-- If one part of the computation is taking too long it will be sent to other computers to finish
-- If a computer runs out of memory it writes the remaining results to disk and continues running (graceful dropoff in performance )
-
-Region of Interest
-===
-Take a region of interest between 0 and 100 in X,Y, and Z
-```{java}
-def roiFunc(pvec: ((Int,Int,Int),Double)) = 
- {pvec._1._1>=0 & pvec._1._1<100 & // X
-  pvec._1._2>=0 & pvec._1._2<100 & //Y
-  pvec._1._3>=0 & pvec._1._3<100} // Z
-  
-rImg.filter(roiFunc)
-```
-
-Perform a 3x3x3 box filter
-===
-```
-def spread_voxels(pvec: ((Int,Int,Int),Double), windSize: Int = 1) = {
-  val wind=(-windSize to windSize)
-  val pos=pvec._1
-  val scalevalue=pvec._2/(wind.length**3)
-  for(x<-wind; y<-wind; z<-wind) 
-    yield ((pos._1+x,pos._2+y,pos._3+z),scalevalue)
-}
-
-val filtImg=roiImg.
-      flatMap(cvec => spread_voxels(cvec)).
-      filter(roiFun).reduceByKey(_ + _)
-```
-
-Perform component labeling
-===
-```{, size="tiny"}
-var groupList=Array((0L,0))
-var running=true
-var iterations=0
-while (running) {
-  val newLabels=labelImg.
-  flatMap(spread_voxels(_,1)).
-    reduceByKey((a,b) => (math.min(a._1,b._1),(a._2 | b._2))).
-    filter(_._2._2). // keep only voxels which contain original pixels
-    map(pvec => (pvec._1,pvec._2._1))
-  // make a list of each label and how many voxels are in it
-  val curGroupList=newLabels.map(pvec => (pvec._2,1)).
-    reduceByKey(_ + _).sortByKey(true).collect
-  // if the list isn't the same as before, continue running since we need to wait for swaps to stop
-  running = (curGroupList.deep!=groupList.deep)
-  groupList=curGroupList
-  labelImg=newLabels
-  iterations+=1
-  print("Iter #"+iterations+":"+groupList.mkString(","))
-}
-groupList
-```
-
-Lazy evaluation
-===
-```
-val outThresh=inImg.map(threshFunc)
-val outLabels=runCL(outThresh)
-outLabels.filter(roiFunc).saveImage('test.tif')
-```
-
-- No execution starts until you save the file or require output
-- Spark automatically deconstructs the pipeline and optimizes the jobs to run so computation is not wasted outside of the region of interest (even though we did it last)
-
-
-Real Spark Performance
-===
 
 
 Near Future Imaging Goals
