@@ -131,11 +131,9 @@ Outline
  - Imperative Programming
  - Declarative Programming
 - Organization
+ - Queue Systems / Cluster Computing
  - Parameterization
  - Databases
-- Applications
- - GPU Computing
- - Cluster Computing
  
 ***
 
@@ -410,6 +408,7 @@ Based on a set of rules for how to share the resources to the users to run tasks
 ### Resources
 - a collection of processors (CPU and GPU)
 - memory, local storage 
+- access to bandwidth or special resource like a printer
 - for a given period of time
 ### Jobs
 - specific task to run
@@ -422,59 +421,69 @@ Based on a set of rules for how to share the resources to the users to run tasks
 Structure of Cluster
 ===
 
+### Master (or Name) Node(s)
+The node with which every other node communicates, the main address.
+### Worker Nodes
+The nodes where the computation is performed. 
 ### Scheduler
-- the actual process that decides which jobs will run using which resources at which time
+The actual process that decides which jobs will run using which resources (worker nodes, memory, bandwidth) at which time
+
+
 
 
 Databases
 ===
 
 A database is a collection of data stored in the format of tables. A table consists of a number of columns and rows.
-### Sales
+### Cells
 ```{r, results='asis'}
-kable(data.frame(Date=c("Mon","Tue","Tue"),
-                 Customer=c("Tom","Tom","Ann"),
-                 Item=c("Banana","Apple","Banana"),
-                 Cost=c(1,2,0.95)
-                 ))
+kable(data.frame(
+  Animal=c(1,1,2),
+  Type=c("Cancer","Healthy","Cancer"),
+  Anisotropy=c(0.5,1.0,0.5), 
+  Volume=c(1,2,0.95)
+  ))
 ```
 
 Relational-databases can store relationships between different ables
-### Customers
+### Animals
 ```{r, results='asis'}
 kable(data.frame(
-                 Name=c("Tom","Ann","Joe"),
-                 Phone=c(5547,3323,9214)
+                 id=c(1,2,3),
+                 Weight=c(100,40,80)
                  ))
 ```
 
 ***
 
-```{r}
+```{r, fig.height=9}
 library(igraph)
-node.names<-c("Sales","Customers","Date","Customer","Item","Cost","Name","Phone")
+node.names<-c("Cells","Animals","Animal","Type","Anisotropy","Volume","id","Weight")
 c.mat<-matrix(0,length(node.names),length(node.names))
 colnames(c.mat)<-node.names
 rownames(c.mat)<-node.names
-c.mat["Sales","Date"]<-1
-c.mat["Sales","Customer"]<-1
-c.mat["Sales","Item"]<-1
-c.mat["Sales","Cost"]<-1
-c.mat["Customers","Name"]<-1
-c.mat["Customers","Phone"]<-1
-c.mat["Customer","Name"]<-1
-c.mat["Name","Customer"]<-1
+c.mat["Cells","Animal"]<-1
+c.mat["Cells","Type"]<-1
+c.mat["Cells","Anisotropy"]<-1
+c.mat["Cells","Volume"]<-1
+c.mat["Animals","id"]<-1
+c.mat["Animals","Weight"]<-1
+c.mat["Animal","id"]<-1
 g<-graph.adjacency(c.mat,mode="directed")
 V(g)$degree <- degree(g)
 V(g)$label <- V(g)$name
 V(g)$color <- "lightblue"
-V(g)["Sales"]$color<-"red"
-V(g)["Customers"]$color<-"red"
-V(g)["Sales"]$frame.width<-2
-V(g)["Customers"]$frame.width<-2
+V(g)["Cells"]$color<-"red"
+V(g)["Animals"]$color<-"red"
+V(g)["Cells"]$frame.width<-4 
+V(g)["Animals"]$frame.width<-4
 V(g)$size<-50
 E(g)$width<-2
-E(g)[2]$width<-2
+E(g)$curved<-F
+E(g)$arrow.mode<-1
+E(g)[7]$width<-5
+E(g)[7]$curved<-T
+E(g)[7]$arrow.mode<-3
 E(g)$color<-"black"
 cut.seq<-function(...,length.out,rem.edges=1) {
   out.seq<-seq(...,length.out=length.out+2*rem.edges)
@@ -483,7 +492,8 @@ cut.seq<-function(...,length.out,rem.edges=1) {
 tf<-function(x) as.matrix(
   data.frame(x=c(0,0,rep(10,6)),
   y=c(-x,x,cut.seq(-2*x,0,length.out=4),cut.seq(0,2*x,length.out=2))))
-plot(g,  layout=tf(20))# layout.kamada.kawai) #layout=layout.circle)#
+
+plot(g,  layout=tf(10))# layout.kamada.kawai) #layout=layout.circle)#
 ```
 
 
@@ -494,18 +504,104 @@ SQL (pronounced Sequel) stands for structured query language and is _nearly_ uni
 So refering to the two tables we defined in the last entry, we can use SQL to get information about the tables independently of how they are stored (a single machine, a supercomputer, or in the cloud)
 
 ***
+### Basic queries
 
-```SELECT Cost FROM Customer```
+- Get the volume of all cells
+
+```SELECT Volume FROM Cells```
 $$ \rightarrow \begin{bmatrix} 1,2,0.95\end{bmatrix} $$
 
-```SELECT Cost FROM Customer WHERE Item = "BANANA" ```
-$$ \rightarrow \begin{bmatrix} 1,0.95\end{bmatrix} $$
+- Get the average volume of all cancer cells
 
+```SELECT AVG(Volume) FROM Cells WHERE Type = "Cancer" ```
+$$ \rightarrow 0.975 $$
 
-NoSQL
+We could have done these easily without SQL using Excel, Matlab or R
+
+More Advanced SQL
 ===
 
 
+- Get the volume of all cells in heavy mice
+```
+SELECT Volume FROM Cells WHERE Animal IN 
+  (SELECT id FROM Animal WHERE Weight>80)
+```
+
+- Get weight and average cell volume for all mice
+
+```{sql}
+SELECT ATable.Weight,CTable.Volume FROM Animals as ATable 
+  INNER JOIN Cells as CTable on (ATable.id=CTable.Animal)
+```
+
+
+
+$$ \rightarrow \begin{bmatrix} 1,0.95\end{bmatrix} $$
+
+
+
+Networks using SQL
+===
+If we expand our SQL example to cellular networks with an additional table explicitly describing the links between cells
+
+
+```{r, fig.height=7}
+node.names<-c("1","2","3")
+c.mat<-matrix(0,length(node.names),length(node.names))
+colnames(c.mat)<-node.names
+rownames(c.mat)<-node.names
+c.mat["1","2"]<-800
+c.mat["1","3"]<-40
+c.mat["3","1"]<-300
+g<-graph.adjacency(c.mat,mode="directed",weighted=T)
+V(g)$degree <- degree(g)
+V(g)$label <- V(g)$name
+V(g)$color <- "lightblue"
+V(g)$size<-50
+E(g)$width<-2
+E(g)$curved<-T
+E(g)$arrow.mode<-1
+E(g)$color<-"black"
+plot(g,  layout=layout.kamada.kawai) #layout=layout.circle)#
+```
+
+***
+### Table Representation
+```{r, results='asis'}
+kable(data.frame(
+                 id1=c(1,1,3),
+                 id2=c(2,3,1),
+                 No.Juncs=c(800,40,300)
+                 ))
+```
+
+Now to calculate how many connections each cell has
+```{sql}
+SELECT id,COUNT(*) AS connection_count FROM Cells 
+  INNER JOIN Network ON (id=id1 OR id=id2)
+```
+$$ \rightarrow \begin{bmatrix} (1 & 3) \\ (2 & 1) \\ (3 & 2)\end{bmatrix} $$
+
+Beyond SQL: NoSQL
+===
+
+Basic networks can be entered and queries using SQL but relatively simple sounding requests can get complicated very quickly
+
+How many cells are within two connections of each cell
+```{sql}
+SELECT id,COUNT(*) AS connection_count FROM Cells as CellsA
+  INNER JOIN Network as NetA ON Where (id=NetA.id1)
+  INNER JOIN Network as NetB ON Where (NetA.id2=NetB.id1)
+```
+
+This is _still_ readable but becomes very cumbersome quickly and difficult to manage
+
+***
+
+### NoSQL (Not Only SQL)
+
+A new generation of database software which extends the functionality of SQL to allow for more scalability (MongoDB) or specificity for problems like networks or graphs called generally **Graph Databases**
 
 Development Challenges
 ===
