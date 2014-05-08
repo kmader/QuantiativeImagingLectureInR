@@ -111,8 +111,9 @@ Literature / Useful References
 ***
 ### Cluster Computing
 - Altintas, I. (2013). Workflow-driven programming paradigms for distributed analysis of biological big data. In 2013 IEEE 3rd International Conference on Computational Advances in Bio and medical Sciences (ICCABS) (pp. 1–1). IEEE. doi:10.1109/ICCABS.2013.6629243
-- Condor Documentation at ITET
-- Sun Grid Engine
+- [Condor High-throughput Computing](http://www.cs.wisc.edu/condor/)
+- [Condor Setup at ITET](https://computing.ee.ethz.ch/Services/Condor)
+- [Sun (now Oracle) Grid Engine](http://gridscheduler.sourceforge.net/htmlman/manuals.html) or [here](http://wiki.gridengine.info/wiki/index.php/Main_Page)
 
 ### Databases
 - Ollion, J., Cochennec, J., Loll, F., Escudé, C., & Boudier, T. (2013). [TANGO](http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=3702251&tool=pmcentrez&rendertype=abstract): a generic tool for high-throughput 3D image analysis for studying nuclear organization. Bioinformatics (Oxford, England), 29(14), 1840–1. doi:10.1093/bioinformatics/btt276
@@ -172,9 +173,8 @@ There are three different types of problems that we will run into.
 Example Projects
 ===
 
-### Zebra fish Phenotyping Project
-<small>Collaboration with Keith Cheng, Ian Foster, Xuying Xin, Patrick La Raviere, Steve Wang</small>
-
+### Zebra fish Full Animal Phenotyping 
+__Full adult animal at cellular resolution__
 1000s of samples of full adult animals, imaged at 0.74 $\mu m$ resolution: Images
 11500 x 2800 x 628 $\longrightarrow$ 20-40GVx / sample
 
@@ -191,8 +191,7 @@ Your browser does not support the video tag.
 ***
 
 ### Brain Project
-<small>Collaboration with Alberto Astolfo, Matthias Schneider, Bruno Weber, Marco Stampanoni</small>
-
+__Whole brain with cellular resolution__
 1 $cm^3$  scanned at 1 $\mu m$ resolution: Images $\longrightarrow$ 1000 GVx / sample
 
 - Registration separate scans together
@@ -435,7 +434,19 @@ Databases
 ===
 
 A database is a collection of data stored in the format of tables. A table consists of a number of columns and rows.
+### Animals
+Here we have an table of the animals measured in an experiment and their weight
+
+```{r, results='asis'}
+kable(data.frame(
+                 id=c(1,2,3),
+                 Weight=c(100,40,80)
+                 ))
+```
+
 ### Cells
+The cells is then an analysis looking at the cellular structures 
+
 ```{r, results='asis'}
 kable(data.frame(
   Animal=c(1,1,2),
@@ -445,20 +456,11 @@ kable(data.frame(
   ))
 ```
 
-Relational-databases can store relationships between different ables
-### Animals
-```{r, results='asis'}
-kable(data.frame(
-                 id=c(1,2,3),
-                 Weight=c(100,40,80)
-                 ))
-```
-
 ***
-
+Relational-databases can store relationships between different tables so the relationship between _Animal_ in table **Cells** and _id_ in table **Animals** can be preserved.
 ```{r, fig.height=9}
 library(igraph)
-node.names<-c("Cells","Animals","Animal","Type","Anisotropy","Volume","id","Weight")
+node.names<-c("Cells","Animals","Type","Anisotropy","Volume","Animal","id","Weight")
 c.mat<-matrix(0,length(node.names),length(node.names))
 colnames(c.mat)<-node.names
 rownames(c.mat)<-node.names
@@ -490,10 +492,10 @@ cut.seq<-function(...,length.out,rem.edges=1) {
   out.seq[c((rem.edges+1):(length.out+rem.edges))]
 }
 tf<-function(x) as.matrix(
-  data.frame(x=c(0,0,rep(10,6)),
+  data.frame(x=c(0,0,rep(x,6)),
   y=c(-x,x,cut.seq(-2*x,0,length.out=4),cut.seq(0,2*x,length.out=2))))
 
-plot(g,  layout=tf(10))# layout.kamada.kawai) #layout=layout.circle)#
+plot(g,  layout=tf(20))# layout.kamada.kawai) #layout=layout.circle)#
 ```
 
 
@@ -602,19 +604,6 @@ This is _still_ readable but becomes very cumbersome quickly and difficult to ma
 ### NoSQL (Not Only SQL)
 
 A new generation of database software which extends the functionality of SQL to allow for more scalability (MongoDB) or specificity for problems like networks or graphs called generally **Graph Databases**
-
-Development Challenges
-===
-
-### Implementation
-Each parallel library requires different tools with different constraints CUDA, OpenCL, OpenMPI, Matlab Distributed Toolbox, KORUS, .NET Concurrent Framework, Python Multiprocessing, Hadoop, Storm, Impala, Redshift
-
-- Learn many very specific code bases, and __managing__ the logistics of organizing.
-- Almost none are fault-tolerant out of the box.
-- _Lock in_: Transitioning from one code-base to another is at best nightmarish
-- Testing and profiling code locally can be very difficult
-- None of them are flexible allowing extra-processing power to "jump" in intense complications when it is needed
-
 
 
 Definition: Big Data
@@ -987,12 +976,4 @@ Projects at AMPLab like Spark and BlinkDB are moving towards approximate results
  - ```mean(volume).within_ci(0.95)```
 
 For real-time image processing it might be the only feasible solution and could drastically reduce the amount of time spent on analysis.
-
-
-
-
-
-
-
-
 
