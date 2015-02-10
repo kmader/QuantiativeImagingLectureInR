@@ -231,19 +231,39 @@ dlmwrite(cl_count,'out.txt')
 Computer Science Principles
 ===
 ### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
-- Parallel and Distributed Computing
-- Threads
-- Shared-Memory
-- Race Conditions
-- Synchronization
- - [Dead lock](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+- Parallelism
+- Distributed Computing
+- Resource Contention
+ - Shared-Memory
+ - Race Conditions
+ - Synchronization
+ - Dead lock
+- Imperative
+- Declarative 
  
 
 
 What is parallelism?
 ===
 
-Parallelism is when you can divide a task into separate pieces. Some tasks are easy to parallelize while others are very difficult. Rather than focusing on programming, real-life examples are good indicators of difficultly.
+Parallelism is when you can divide a task into separate pieces which can then be worked on at the same time. 
+### For example 
+- if you have to walk 5 minutes and talk on the phone for 5 minutes
+- you can perform the tasks serially which then takes 10 minutes
+- you can perform the tasks in parallel which then takes 5 minutes
+
+Some tasks are easy to parallelize while others are very difficult. Rather than focusing on programming, real-life examples are good indicators of difficultly.
+
+
+
+What is distributed computing?
+===
+Distributed computing is very similar to parallel computing, but a bit more particular. Parallel means you process many tasks at the same time, while distributed means you are no longer on the same CPU, process, or even on the same machine.
+
+The distributed has some important implications since once you are no longer on the same machine the number of variables like network delay, file system issues, and other users becomes a major problem.
+
+Distributed Computing Examples
+===
 
 1. You have 10 friends who collectively know all the capital cities of the world.
  - To find the capital of a single country you just yell the country and wait for someone to respond (+++)
@@ -255,11 +275,21 @@ Parallelism is when you can divide a task into separate pieces. Some tasks are e
  - To find the total amount of money you tell each person to tell you how much money they have and you add it together (+)
  - To find the __median__ coin value, you ask each friend to tell you you all the coins they have and you make one master list and then find the median coin (-)
 
-What is distributed computing?
+Resource Contention
 ===
-Distributed computing is very similar to parallel computing, but a bit more particular. Parallel means you process many tasks at the same time, while distributed means you are no longer on the same CPU, process, or even on the same machine.
+The largest issue with parallel / distributed tasks is the need to access the same resources at the same time
 
-The distributed has some important implications since once you are no longer on the same machine the number of variables like network delay, file system issues, and other users becomes a major problem.
+- memory / files
+- pieces of information
+- network resources
+
+***
+### Dead-lock
+[Dining Philopher's Problem](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
+- 6 philosophers at the table
+- 6 forks
+- Everyone needs two forks to eat
+- Each philospher takes the fork on his left
 
 Parallel Challenges
 ===
@@ -272,6 +302,7 @@ The second major issue is mutability, if you have two cores / computers trying t
 
 ### Blocking
 The simple act of taking turns and waiting for every independent process to take its turn can completely negate the benefits of parallel computing
+
 
 Distributed Challenges
 ===
@@ -409,10 +440,12 @@ Based on a set of rules for how to share the resources to the users to run tasks
 - memory, local storage 
 - access to bandwidth or special resource like a printer
 - for a given period of time
+
 ### Jobs
 - specific task to run
 - necessary (minimal/maximal) resources to run with
  - including execution time
+
 ### Users
 - accounts submitting jobs
 - it can be undesirable for one user to dominate all of the resources all the time
@@ -422,8 +455,10 @@ Structure of Cluster
 
 ### Master (or Name) Node(s)
 The node with which every other node communicates, the main address.
+
 ### Worker Nodes
 The nodes where the computation is performed. 
+
 ### Scheduler
 The actual process that decides which jobs will run using which resources (worker nodes, memory, bandwidth) at which time
 
@@ -433,7 +468,8 @@ The actual process that decides which jobs will run using which resources (worke
 Databases
 ===
 
-A database is a collection of data stored in the format of tables. A table consists of a number of columns and rows.
+A database is a collection of data stored in the format of tables: a number of columns and rows.
+
 ### Animals
 Here we have an table of the animals measured in an experiment and their weight
 
@@ -606,7 +642,7 @@ This is _still_ readable but becomes very cumbersome quickly and difficult to ma
 A new generation of database software which extends the functionality of SQL to allow for more scalability (MongoDB) or specificity for problems like networks or graphs called generally **Graph Databases**
 
 
-Definition: Big Data
+Big Data: Definition
 ===
 ### Velocity, Volume, Variety
 When a ton of heterogeneous is coming in fast.
@@ -776,6 +812,23 @@ Spark / Resilient Distributed Datasets
 - Results can be stored in memory, on disk, redundant or not
 
 
+Cloud Computing
+===
+
+- Local resources are expensive and underutilized
+- Management and updates are expensive and require dedicated IT staff
+
+![Cloud Computing](ext-figures/Efficiency.png)
+
+
+***
+
+### Cloud Resources
+
+- Automatically setup
+- Unlimited potential capacity and storage
+- Cluster management already setup
+- Common tools with many people using the same
 
 Near Future Imaging Goals
 ===

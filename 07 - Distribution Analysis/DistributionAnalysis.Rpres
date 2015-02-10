@@ -1562,7 +1562,7 @@ opt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),th.amp=0,.
   data.frame(x=rn.fun(n.pts),y=rn.fun(n.pts),
              xv=cos(th.val),yv=sin(th.val),
              th.amp=th.amp,n.pts=n.pts,
-             Angle.Variability=th.amp,
+             Angle.Variability=180/pi*th.amp,
              Mean.Angle=mean(180/pi*th.val),
              Sd.Angle=sd(180/pi*th.val),
              label=paste("Avg:",round(mean(180/pi*th.val)*10)/10,"Sd:",round(sd(180/pi*th.val)*10)/10),...)
@@ -1648,7 +1648,7 @@ ggplot(or.data,
 ***
 
 ```{r}
-alignment.results<-ddply(or.data,
+align.func<-function(in.data) ddply(in.data,
                               .(label),
                               function(csubset) {
                                 # calculate the ~covariance of the orientations
@@ -1669,6 +1669,7 @@ alignment.results<-ddply(or.data,
                                   )
                               }
                       )
+alignment.results<-align.func(or.data)
 
 
 ```
@@ -1693,17 +1694,65 @@ ggplot(alignment.results,
   geom_segment(aes(color="Shape\nOrientation"),arrow=arrow(length = unit(0.3,"cm")))+
   geom_segment(aes(xend=a.x,yend=a.y,color="Alignment\nOrientation"),
                arrow=arrow(length = unit(0.3,"cm")))+
+  geom_segment(aes(xend=-a.x,yend=-a.y,color="Alignment\nOrientation"),
+               arrow=arrow(length = unit(0.3,"cm")))+
   facet_grid(alabel~.)+
   coord_equal()+
-  labs(title="Object Primary Orientations",color="")+
+  labs(title="Object Primary Orientations",color="",x=expression(theta))+
   theme_bw(20)
 ```
 
 ***
 
+```{r, fig.cap="Alignment Histograms",fig.height=4}
+ggplot(alignment.results,
+       aes(x=180/pi*atan2(yv,xv)))+
+  geom_density(aes(color="Shape\nOrientation"))+
+  geom_vline(aes(xintercept=180/pi*atan2(a.y,a.x),color="Alignment\nOrientation"))+
+  geom_vline(aes(xintercept=180/pi*atan2(-a.y,-a.x),color="Alignment\nOrientation"))+
+  facet_grid(alabel~.)+
+  labs(title="Histogram vs Orientation",color="",x=expression(theta))+
+  theme_bw(20)
+```
+
+
 ```{r, results='asis'}
 kable(ddply(alignment.results[,c("Angle.Variability","Mean.Angle","Sd.Angle","Alignment")],.(Angle.Variability),function(x) x[1,]))
 ```
+
+Alignment for many samples
+===
+```{r, fig.cap="Alignment Arrows",fig.height=7}
+or.data<-ldply(seq(1e-2,pi/2,length.out=16),function(noise) opt.maker(100,th.amp=noise))
+alignment.results<-align.func(or.data)
+alignment.results$flabel<-paste("V:",sprintf("%03d",round(alignment.results$Angle.Variability)))
+ggplot(alignment.results,
+       aes(x=0,y=0,xend=xv,yend=yv))+
+  geom_segment(aes(color="Shape\nOrientation"),arrow=arrow(length = unit(0.3,"cm")))+
+  geom_segment(aes(xend=a.x,yend=a.y,color="Alignment\nOrientation"),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  geom_segment(aes(xend=-a.x,yend=-a.y,color="Alignment\nOrientation"),
+               arrow=arrow(length = unit(0.3,"cm")))+
+  facet_wrap(~flabel)+
+  coord_equal()+
+  labs(title="Object Primary Orientations",color="",x=expression(theta))+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.cap="Alignment Correlation",fig.height=7}
+ggplot(alignment.results,aes(x=Angle.Variability))+
+  geom_point(aes(y=Alignment,color="Alignment"))+
+  geom_point(aes(y=Sd.Angle,color="Sd Angle"))+
+  labs(title="Alignment vs Sd for Increasingly \nDisoriented Samples",color="")+
+  theme_bw(20)
+
+```
+
+
+
+
 Other Approaches
 ===
 
