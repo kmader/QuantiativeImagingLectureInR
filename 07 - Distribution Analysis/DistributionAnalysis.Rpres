@@ -1558,7 +1558,7 @@ The shape tensor provides for each object 3 possible orientations (each of the e
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
 opt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),th.amp=0,...) {
-  th.val<-runif(n.pts,min=-th.amp,max=th.amp)+pi*round(runif(n.pts))
+  th.val<-rnorm(n.pts,sd=th.amp)+pi*round(runif(n.pts))
   data.frame(x=rn.fun(n.pts),y=rn.fun(n.pts),
              xv=cos(th.val),yv=sin(th.val),
              th.amp=th.amp,n.pts=n.pts,
@@ -1567,7 +1567,7 @@ opt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),th.amp=0,.
              Sd.Angle=sd(180/pi*th.val),
              label=paste("Avg:",round(mean(180/pi*th.val)*10)/10,"Sd:",round(sd(180/pi*th.val)*10)/10),...)
 }
-or.data<-ldply(seq(1e-1,pi/2.5,length.out=3),function(noise) opt.maker(50,th.amp=noise))
+or.data<-ldply(seq(1e-1,pi/1.5,length.out=3),function(noise) opt.maker(50,th.amp=noise))
 
 ggplot(or.data,
        aes(x,y,xend=x+0.2*xv,yend=y+0.2*yv))+
@@ -1585,7 +1585,7 @@ Orientation
 
 Since orientation derived from a shape tensor / ellipsoid model has no heads or tails. The orientation is only down to a sign $\longrightarrow == \longleftarrow$ and $\uparrow == \downarrow$.
 
-```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
+```{r, fig.cap="Primary Orientation",fig.height=7}
 ggplot(or.data,
        aes(x=0,y=0,xend=xv,yend=yv))+
     geom_density2d(aes(x=xv,y=yv),color="red",alpha=0.7)+
@@ -1643,11 +1643,15 @@ ggplot(or.data,
     coord_equal()+
   labs(title="Object Primary Orientations")+guides(color=F)+
   theme_bw(20)
+
 ```
 
 ***
 
+### Show some tensor stuff here
+
 ```{r}
+
 align.func<-function(in.data) ddply(in.data,
                               .(label),
                               function(csubset) {
@@ -1664,13 +1668,13 @@ align.func<-function(in.data) ddply(in.data,
                                   csubset,
                                   data.frame(
                                     a.x=fvec[1],a.y=fvec[2],
+                                    mn.angle=mean(180/pi*atan2(csubset$yv,csubset$xv)),
                                     Alignment=aiso*100,
                                     alabel=paste("Align =",round(aiso*100)))
                                   )
                               }
                       )
 alignment.results<-align.func(or.data)
-
 
 ```
 
@@ -1704,7 +1708,8 @@ ggplot(alignment.results,
 
 ***
 
-```{r, fig.cap="Alignment Histograms",fig.height=4}
+```{r, fig.cap="Alignment Histograms",fig.height=5}
+
 ggplot(alignment.results,
        aes(x=180/pi*atan2(yv,xv)))+
   geom_density(aes(color="Shape\nOrientation"))+
@@ -1717,18 +1722,19 @@ ggplot(alignment.results,
 
 
 ```{r, results='asis'}
+
 kable(ddply(alignment.results[,c("Angle.Variability","Mean.Angle","Sd.Angle","Alignment")],.(Angle.Variability),function(x) x[1,]))
 ```
 
 Alignment for many samples
 ===
 ```{r, fig.cap="Alignment Arrows",fig.height=7}
-or.data<-ldply(seq(1e-2,pi/2,length.out=16),function(noise) opt.maker(100,th.amp=noise))
+or.data<-ldply(seq(2e-1,pi/4,length.out=16),function(noise) opt.maker(1000,th.amp=noise))
 alignment.results<-align.func(or.data)
 alignment.results$flabel<-paste("V:",sprintf("%03d",round(alignment.results$Angle.Variability)))
 ggplot(alignment.results,
        aes(x=0,y=0,xend=xv,yend=yv))+
-  geom_segment(aes(color="Shape\nOrientation"),arrow=arrow(length = unit(0.3,"cm")))+
+  geom_segment(aes(color="Shape\nOrientation"),arrow=arrow(length = unit(0.3,"cm")),alpha=0.25)+
   geom_segment(aes(xend=a.x,yend=a.y,color="Alignment\nOrientation"),
                arrow=arrow(length = unit(0.3,"cm")))+
   geom_segment(aes(xend=-a.x,yend=-a.y,color="Alignment\nOrientation"),
@@ -1736,18 +1742,30 @@ ggplot(alignment.results,
   facet_wrap(~flabel)+
   coord_equal()+
   labs(title="Object Primary Orientations",color="",x=expression(theta))+
-  theme_bw(20)
+  theme_bw(10)
 ```
 
 ***
+Angle Accuracy
 
-```{r, fig.cap="Alignment Correlation",fig.height=7}
+```{r, fig.cap="Alignment Correlation",fig.height=3}
+
+ggplot(alignment.results,aes(x=Angle.Variability))+
+  geom_point(aes(y=180/pi*atan2(a.y,a.x),color="Alignment\nAngle"))+
+  geom_point(aes(y=mn.angle,color="Sd Angle"))+
+  labs(title="Alignment Angle vs Mean Angle\n for Increasingly Disoriented Samples",color="")+
+  theme_bw(20)
+```
+
+Variability Accuracy
+
+```{r, fig.cap="Alignment Correlation",fig.height=3}
+
 ggplot(alignment.results,aes(x=Angle.Variability))+
   geom_point(aes(y=Alignment,color="Alignment"))+
   geom_point(aes(y=Sd.Angle,color="Sd Angle"))+
   labs(title="Alignment vs Sd for Increasingly \nDisoriented Samples",color="")+
   theme_bw(20)
-
 ```
 
 
