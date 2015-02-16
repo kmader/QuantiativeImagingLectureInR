@@ -1,10 +1,10 @@
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
-source("../slide_setup.R")
+source("../common/slide_setup.R")
 ```
 
 ```{r script_setup,results='hide',cache=FALSE}
 ## The basic files and libraries needed for most presentations
-source("../utility_functions.R")
+source("../common/utility_functions.R")
 ```
 
 
@@ -14,7 +14,7 @@ author: Kevin Mader
 date: 3 April 2014
 width: 1440
 height: 900
-css: ../template.css
+css: ../common/template.css
 transition: rotate
 
 ETHZ: 227-0966-00L
@@ -1668,7 +1668,7 @@ align.func<-function(in.data) ddply(in.data,
                                   csubset,
                                   data.frame(
                                     a.x=fvec[1],a.y=fvec[2],
-                                    mn.angle=mean(180/pi*atan2(csubset$yv,csubset$xv)),
+                                    mn.angle=180/pi*atan2(mean(csubset$yv),mean(csubset$xv)),
                                     Alignment=aiso*100,
                                     alabel=paste("Align =",round(aiso*100)))
                                   )
@@ -1709,7 +1709,6 @@ ggplot(alignment.results,
 ***
 
 ```{r, fig.cap="Alignment Histograms",fig.height=5}
-
 ggplot(alignment.results,
        aes(x=180/pi*atan2(yv,xv)))+
   geom_density(aes(color="Shape\nOrientation"))+
@@ -1722,14 +1721,13 @@ ggplot(alignment.results,
 
 
 ```{r, results='asis'}
-
 kable(ddply(alignment.results[,c("Angle.Variability","Mean.Angle","Sd.Angle","Alignment")],.(Angle.Variability),function(x) x[1,]))
 ```
 
 Alignment for many samples
 ===
 ```{r, fig.cap="Alignment Arrows",fig.height=7}
-or.data<-ldply(seq(2e-1,pi/4,length.out=16),function(noise) opt.maker(1000,th.amp=noise))
+or.data<-ldply(seq(2e-1,pi/2,length.out=16),function(noise) opt.maker(1000,th.amp=noise))
 alignment.results<-align.func(or.data)
 alignment.results$flabel<-paste("V:",sprintf("%03d",round(alignment.results$Angle.Variability)))
 ggplot(alignment.results,
@@ -1748,27 +1746,27 @@ ggplot(alignment.results,
 ***
 Angle Accuracy
 
-```{r, fig.cap="Alignment Correlation",fig.height=3}
-
+```{r, fig.cap="Alignment Correlation",fig.height=4}
 ggplot(alignment.results,aes(x=Angle.Variability))+
   geom_point(aes(y=180/pi*atan2(a.y,a.x),color="Alignment\nAngle"))+
-  geom_point(aes(y=mn.angle,color="Sd Angle"))+
-  labs(title="Alignment Angle vs Mean Angle\n for Increasingly Disoriented Samples",color="")+
+  geom_point(aes(y=mn.angle,color="Mean"))+
+  coord_polar(theta="y",start=-pi/2)+
+  ylim(-180,180)+
+  labs(title="Alignment Angle vs Mean Angle\n for Increasingly Disoriented Samples",color="",
+       y="Angle",x="Input Variability")+
   theme_bw(20)
 ```
 
 Variability Accuracy
 
-```{r, fig.cap="Alignment Correlation",fig.height=3}
-
+```{r, fig.cap="Alignment Correlation",fig.height=4}
 ggplot(alignment.results,aes(x=Angle.Variability))+
   geom_point(aes(y=Alignment,color="Alignment"))+
   geom_point(aes(y=Sd.Angle,color="Sd Angle"))+
   labs(title="Alignment vs Sd for Increasingly \nDisoriented Samples",color="")+
   theme_bw(20)
+
 ```
-
-
 
 
 Other Approaches

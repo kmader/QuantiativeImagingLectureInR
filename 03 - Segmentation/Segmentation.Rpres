@@ -1,11 +1,12 @@
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
-source("../slide_setup.R")
+source("../common/slide_setup.R")
 ```
 
 ```{r script_setup,results='hide',cache=FALSE}
 ## The basic files and libraries needed for most presentations
-source("../utility_functions.R")
+source("../common/utility_functions.R")
 ```
+
 
 Quantitative Big Imaging  
 ========================================================
@@ -13,6 +14,7 @@ author: Kevin Mader
 date: 6 March 2014
 width: 1440
 height: 900
+css: ../common/template.css
 transition: rotate
 
 ## Basic Segmentation and Discrete Binary Structures

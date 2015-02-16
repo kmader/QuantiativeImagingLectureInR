@@ -1,74 +1,10 @@
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
-require(knitr)
-# default settings, # settings for presentation version
-echo.val<-F
-fig.height<-5
-dpi<-150
-cache<-T
-fig.path<-"pres_figures/"
-cache.path<-"pres_cache/"
-
-if(exists("printed")) { # settings for printed version (if the variable exists)
-  echo.val<-T # show code
-  fig.height<-3
-  dpi<-150
-  cache<-T
-  fig.path<-"print_figures/"
-  cache.path<-"print_cache/"
-}
-opts_chunk$set(dpi=dpi,cache=cache,
-               cache.path=cache.path,results='hide',
-               warning=F,fig.align='center',echo=echo.val,
-               fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+source("../common/slide_setup.R")
 ```
 
 ```{r script_setup,results='hide',cache=FALSE}
-require(ggplot2)
-require(plyr)
-require(grid) # contains the arrow function
-require(biOps)
-require(doMC) # for parallel code
-require(EBImage)
-## To install EBImage
-# source("http://bioconductor.org/biocLite.R")
-# biocLite("EBImage")
-
-# start parallel environment
-registerDoMC()
-# functions for converting images back and forth
-im.to.df<-function(in.img) {
-    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-    out.im$val<-as.vector(in.img)
-    out.im
-}
-df.to.im<-function(in.df,val.col="val",inv=F) {
-  in.vals<-in.df[[val.col]]
-  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
-  if(inv) in.vals<-255-in.vals
-  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
-  attr(out.mat,"type")<-"grey"
-  out.mat
-}
-ddply.cutcols<-function(...,cols=1) {
-  # run standard ddply command
-  cur.table<-ddply(...)
-  cutlabel.fixer<-function(oVal) {
-    sapply(oVal,function(x) {
-      cnv<-as.character(x)
-      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
-    })
-  }
-  cutname.fixer<-function(c.str) {
-    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
-    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
-    paste(t.str[c(1:length(t.str)-1)],collapse=",")
-  }
-  for(i in c(1:cols)) {
-    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
-    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
-  }
-  cur.table
-}
+## The basic files and libraries needed for most presentations
+source("../common/utility_functions.R")
 ```
 
 Quantitative Big Imaging
