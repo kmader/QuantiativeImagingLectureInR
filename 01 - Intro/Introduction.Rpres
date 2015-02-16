@@ -1,0 +1,221 @@
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+source("../common/slide_setup.R")
+```
+
+```{r script_setup, results='markdown'}
+## The basic files and libraries needed for most presentations
+source("../common/utility_functions.R",echo=echo.val,max.deparse.length=1000)
+```
+
+
+Quantitative Big Imaging 
+========================================================
+author: Kevin Mader, Christian Dietz
+date: 19 February 2015
+width: 1440
+height: 900
+css: ../common/template.css
+transition: rotate
+
+ETHZ: 227-0966-00L
+# Introductions and Workflows
+
+Course Outline
+========================================================
+
+```{r, results='asis'}
+source('../common/schedule.R')
+```
+
+Who are we?
+===
+- Kevin Mader (mader@biomed.ee.ethz.ch)
+ - __Lecturer__ at ETH Zurich
+ - __Postdoc__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
+ - Spin-off __4Quant__ for Big Data with Images
+ 
+![Kevin Mader](../common/figures/kevin-mader.jpg)
+ 
+***
+
+- Marco Stampanoni (marco.stampanoni@psi.ch)
+ - __Professor__ at ETH Zurich
+ - __Group Leader__ for the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
+ 
+![Marco Stampanoni](../common/figures/marco.png)
+
+Who are we (continued)?
+===
+
+- Anders Kaestner (anders.kaestner@psi.ch) 
+ - __Group Leader__ at the ICON Beamline at the SINQ (Neutron Source) at Paul Scherrer Institute
+
+![Anders Kaestner](../common/figures/anders.png)
+
+Who are we (continued)?
+===
+- Filippo Arcadu (filippo.arcadu@psi.ch)
+ - Exercise assistance
+ - __PhD Student__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
+ 
+![Filippo Arcadu](../common/figures/filippo.png)
+ 
+***
+
+- Christian Dietz (christian.dietz@uni-konstanz.de)
+ - KNIME Expert
+ - __PhD Student__ Fachbereich Informatik und Informationswissenschaft
+ - __KNIME Developer__ KNIME Image Processing, ImageJ2, imglib (https://github.com/dietzc)
+
+![Christian Dietz](../common/figures/christian-dietz.png)
+
+Who are you?
+===
+### A wide spectrum of backgrounds
+- Biomedical Engineers, Physicists, Chemists, Art History Researchers, Mechanical Engineers, and Computer Scientists
+
+### A wide range of skills
+- I think I've heard of Matlab before $\rightarrow$ I write template C++ code and hand optimize it afterwards
+
+***
+
+### So how will this ever work?
+### Adaptive assignments
+
+1. Conceptual, graphical assignments with practical examples
+  - Emphasis on chosing correct steps and understanding workflow
+2. Opportunities to create custom implementations, plugins, and perform more complicated analysis on larger datasets if interested
+  - Emphasis on performance, customizing analysis, and scalability
+
+
+Literature / Useful References
+========================================================
+### Books
+- Jean Claude, Morphometry with R
+ - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
+ - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
+- John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
+ - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+- J. Weickert, Visualization and Processing of Tensor Fields
+ - [Online](http://books.google.ch/books?id=ScLxPORMob4C&lpg=PA220&ots=mYIeQbaVXP&dq=&pg=PA220#v=onepage&q&f=false)
+
+Motivation
+===
+
+![Crazy Workflow](../common/figures/crazyworkflow.png)
+- To understand what, why and how from the moment an image is produced until it is finished (published, used in a report, …)
+- To learn how to go from one analysis on one image to 10, 100, or 1000 images (without working 10, 100, or 1000X harder)
+
+Motivation (Why does this class exist?)
+===
+- Detectors are getting bigger and faster constantly
+- Todays detectors are really fast
+ - 2560 x 2160 images @ 1500+ times a second = 8GB/s
+- Matlab / Avizo / Python / … are saturated after 60 seconds
+- A single camera
+ - More information per day than Facebook*
+ - Three times as many images per second as  Instagram**
+ 
+<small>
+- *http://news.cnet.com/8301-1023_3-57498531-93/facebook-processes-more-than-500-tb-of-data-daily/
+- **http://techcrunch.com/2013/01/17/instagram-reports-90m-monthly-active-users-40m-photos-per-day-and-8500-likes-per-second/
+</small>
+
+
+Motivation (Is it getting better?)
+===
+
+1. __Experimental Design__ finding the right technique, picking the right dyes and samples has stayed relatively consistent, better techniques lead to more demanding scientits.
+
+2. __Management__ storing, backing up, setting up databases, these processes have become easier and more automated as data magnitudes have increased
+
+3. __Measurements__ the actual acquisition speed of the data has increased wildly due to better detectors, parallel measurement, and new higher intensity sources
+
+4. __Post Processing__ this portion has is the most time-consuming and difficult and has seen minimal improvements over the last years 
+
+***
+
+```{r time-figure, fig.width=12, fig.height=8}
+library("ggthemes")
+# guesstimates
+time.data<-data.frame(
+  year=c(2000,2008,2014,2020),
+  "Experiment Design"=c(10,10,8,8),
+  "Measurements"=c(50,5,0.5,0.1),
+  "Management"=c(20,15,10,8),
+  "Post Processing"=c(50,50,50,50)
+  )
+mtd<-ddply(melt(time.data,id.vars="year"),.(year),
+           function(x) cbind(x,sum.val=sum(x$value),norm.val=100*x$value/sum(x$value))
+           )
+mtd$variable<-gsub("[.]"," ",mtd$variable)
+ggplot(mtd,aes(x=as.factor(year),y=norm.val,fill=variable))+
+  geom_bar(stat="identity")+
+  labs(x="Year",y="Relative Time",fill="",title="Experimental Time Breakdown")+
+  theme_economist(20)
+```
+
+Saturating Output
+===
+
+```{r scaling, fig.width=12}
+output.df<-data.frame(Year=time.data$year,
+                      Measurements=
+                        365*24/(time.data$Experiment.Design+time.data$Measurements),
+                           Publications=365*24/rowSums(time.data[,c(2:5)])
+                           )
+mtd2<-melt(output.df,id.vars="Year")
+ggplot(mtd2,aes(x=as.factor(Year),y=value,fill=variable))+
+  geom_bar(stat="identity",position="dodge")+
+  scale_y_sqrt()+
+  labs(x="Year",y="Output",fill="")+
+  theme_wsj(25)
+```
+
+
+
+```{r, results='asis'}
+kable(output.df,digits=0)
+```
+
+***
+To put more real numbers on these scales rather than 'pseudo-publications', the time to measure a terabyte of data is shown in minutes.
+
+```{r, results='asis'}
+mmtb<-data.frame(
+  Year=c(2000,2008,2014,2016),
+  y=1024/c(1/4,60/64,32,8*60)
+  )
+names(mmtb)[2]<-"Time to 1 TB in Minutes"
+kable(mmtb,digits=0)
+```
+
+For reference, looking at one 1000 x 1000 sized RGB image per second, it would take you 
+```{r, results='asis'} 
+time.per.tb<-round(1e12/(1000*1000*24/8) / (60*60))
+cat(
+  time.per.tb
+  )
+```
+hours to browse through a terabyte of data.
+
+```{r, results='asis'}
+names(mmtb)[2]<-"Time to 1 TB"
+mmtb$"Man power to keep up"<-paste(round(time.per.tb*60/mmtb$"Time to 1 TB")," FTE")
+kable(mmtb,digits=0)
+```
+
+Overwhelmed
+===
+- Count how many cells are in the bone slice
+- Ignore the ones that are ‘too big’ or shaped ‘strangely’
+- Are there more on the right side or left side?
+- Are the ones on the right or left bigger, top or bottom?
+
+***
+
+![cells in bone tissue](../common/figures/bone-cells.png)
+
+
+
+

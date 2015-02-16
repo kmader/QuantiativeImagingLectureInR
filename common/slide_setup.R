@@ -1,7 +1,7 @@
 require(knitr)
 # default settings, # settings for presentation version
 echo.val<-F
-fig.height<-5
+fig.height<-7
 dpi<-80
 cache<-T
 fig.path<-"pres_figures/"
@@ -9,7 +9,7 @@ cache.path<-"pres_cache/"
 
 if(exists("printed")) { # settings for printed version (if the variable exists)
   echo.val<-T # show code
-  fig.height<-3
+  fig.height<-7
   dpi<-100
   cache<-T
   fig.path<-"print_figures/"
