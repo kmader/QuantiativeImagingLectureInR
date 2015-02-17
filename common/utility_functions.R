@@ -1,15 +1,20 @@
-require(ggplot2)
+# ---- libraries ----
+require(ggplot2) #for plots
 require(lattice) # nicer scatter plots
-require(plyr)
+require(plyr) # for processing data.frames
 require(grid) # contains the arrow function
-require(biOps)
+require(biOps) # for basic image processing
 require(doMC) # for parallel code
-require(EBImage)
+require(png) # for reading png images
+require(gridExtra)
 require(reshape2) # for the melt function
 ## To install EBImage
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("EBImage")
+require(EBImage) # for more image processing
 
+
+# ---- common-functions ----
 # start parallel environment
 registerDoMC()
 # functions for converting images back and forth
@@ -45,6 +50,17 @@ ddply.cutcols<-function(...,cols=1) {
     names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
   }
   cur.table
+}
+
+show.pngs.as.grid<-function(file.list,title.fun,zoom=1) {
+  preparePng<-function(x) rasterGrob(readPNG(x,native=T,info=T),width=unit(zoom,"npc"),interp=F)
+  labelPng<-function(x,title="junk") (qplot(1:300, 1:300, geom="blank",xlab=NULL,ylab=NULL,asp=1)+
+                                        annotation_custom(preparePng(x))+
+                                        labs(title=title)+theme_bw(24)+
+                                        theme(axis.text.x = element_blank(),
+                                              axis.text.y = element_blank()))
+  imgList<-llply(file.list,function(x) labelPng(x,title.fun(x)) )
+  do.call(grid.arrange,imgList)
 }
 ## Standard image processing tools which I use for visualizing the examples in the script
 commean.fun<-function(in.df) {

@@ -2,9 +2,14 @@
 source("../common/slide_setup.R")
 ```
 
-```{r script_setup,results='hide',cache=FALSE}
+```{r script_setup, cache=F}
 ## The basic files and libraries needed for most presentations
-source("../common/utility_functions.R")
+# creates the libraries and common-functions sections
+read_chunk("../common/utility_functions.R")
+```
+```{r libraries}
+```
+```{r common-functions}
 ```
 
 
@@ -22,18 +27,10 @@ ETHZ: 227-0966-00L
 
 Course Outline
 ========================================================
-- 20th February - Introductory Lecture
-- 27th February - Filtering and Image Enhancement (A. Kaestner)
-- 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - Advanced Segmentation
-- 20th March - Analyzing Single Objects
-- 27th March -  Analyzing Complex Objects
-- 3rd April -  **Many Objects and Distributions**
-- 10th April -  Statistics and Reproducibility
-- 17th April - Dynamic Experiments
-- 8th May - Big Data
-- 15th May - Guest Lecture - In-Operando Imaging of Batteries (V. Wood)
-- 22th May - Project Presentations
+
+```{r, results='asis'}
+source('../common/schedule.R')
+```
 
 Literature / Useful References
 ========================================================

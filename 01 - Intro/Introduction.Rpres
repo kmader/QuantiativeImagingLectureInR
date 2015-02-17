@@ -2,9 +2,14 @@
 source("../common/slide_setup.R")
 ```
 
-```{r script_setup, results='markdown'}
+```{r script_setup, cache=F}
 ## The basic files and libraries needed for most presentations
-source("../common/utility_functions.R",echo=echo.val,max.deparse.length=1000)
+# creates the libraries and common-functions sections
+read_chunk("../common/utility_functions.R")
+```
+```{r libraries}
+```
+```{r common-functions}
 ```
 
 
@@ -255,3 +260,214 @@ It gets better
 - How aligned are these cells?
 - Is the group on the left more or less aligned than the right?
 - errr?
+
+Dynamic Information
+===
+
+<video controls>
+  <source src="../common/movies/dk31-plat.avi" type="video/avi">
+Your browser does not support the video tag.
+</video>
+
+***
+
+- How many bubbles are here?
+- How fast are they moving?
+- Do they all move the same speed?
+- Do bigger bubbles move faster?
+- Do bubbles near the edge move slower?
+- Are they rearranging?
+
+
+Computing has changed: Parallel
+===
+
+### Moores Law
+$$ \textrm{Transistors} \propto 2^{t/(\textrm{18 months})} $$
+
+```{r invented, fig.cap="Based on trends from Wikipedia and Intel"}
+t<-runif(100,1970,2014)
+timenoise<-2*runif(100,-1,1)
+timenoise2<-3*runif(100,-1,1)
+moores.fake.df<-data.frame(Year=t,
+             kTransistors=1*2^((t+timenoise-1970)/1.5),
+             Speed = 0.5*1.75^((t+timenoise2-1970)/1.5)
+             )
+moores.fake.df$Speed<-with(moores.fake.df,ifelse(Speed>3400,3400+timenoise*300,Speed))
+
+moores.fake<-melt(moores.fake.df,
+  id.vars=c("Year"))
+moores.fake$variable<-gsub("Speed","Speed (MHz)",moores.fake$variable)
+ggplot(moores.fake,aes(Year,value,color=variable))+
+  #geom_jitter()+
+  geom_smooth()+
+  scale_y_log10()+
+  labs(color="",y="")+
+  theme_economist(20)
+```
+_Not real data, Based on trends from Wikipedia and Intel_
+
+***
+
+There are now many more transistors inside a single computer but the processing speed hasn't increased. How can this be?
+
+- Multiple Core
+ - Many machines have multiple cores for each processor which can perform tasks independently
+- Multiple CPUs
+ - More than one chip is commonly present
+- New modalities
+  - GPUs provide many cores which operate at slow speed
+
+### Parallel Code is important
+
+Computing has changed: Cloud
+===
+
+- Computer, servers, workstations are wildly underused (majority are <50%)
+- Buying a big computer that sits idle most of the time is a waste of money
+
+<small>http://www-inst.eecs.berkeley.edu/~cs61c/sp14/
+“The Case for Energy-Proportional Computing,” Luiz André Barroso, Urs Hölzle, IEEE Computer, December 2007</small>
+
+***
+
+- Traditionally the most important performance criteria was time, how fast can it be done
+- With Platform as a service servers can be rented instead of bought
+- Speed is still important but using cloud computing $ / Sample is the real metric
+- In Switzerland a PhD student if 400x as expensive per hour as an Amazon EC2 Machine
+
+
+Course Overview
+===
+```{r, results='asis'}
+source('../common/schedule.R')
+```
+
+***
+
+### More Detail
+
+On Science
+===
+Image processing is a complicated field
+- Thousands of algorithms available
+- Thousands of tools
+- Many images require multi-step processing
+- Experimenting is time-consuming
+
+***
+
+Science demands __repeatability__! and really wants __reproducability__
+- Experimental conditions can change rapidly and are difficult to make consistent
+- Animal and human studies are prohibitively time consuming and expensive to reproduce
+- Terabyte datasets cannot be easily passed around many different groups
+- Privacy concerns can also limit sharing and access to data
+
+Soup Example
+===
+
+Easy to follow the list, anyone with the right steps can execute and repeat (if not reproduce) the soup
+
+### Simple Soup
+
+1. Buy {carrots, peas, tomatoes} at market
+1. _then_ Buy meat at butcher
+1. _then_ Chop carrots into pieces
+1. _then_ Chop potatos into pieces
+1. _then_ Heat water
+1. _then_ Wait until boiling then add chopped vegetables
+1. _then_ Wait 5 minutes and add meat
+
+***
+
+### More complicated soup
+Here it is harder to follow and you need to carefully keep track of what is being performed
+
+### Steps 1-4
+4. _then_ Mix carrots with potatos $\rightarrow  mix_1$
+4. _then_ add egg to $mix_1$ and fry for 20 minutes
+4. _then_ Tenderize meat for 20 minutes
+4. _then_ add tomatoes to meat and cook for 10 minutes $\rightarrow mix_2$
+5. _then_ Wait until boiling then add $mix_1$
+6. _then_ Wait 5 minutes and add $mix_2$
+
+Soup Workflow
+===
+
+### Simple Soup
+```{r, fig.height=9}
+library(igraph)
+node.names<-c("Buy\nvegetables","Buy meat","Chop\nvegetables","Heat water","Wait for\nboiling","Wait 5\nadd meat")
+c.mat<-matrix(0,length(node.names),length(node.names))
+for(i in c(1:(length(node.names)-1))) c.mat[i,i+1]<-1
+colnames(c.mat)<-node.names
+rownames(c.mat)<-node.names
+g<-graph.adjacency(c.mat,mode="directed")
+V(g)$degree <- degree(g)
+V(g)$label <- V(g)$name
+V(g)$color <- "lightblue"
+V(g)$size<-80
+E(g)$width<-2
+
+E(g)$color<-"black"
+
+plot(g,layout=layout.circle)#,  layout= layout.kamada.kawai) ##
+```
+
+***
+
+### Complicated Soup
+
+```{r, fig.height=9}
+new.nodes<-c(node.names,"Mix carrots\npotatoes","add egg\nand fry","tenderize\nmeat",
+             "add tomatoes\ncook 10min","wait 5 minutes")
+c.mat<-matrix(0,length(new.nodes),length(new.nodes))
+# old connections
+for(i in c(1:(length(new.nodes)-1))) c.mat[i,i+1]<-1
+colnames(c.mat)<-new.nodes
+rownames(c.mat)<-new.nodes
+c.mat[1,2]<-0
+c.mat[1,3]<-1
+c.mat[2,3]<-0
+c.mat[2,9]<-1
+c.mat[6,7]<-0
+c.mat[6,11]<-1
+# chop vegies
+c.mat[3,]<-0
+c.mat[3,7]<-1
+
+c.mat[8,]<-0
+c.mat[8,5]<-1
+
+g<-graph.adjacency(c.mat,mode="directed")
+V(g)$degree <- degree(g)
+V(g)$label <- V(g)$name
+V(g)$color <- "lightblue"
+V(g)$size<-40
+E(g)$width<-2
+
+E(g)$color<-"black"
+
+plot(g,layout=layout.circle)#,  layout= layout.kamada.kawai) ##
+```
+
+Workflows
+===
+Clearly a linear set of instructions is ill-suited for even a fairly easy soup, it is then even more difficult when there are dozens of steps and different pathsways
+
+```{r, fig.width=8}
+plot(g,layout= layout.sugiyama(g)$layout)
+```
+
+***
+
+Furthermore a clean workflow allows you to better parallelize the task since it is clear which tasks can be performed independently
+```{r, fig.width=8}
+V(g)[c(1,3,7,8)]$color <- "red"
+V(g)[c(4)]$color <- "green"
+V(g)[c(2,9,10)]$color <- "yellow"
+plot(g,layout= layout.sugiyama(g)$layout)
+```
+
+
+
