@@ -286,26 +286,40 @@ Computing has changed: Parallel
 $$ \textrm{Transistors} \propto 2^{t/(\textrm{18 months})} $$
 
 ```{r invented, fig.cap="Based on trends from Wikipedia and Intel"}
-t<-runif(100,1970,2014)
-timenoise<-2*runif(100,-1,1)
-timenoise2<-3*runif(100,-1,1)
-moores.fake.df<-data.frame(Year=t,
-             kTransistors=1*2^((t+timenoise-1970)/1.5),
-             Speed = 0.5*1.75^((t+timenoise2-1970)/1.5)
-             )
-moores.fake.df$Speed<-with(moores.fake.df,ifelse(Speed>3400,3400+timenoise*300,Speed))
+# stolen from https://gist.github.com/humberto-ortiz/de4b3a621602b78bf90d
+moores.txt<-c("Id Name  Year  Count(1000s)  Clock(MHz)\n",
+        "0            MOS65XX  1975           3.51           14\n",
+        "1          Intel8086  1978          29.00           10\n",
+        "2          MIPSR3000  1988         120.00           33\n",
+        "3           AMDAm486  1993        1200.00           40\n",
+        "4        NexGenNx586  1994        3500.00          111\n",
+        "5          AMDAthlon  1999       37000.00         1400\n",
+        "6   IntelPentiumIII  1999       44000.00         1400\n",
+        "7         PowerPC970  2002       58000.00         2500\n",
+        "8       AMDAthlon64  2003      243000.00         2800\n",
+        "9    IntelCore2Duo  2006      410000.00         3330\n",
+        "10         AMDPhenom  2007      450000.00         2600\n",
+        "11      IntelCorei7  2008     1170000.00         3460\n",
+        "12      IntelCorei5  2009      995000.00         3600")
+moores.pt.text<-gsub("zZ","\n",gsub("\\s+",",",paste(moores.txt,collapse="zZ")))
+moores.df<-read.csv(text=moores.pt.text)
+names(moores.df)[c(4,5)]<-c("kTransistors","Speed")
+moores.df<-moores.df[,c(2:5)]
 
-moores.fake<-melt(moores.fake.df,
-  id.vars=c("Year"))
-moores.fake$variable<-gsub("Speed","Speed (MHz)",moores.fake$variable)
-ggplot(moores.fake,aes(Year,value,color=variable))+
-  #geom_jitter()+
+
+moores.table<-melt(moores.df,
+  id.vars=c("Year","Name"))
+moores.law<-function(year) moores.df[1,"kTransistors"]*2^((year-moores.df[1,"Year"])/1.5)
+moores.table$variable<-gsub("Speed","Speed (MHz)",moores.table$variable)
+ggplot(moores.table,aes(Year,value,color=variable))+
+  geom_jitter()+  
   geom_smooth()+
+  geom_line(aes(linetype="Moore's Law",y=moores.law(moores.table$Year)),color="green",size=2)+
   scale_y_log10()+
-  labs(color="",y="")+
+  labs(color="",y="",linetype="")+
   theme_economist(20)
 ```
-_Not real data, Based on trends from Wikipedia and Intel_
+<small>_Based on data from https://gist.github.com/humberto-ortiz/de4b3a621602b78bf90d_</small>
 
 ***
 
@@ -322,6 +336,91 @@ There are now many more transistors inside a single computer but the processing 
 
 Computing has changed: Cloud
 ===
+```{r cloud-code}
+cloudCostGen<-function(cloudPeakCost,cloudSpotCost) function(hours,peakRatio=1) 
+  hours*peakRatio*cloudPeakCost+hours*(1-peakRatio)*cloudSpotCost
+localCostGen<-function(compCost,energyPriceStd,compPowerRaw) {
+  energyPrice<-energyPriceStd/1e6 # $ / Whr
+  function(hours)
+    compCost+energyPrice*compPowerRaw*hours
+}
+  
+
+make.res.table<-function(cloudCost,localCost,  years) {
+
+  ldply(years,function(life) {
+    timef<-seq(0,life*24*365,length.out=50)
+    data.frame(life=life*12,hours=timef,
+               hoursPerWeek=timef/(life*52),
+               WorstCaseCloud=cloudCost(timef,1),
+               BestCaseCloud=cloudCost(timef,0),
+               MiddleCaseCloud=cloudCost(timef,0.5),
+               LocalWorkstation=localCost(timef))
+  })
+}
+
+random.sim<-function(cloudCost,localCost,n.guess) {
+  utility<-runif(n.guess,min=0,max=1)
+  serviceYears<-runif(n.guess,min=1.5,max=6.5)
+  peak<-runif(n.guess,min=0,max=1)
+  hours<-serviceYears*utility*24*365
+  ot<-data.frame(hours=hours,
+             years=serviceYears,
+             months=serviceYears*12,
+             ryears=round(serviceYears),
+             utility=utility,
+             peak=peak,
+             clcost = cloudCost(hours,peak),
+             wscost = localCost(hours)
+  )
+  ot$cloudPremium<-with(ot,clcost/wscost*100)
+  ot
+}
+
+scen.fcn<-function(c.pts) {
+  data.frame(
+    clcost=mean(c.pts$clcost),
+    wscost=mean(c.pts$wscost)
+  )
+}
+
+scen.grid<-function(scen.table.raw) {
+  ot<-ddply.cutcols(scen.table.raw,.(cut_interval(utility,7),
+                                     cut_interval(peak,7),
+                                     cut_interval(months,4)),cols=3,
+                    scen.fcn
+  )
+  ot$cloudPremium<-with(ot,clcost/wscost*100)
+  ot
+}
+
+scen.table<-function(scen.table.raw) {
+  ot<-ddply.cutcols(scen.table.raw,.(cut_interval(utility,25),
+                                     cut_interval(peak,5),
+                                     cut_interval(months,5)),cols=3,
+                    scen.fcn
+  )
+  ot$cloudPremium<-with(ot,clcost/wscost*100)
+  
+  ddply(ot,.(peak,months),function(c.pts) {
+    n.pts<-subset(c.pts,clcost<=wscost)
+    subset(n.pts,utility==max(n.pts$utility))
+  })
+}
+```
+```{r cloud-costs}
+compCost<-3999.99 # http://www.bestbuy.com/site/cybertronpc-desktop-intel-core-i7-64gb-memory-2tb-hdd-120gb-solid-state-drive-120gb-solid-state-drive-black-blue/6357048.p?id=1219209052767&skuId=6357048
+compPowerRaw<-190  #Watts http://www.eu-energystar.org/en/en_008.shtml#use
+energyPriceStd<-0.143 # Eu/KWHr http://www.eu-energystar.org/en/en_008.shtml#use
+energyPrice<-energyPriceStd/1000*1.2 # $ / Whr
+cloudPeakCost<-0.780
+cloudSpotCost<-0.097
+
+cloudCost<-function(hours,peakRatio=1) 
+  hours*peakRatio*cloudPeakCost+hours*(1-peakRatio)*cloudSpotCost
+localCost<-function(hours)
+  compCost+energyPrice*compPowerRaw*hours
+```
 
 - Computer, servers, workstations are wildly underused (majority are <50%)
 - Buying a big computer that sits idle most of the time is a waste of money
@@ -336,6 +435,95 @@ Computing has changed: Cloud
 - Speed is still important but using cloud computing $ / Sample is the real metric
 - In Switzerland a PhD student if 400x as expensive per hour as an Amazon EC2 Machine
 
+Cloud Computing Costs
+===
+
+The figure shows the range of cloud costs (determined by peak usage) compared to a local workstation with utilization shown as the average number of hours the computer is used each week.
+
+```{r}
+res.table<-
+  ldply(c(3),function(life) {
+    timef<-seq(0,life*24*365,length.out=50)
+    data.frame(life=life*12,hours=timef,
+                      hoursPerWeek=timef/(life*52),
+                      WorstCaseCloud=cloudCost(timef,1),
+                      BestCaseCloud=cloudCost(timef,0),
+                      MiddleCaseCloud=cloudCost(timef,0.5),
+                      LocalWorkstation=localCost(timef))
+  })
+ggplot(res.table,
+       aes(x=hoursPerWeek))+
+  geom_line(aes(y=LocalWorkstation,color="Local Workstation"),size=2)+
+  geom_errorbar(aes(ymin=WorstCaseCloud,ymax=BestCaseCloud,color="Cloud"))+
+  labs(x="Average Computer Usage (hr/wk)",y="Cost ($)",color="Solution")+
+  facet_wrap(~life)+
+  theme_bw(25)
+```
+
+***
+
+The figure shows the cost of a cloud based solution as a percentage of the cost of buying a single machine. The values below 1 show the percentage as a number. The panels distinguish the average time to replacement for the machines in months
+
+```{r}
+n.guess<-1e6
+utility<-runif(n.guess,min=0,max=1)
+serviceYears<-runif(n.guess,min=1.5,max=6.5)
+peak<-runif(n.guess,min=0,max=1)
+hours<-serviceYears*utility*24*365
+scen.table.raw<-data.frame(hours=hours,
+                       years=serviceYears,
+                       months=serviceYears*12,
+                       ryears=round(serviceYears),
+                       utility=utility,
+                       peak=peak,
+                       clcost = cloudCost(hours,peak),
+                       wscost = localCost(hours)
+                                  )
+scen.fcn<-function(c.pts) {
+                                             data.frame(
+                                               clcost=mean(c.pts$clcost),
+                                               wscost=mean(c.pts$wscost)
+                                               )
+                                             }
+scen.table<-ddply.cutcols(scen.table.raw,.(cut_interval(utility,7),
+                                           cut_interval(peak,7),
+                                           cut_interval(months,4)),cols=3,
+                          scen.fcn
+                                           )
+scen.table$cloudPremium<-with(scen.table,clcost/wscost*100)
+ggplot(scen.table,aes(y=utility*100,x=peak*100,fill=cloudPremium))+
+  geom_raster()+
+  geom_text(aes(label=ifelse(cloudPremium<100,round(cloudPremium),"")))+
+  labs(x="Peak Usage (%)",y="Utilization (%)",fill="Cloud Costs\n(% of Workstation)")+
+  scale_fill_gradientn(colours=rainbow(4))+
+  facet_wrap(~months)+
+  theme_bw(10)
+```
+
+Cloud: Equal Cost Point
+===
+
+Here the equal cost point is shown where the cloud and local workstations have the same cost. The x-axis is the percentage of resources used at peak-time and the y shows the expected usable lifetime of the computer. The color indicates the utilization percentage and the text on the squares shows this as the numbers of hours used in a week.
+
+***
+```{r}
+scen.table<-ddply.cutcols(scen.table.raw,.(cut_interval(utility,25),
+                                           cut_interval(peak,5),
+                                           cut_interval(months,5)),cols=3,
+                          scen.fcn
+                                           )
+scen.table.sub<-ddply(scen.table,.(peak,months),function(c.pts) {
+  n.pts<-subset(c.pts,clcost<=wscost)
+  subset(n.pts,utility==max(n.pts$utility))
+})
+
+ggplot(scen.table.sub,aes(100*peak,months,fill=100*utility))+
+  geom_raster(alpha=0.65)+
+  geom_text(aes(label=round(utility*168)))+
+  labs(x="% Peak Time",y="Computer Lifetime\n(Months)",fill="Utilization (%)")+
+  scale_fill_gradientn(colours=rainbow(2))+
+  theme_bw(20)
+```
 
 Course Overview
 ===
