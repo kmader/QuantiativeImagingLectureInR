@@ -190,18 +190,24 @@ names(mmtb)[2]<-"Time to 1 TB in Minutes"
 kable(mmtb,digits=0)
 ```
 
+How much is a TB, really?
+===
+
 For reference, looking at one 1000 x 1000 sized RGB image per second, it would take you 
 ```{r, results='asis'} 
-time.per.tb<-round(1e12/(1000*1000*24/8) / (60*60))
+time.per.tb<-1e12/(1000*1000*24/8) / (60*60)
 cat(
-  time.per.tb
+  round(time.per.tb)
   )
 ```
 hours to browse through a terabyte of data.
 
 ```{r, results='asis'}
 names(mmtb)[2]<-"Time to 1 TB"
-mmtb$"Man power to keep up"<-paste(round(time.per.tb*60/mmtb$"Time to 1 TB")," FTE")
+mmtb$"Man power to keep up"<-time.per.tb*60/mmtb$"Time to 1 TB"
+mmtb$"Salary Costs"<-mmtb$"Man power to keep up"*150000
+mmtb$"Man power to keep up"<-paste(round(mmtb$"Man power to keep up")," FTE")
+mmtb$"Salary Costs"<-paste(round(mmtb$"Salary Costs"/1000)," kCHF/year")
 kable(mmtb,digits=0)
 ```
 
@@ -216,6 +222,36 @@ Overwhelmed
 
 ![cells in bone tissue](../common/figures/bone-cells.png)
 
+More overwhelmed
+===
+
+- Do it all over again for 96 more samples, this time with 2000 slices instead of just one!
+
+***
+
+![more samples](../common/figures/96-samples.png)
+
+Kill me now
+===
+
+- Now again with 1090 samples!
+
+***
+
+![even more samples](../common/figures/1090-samples.png)
 
 
+It gets better
+===
 
+- Those metrics were quantitative and could be easily visually extracted from the images
+- What happens if you have _softer_ metrics
+
+***
+
+![alignment](../common/figures/alignment-figure.png)
+
+
+- How aligned are these cells?
+- Is the group on the left more or less aligned than the right?
+- errr?
