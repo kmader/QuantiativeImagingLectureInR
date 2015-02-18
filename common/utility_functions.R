@@ -146,7 +146,8 @@ extents.fun<-function(in.df) {
   })
 }
 
-common.image.path<-"../common/figures"
-qbi.file<-function(file.name) file.path(common.image.path,file.name)
+common.image.path<-"../common"
+qbi.file<-function(file.name) file.path(common.image.path,"figures",file.name)
+qbi.data<-function(file.name) file.path(common.image.path,"data",file.name)
 
 th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))

@@ -94,10 +94,27 @@ Who are you?
 2. Opportunities to create custom implementations, plugins, and perform more complicated analysis on larger datasets if interested
   - Emphasis on performance, customizing analysis, and scalability
 
+Course Expectations
+===
+
+### Exercises
+ - Usually 1 set per lecture
+ - Optional (but strongly recommended)
+ - Easy - Completing Matlab Scripts (just lecture 2), using GUIs (KNIME and ImageJ)
+ - Advanced - Writing Python, Java, Scala, ...
+ 
+***
+
+### Science Project
+- Optional (but even more strongly recommended)
+- Applying Techniques to answer scientific question and data
+- Ideally use a project relevant for your project, thesis, or personal activities
+- or choose from one of ours (will be online, soon)
+- Present approach, analysis, and results
 
 Literature / Useful References
 ========================================================
-### Books
+### General Material
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
@@ -105,6 +122,20 @@ Literature / Useful References
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 - J. Weickert, Visualization and Processing of Tensor Fields
  - [Online](http://books.google.ch/books?id=ScLxPORMob4C&lpg=PA220&ots=mYIeQbaVXP&dq=&pg=PA220#v=onepage&q&f=false)
+ 
+***
+
+### Today
+- Imaging
+ - [ImageJ and SciJava](http://www.slideshare.net/CurtisRueden/imagej-and-the-scijava-software-stack)
+- Cloud Computing
+ - [The Case for Energy-Proportional Computing](http://www-inst.eecs.berkeley.edu/~cs61c/sp14/) _ Luiz André Barroso, Urs Hölzle, IEEE Computer, December 2007_
+ - [Concurrency](www.gotw.ca/publications/concurrency-ddj.htm)
+- Reproducibility
+ - [Trouble at the lab](http://www.economist.com/news/briefing/21588057-scientists-think-science-self-correcting-alarming-degree-it-not-trouble) _Scientists like to think of science as self-correcting. To an alarming degree, it is not_
+ - [Why is reproducible research important?](http://simplystatistics.org/2014/06/06/the-real-reason-reproducible-research-is-important/) _The Real Reason Reproducible Research is Important_
+ - [Science Code Manifesto](http://software-carpentry.org/blog/2011/10/the-science-code-manifestos-five-cs.html)
+
 
 Motivation
 ===
@@ -127,6 +158,21 @@ Motivation (Why does this class exist?)
 - *http://news.cnet.com/8301-1023_3-57498531-93/facebook-processes-more-than-500-tb-of-data-daily/
 - **http://techcrunch.com/2013/01/17/instagram-reports-90m-monthly-active-users-40m-photos-per-day-and-8500-likes-per-second/
 </small>
+
+***
+
+### X-Ray
+ - SRXTM images at (>1000fps) → 8GB/s
+ - cSAXS diffraction patterns at 30GB/s
+ - Nanoscopium Beamline, 10TB/day, 10-500GB file sizes
+ 
+### Optical
+ - Light-sheet microscopy (see talk of Jeremy Freeman) produces images → 500MB/s
+ - High-speed confocal images at (>200fps) → 78Mb/s
+
+### Toys
+ - GoPro 4 Black - 60MB/s (3840 x 2160 x 30fps) for $600
+ - [fps1000](https://www.kickstarter.com/projects/1623255426/fps1000-the-low-cost-high-frame-rate-camera) - 400MB/s(640 x 480 x 840 fps) for $400
 
 
 Motivation (Is it getting better?)
@@ -178,8 +224,6 @@ ggplot(mtd2,aes(x=as.factor(Year),y=value,fill=variable))+
   labs(x="Year",y="Output",fill="")+
   theme_wsj(25)
 ```
-
-
 
 ```{r, results='asis'}
 kable(output.df,digits=0)
@@ -558,7 +602,7 @@ What is an image?
 
 Image Formation
 ===
-![Traditional Imaging](../common/figures/traditional-imaging.png)
+![Traditional Imaging](../common/figures/image-formation.png)
 
 - __Impulses__ Light, X-Rays, Electrons, A sharp point, Magnetic field, Sound wave
 - __Characteristics__ Electron Shell Levels, Electron Density, Phonons energy levels, Electronic, Spins, Molecular mobility
@@ -669,27 +713,137 @@ $$
 \int_{0}^{\infty} {\left[\left([b(x,y,\lambda)*s_{ab}(x,y,\lambda)]\otimes h_{fs}(x,y,\lambda)\right)*h_{op}(x,y,\lambda)\right]*h_{det}(x,y,\lambda)}\mathrm{d}\lambda+d_{dark}(x,y)
 $$
 
-Common Types
+Indirect Imaging (Computational Imaging)
 ===
-Traditional / Direct imaging
-Visible images produced or can be easily made visible
-Indirect / Computational imaging
-Tomography through projections
-Microlenses
-Diffraction patterns
-Surface Topography with cantilevers (AFM)
-Hyperspectral imaging with Raman, IR, CARS
-…..
+
+- Tomography through projections
+- Microlenses (Light-field photography)
+
+<video controls>
+  <source src="../common/movies/lightfield.mp4" type="video/mp4">
+Your browser does not support the video tag.
+</video>
+
+***
+
+- Diffraction patterns
+- Hyperspectral imaging with Raman, IR, CARS
+- Surface Topography with cantilevers (AFM)
+
+![Suface Topography](../common/figures/surface-plot.png)
+
+
+What is an image?
+===
+A very abstract definition: __A pairing between spatial information (position) and some other kind of information (value).__
+
+In most cases this is a 2 dimensional position (x,y coordinates) and a numeric value (intensity)
+
+```{r, results='asis'}
+basic.image<-im.to.df(matrix(runif(5*5,0,10),nrow=5))
+names(basic.image)[3]<-"Intensity"
+kable(head(basic.image))
+```
+
+***
+
+```{r, fig.height=5}
+ggplot(basic.image,aes(x,y))+
+  geom_tile(fill="yellow",color="black")+
+  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
+  theme_bw(20)
+```
+
+```{r, fig.height=5}
+ggplot(basic.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
+  scale_fill_gradientn(colours=rainbow(6))+
+  theme_bw(20)
+```
+
+
+Hyperspectral Imaging
+===
+
+Hyperspectral imaging is a rapidly growing area with the potentially for massive datasets and a severe deficit of usuable tools. 
+
+```{r load_hypermap}
+hyper.path<-qbi.data
+map.img<-t(readJpeg(hyper.path("raw.jpg"))[,,3]+readJpeg(hyper.path("raw.jpg"))[,,1])#,1,rev)
+map.df<-im.to.df(map.img)
+impos<-read.table(hyper.path("impos.csv"),sep=",")
+names(impos)<-c("x","y")
+ggplot(map.df,aes(x,y))+
+  geom_raster(aes(fill=val))+
+  #geom_tile(data=impos,fill="red",alpha=0.5)+
+  geom_point(data=impos,alpha=0.7)+
+  geom_point(data=subset(impos, abs(x-252)<20 & abs(y-293)<20),color="red")+
+  labs(fill="White Field\nIntensity")+
+  xlim(min(impos$x),max(impos$x))+
+  ylim(min(impos$y),max(impos$y))+
+  coord_equal()+
+  theme_bw(20)#,aes(fill="Scanned"))
+```
+
+***
+
+At each point in the image (black dot), instead of having just a single value, there is an entire spectrum. A selected group of these (red dots) are shown to illustrate the variations inside the sample. While certainly much more complicated, this still constitutes and image and requires the same sort of techniques to process correctly.
+
+
+```{r load_hyperdata}
+full.df<-read.csv(hyper.path("full_img.csv"))
+```
+
+```{r}
+full.df<-subset(full.df,wavenum<2500)
+ggplot(
+  subset(full.df, abs(x-252)<20 & abs(y-293)<20),aes(wavenum,val)
+  )+
+  geom_line()+
+  facet_grid(x~y)+
+  labs(x=expression(paste("Wavenumber (",cm^-1,")",sep="")),y="Intensity (au)")+
+  theme_bw(10)
+```
 
 On Science
 ===
-Image processing is a complicated field
+### What is the purpose?
+- Discover and validate new knowledge
+
+### How?
+- Use the scientific method as an approach to convince other people
+- Build on the results of others so we don't start from the beginning
+
+***
+
+### Important Points
+- While qualitative assessment is important, it is difficult to reliably produce and scale
+ - __Quantitative__ analysis is far from perfect, but provides metrics which can be compared and regenerated by anyone
+
+
+<small>Inspired by: [imagej-pres](http://www.slideshare.net/CurtisRueden/imagej-and-the-scijava-software-stack)</small>
+
+Science and Imaging
+===
+
+- Images are great for qualitative analyses since our brains can quickly interpret them without large _programming_ investements. 
+- Proper processing and quantitative analysis is however much more difficult with images. 
+ - If you measure a temperature, quantitative analysis is easy, $50K$. 
+ - If you measure an image it is much more difficult and much more prone to mistakes, subtle setup variations, and confusing analyses
+ 
+ ***
+ 
+ Furthermore in image processing there is a plethora of tools available
+
 - Thousands of algorithms available
 - Thousands of tools
 - Many images require multi-step processing
 - Experimenting is time-consuming
 
-***
+
+Reproducibility
+===
 
 Science demands __repeatability__! and really wants __reproducability__
 - Experimental conditions can change rapidly and are difficult to make consistent
@@ -697,8 +851,13 @@ Science demands __repeatability__! and really wants __reproducability__
 - Terabyte datasets cannot be easily passed around many different groups
 - Privacy concerns can also limit sharing and access to data
 
+***
 
+- _Science_ is already difficult enough
+- Image processing makes it even more complicated
+- Many image processing tasks are multistep, have many parameters, use a variety of tools, and consume a very long time
 
+### How can we keep track of everything for ourselves and others?
 
 Soup Example
 ===
