@@ -14,13 +14,6 @@ require(reshape2) # for the melt function
 require(EBImage) # for more image processing
 used.libraries<-c("ggplot2","lattice","plyr","reshape2","grid","gridExtra","biOps","png","EBImage")
 
-if(exists("echo.val")){ 
-  if(echo.val) { 
-    library(knitcitations)
-    for(clib in used.libraries) citep(citation(clib))
-  }
-}
-
 # ---- common-functions ----
 # start parallel environment
 registerDoMC()
@@ -152,5 +145,8 @@ extents.fun<-function(in.df) {
                                          ymax=c(emax(c.cell$y),c.cell.mean$y)))
   })
 }
+
+common.image.path<-"../common/figures"
+qbi.file<-function(file.name) file.path(common.image.path,file.name)
 
 th_fillmap.fn<-function(max.val) scale_fill_gradientn(colours=rainbow(10),limits=c(0,max.val))

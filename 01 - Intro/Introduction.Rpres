@@ -1,4 +1,4 @@
-```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide', message=F}
 source("../common/slide_setup.R")
 ```
 
@@ -12,16 +12,6 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
-```{r, results='asis'}
-if(echo.val) {
-  cat("
----
-bibliography: /Users/mader/Documents/library.bib
----")
-} 
-```
-
-
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader, Christian Dietz
@@ -30,6 +20,7 @@ width: 1440
 height: 900
 css: ../common/template.css
 transition: rotate
+
 
 
 ETHZ: 227-0966-00L
@@ -42,10 +33,11 @@ Course Outline
 source('../common/schedule.R')
 ```
 
+
 Who are we?
 ===
 - Kevin Mader (mader@biomed.ee.ethz.ch)
- - __Lecturer__ at ETH Zurich
+ - __Lecturer__ at ETH Zurich 
  - __Postdoc__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
  - Spin-off __4Quant__ for Big Data with Images
  
@@ -560,6 +552,135 @@ source('../common/schedule.R')
 
 ### More Detail
 
+On Imaging
+===
+What is an image?
+
+Image Formation
+===
+![Traditional Imaging](../common/figures/traditional-imaging.png)
+
+- __Impulses__ Light, X-Rays, Electrons, A sharp point, Magnetic field, Sound wave
+- __Characteristics__ Electron Shell Levels, Electron Density, Phonons energy levels, Electronic, Spins, Molecular mobility
+- __Response__ Absorption, Reflection, Phase Shift, Scattering, Emission
+- __Detection__ Your eye, Light sensitive film, CCD / CMOS, Scintillator, Transducer
+
+Where do images come from?
+===
+
+```{r, results='asis'}
+in.table<-read.delim(text="Modality\tImpulse	Characteristic	Response	Detection
+Light Microscopy	White Light	Electronic interactions	Absorption	Film, Camera
+Phase Contrast	Coherent light	Electron Density (Index of Refraction)	Phase Shift	Phase stepping, holography, Zernike
+Confocal Microscopy	Laser Light	Electronic Transition in Fluorescence Molecule	Absorption and reemission	Pinhole in focal plane, scanning detection
+X-Ray Radiography	X-Ray light	Photo effect and Compton scattering	Absorption and scattering	Scintillator, microscope, camera
+Ultrasound	High frequency sound waves	Molecular mobility	Reflection and Scattering	Transducer
+MRI	Radio-frequency EM	Unmatched Hydrogen spins	Absorption and reemission	RF coils to detect
+Atomic Force Microscopy	Sharp Point	Surface Contact	Contact, Repulsion	Deflection of a tiny mirror",header=T)
+kable(in.table,caption="Various modalities and their ways of being recorder")
+```
+
+Acquiring Images
+===
+### Traditional / Direct imaging
+- Visible images produced or can be easily made visible
+- Optical imaging, microscopy
+
+```{r, fig.cap=" here the measurement is supposed to be from a typical microscope which blurs, flips and otherwise distorts the image but the original representation is still visible"}
+
+bone.img<-t(readPNG(qbi.file("tiny-bone.png")))
+attr(bone.img,"type")<-"grey"
+meas.img<-im.to.df(flip(gblur(bone.img,3)))
+both.img<-rbind(
+  cbind(meas.img,src="Measured"),
+  cbind(im.to.df(bone.img),src="Reconstructed")
+  )
+ggplot(both.img,aes(x,y,fill=val))+
+  geom_tile()+
+  coord_equal()+
+  facet_wrap(~src)+
+  th_fillmap.fn(2)+
+  guides(fill=F)+
+  labs(x="",y="")+
+  theme_bw(20)+
+  theme(axis.ticks = element_blank(), 
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+***
+
+### Indirect / Computational imaging
+- Recorded information does not resemble object
+- Response must be transformed (usually computationally) to produce an image
+
+```{r, fig.cap="here the measurement is supposed to be from a diffraction style experiment where the data is measured in reciprocal space (fourier) and can be reconstructed to the original shape"}
+##
+fftshift2<-function (y) 
+{
+    nx = nrow(y)
+    nx2 = floor(nx/2)
+    ny = ncol(y)
+    ny2 = floor(ny/2)
+    y[c((nx2+1):nx,1:nx2),c((ny2+1):ny,1:ny2)]
+}
+scat.img<-im.to.df(abs(fftshift2(fft(bone.img))))
+scat.img<-mutate(scat.img,val=log(val)/3.5)
+both.img<-rbind(
+  cbind(scat.img,src="Measured"),
+  cbind(im.to.df(bone.img),src="Reconstructed")
+  )
+ggplot(both.img,aes(x,y,fill=val))+
+  geom_tile()+
+  coord_equal()+
+  facet_wrap(~src)+
+  th_fillmap.fn(2)+
+  guides(fill=F)+
+  labs(x="",y="")+
+  theme_bw(20)+
+  theme(axis.ticks = element_blank(), 
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+Traditional Imaging
+===
+
+![Traditional Imaging](../common/figures/traditional-imaging.png)
+
+
+<small>
+Copyright 2003-2013 J. Konrad in EC520 lecture, reused with permission
+</small>
+
+Traditional Imaging: Model
+===
+
+![Traditional Imaging Model](../common/figures/traditional-image-flow.png)
+
+$$
+\left[\left([b(x,y)*s_{ab}(x,y)]\otimes h_{fs}(x,y)\right)*h_{op}(x,y)\right]*h_{det}(x,y)+d_{dark}(x,y)
+$$
+
+$s_{ab}$ is the only information you are really interested in, so it is important to remove or correct for the other components
+
+For color (non-monochromatic) images the problem becomes even more complicated
+$$
+\int_{0}^{\infty} {\left[\left([b(x,y,\lambda)*s_{ab}(x,y,\lambda)]\otimes h_{fs}(x,y,\lambda)\right)*h_{op}(x,y,\lambda)\right]*h_{det}(x,y,\lambda)}\mathrm{d}\lambda+d_{dark}(x,y)
+$$
+
+Common Types
+===
+Traditional / Direct imaging
+Visible images produced or can be easily made visible
+Indirect / Computational imaging
+Tomography through projections
+Microlenses
+Diffraction patterns
+Surface Topography with cantilevers (AFM)
+Hyperspectral imaging with Raman, IR, CARS
+…..
+
 On Science
 ===
 Image processing is a complicated field
@@ -575,6 +696,9 @@ Science demands __repeatability__! and really wants __reproducability__
 - Animal and human studies are prohibitively time consuming and expensive to reproduce
 - Terabyte datasets cannot be easily passed around many different groups
 - Privacy concerns can also limit sharing and access to data
+
+
+
 
 Soup Example
 ===
@@ -604,7 +728,7 @@ Here it is harder to follow and you need to carefully keep track of what is bein
 5. _then_ Wait until boiling then add $mix_1$
 6. _then_ Wait 5 minutes and add $mix_2$
 
-Soup Workflow
+Using flow charts / workflows
 ===
 
 ### Simple Soup
@@ -682,8 +806,4 @@ V(g)[c(2,9,10)]$color <- "yellow"
 plot(g,layout= layout.sugiyama(g)$layout)
 ```
 
-```{r, results='asis'}
-source("../common/make_bib.R")
-
-```
 

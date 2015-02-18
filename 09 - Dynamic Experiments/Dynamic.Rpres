@@ -20,6 +20,7 @@ width: 1440
 height: 900
 css: ../common/template.css
 transition: rotate
+bibliography: /Users/mader/Documents/library.bib
 
 ETHZ: 227-0966-00L
 # Dynamic Experiments
@@ -1388,5 +1389,4 @@ We can utilize the two point correlation function of the material to characteriz
   <source src="ext-figures/roirdf.avi" type="video/avi">
 Your browser does not support the video tag.
 </video>
-
 
