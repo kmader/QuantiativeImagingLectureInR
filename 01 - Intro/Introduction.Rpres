@@ -12,6 +12,15 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
+```{r, results='asis'}
+if(echo.val) {
+  cat("
+---
+bibliography: /Users/mader/Documents/library.bib
+---")
+} 
+```
+
 
 Quantitative Big Imaging 
 ========================================================
@@ -21,6 +30,7 @@ width: 1440
 height: 900
 css: ../common/template.css
 transition: rotate
+
 
 ETHZ: 227-0966-00L
 # Introductions and Workflows
@@ -198,21 +208,30 @@ kable(mmtb,digits=0)
 How much is a TB, really?
 ===
 
-For reference, looking at one 1000 x 1000 sized RGB image per second, it would take you 
+If __you__ looked at one 1000 x 1000 sized image
+```{r}
+image(255*matrix(runif(1000*1000),nrow=1000))
+```
+every second, it would take you  
 ```{r, results='asis'} 
-time.per.tb<-1e12/(1000*1000*24/8) / (60*60)
-cat(
-  round(time.per.tb)
-  )
+# assuming 16 bit images and a 'metric' terabyte
+time.per.tb<-1e12/(1000*1000*16/8) / (60*60)
+cat("__",
+  round(time.per.tb),
+  "__",sep="")
 ```
 hours to browse through a terabyte of data.
+
+
+***
 
 ```{r, results='asis'}
 names(mmtb)[2]<-"Time to 1 TB"
 mmtb$"Man power to keep up"<-time.per.tb*60/mmtb$"Time to 1 TB"
-mmtb$"Salary Costs"<-mmtb$"Man power to keep up"*150000
-mmtb$"Man power to keep up"<-paste(round(mmtb$"Man power to keep up")," FTE")
-mmtb$"Salary Costs"<-paste(round(mmtb$"Salary Costs"/1000)," kCHF/year")
+mmtb[,2]<-paste(round(mmtb[,2]),"min") # add minutes suffix
+mmtb$"Salary Costs / Month"<-mmtb$"Man power to keep up"*12500
+mmtb$"Man power to keep up"<-paste(round(mmtb$"Man power to keep up")," people")
+mmtb$"Salary Costs / Month"<-paste(round(mmtb$"Salary Costs / Month"/1000)," kCHF")
 kable(mmtb,digits=0)
 ```
 
@@ -283,7 +302,7 @@ Computing has changed: Parallel
 ===
 
 ### Moores Law
-$$ \textrm{Transistors} \propto 2^{t/(\textrm{18 months})} $$
+$$ \textrm{Transistors} \propto 2^{T/(\textrm{18 months})} $$
 
 ```{r invented, fig.cap="Based on trends from Wikipedia and Intel"}
 # stolen from https://gist.github.com/humberto-ortiz/de4b3a621602b78bf90d
@@ -306,15 +325,16 @@ moores.df<-read.csv(text=moores.pt.text)
 names(moores.df)[c(4,5)]<-c("kTransistors","Speed")
 moores.df<-moores.df[,c(2:5)]
 
-
 moores.table<-melt(moores.df,
   id.vars=c("Year","Name"))
 moores.law<-function(year) moores.df[1,"kTransistors"]*2^((year-moores.df[1,"Year"])/1.5)
 moores.table$variable<-gsub("Speed","Speed (MHz)",moores.table$variable)
 ggplot(moores.table,aes(Year,value,color=variable))+
+  geom_line(aes(linetype="Moore's Law",y=moores.law(moores.table$Year)),color="black",
+            size=2,alpha=0.8)+
   geom_jitter()+  
   geom_smooth()+
-  geom_line(aes(linetype="Moore's Law",y=moores.law(moores.table$Year)),color="green",size=2)+
+
   scale_y_log10()+
   labs(color="",y="",linetype="")+
   theme_economist(20)
@@ -344,7 +364,6 @@ localCostGen<-function(compCost,energyPriceStd,compPowerRaw) {
   function(hours)
     compCost+energyPrice*compPowerRaw*hours
 }
-  
 
 make.res.table<-function(cloudCost,localCost,  years) {
 
@@ -428,12 +447,18 @@ localCost<-function(hours)
 <small>http://www-inst.eecs.berkeley.edu/~cs61c/sp14/
 “The Case for Energy-Proportional Computing,” Luiz André Barroso, Urs Hölzle, IEEE Computer, December 2007</small>
 
+![cloud services](../common/figures/cloud-services.png)
+
 ***
 
 - Traditionally the most important performance criteria was time, how fast can it be done
 - With Platform as a service servers can be rented instead of bought
 - Speed is still important but using cloud computing $ / Sample is the real metric
 - In Switzerland a PhD student if 400x as expensive per hour as an Amazon EC2 Machine
+- Many competitors keep prices low and offer flexibility
+
+
+
 
 Cloud Computing Costs
 ===
@@ -657,5 +682,8 @@ V(g)[c(2,9,10)]$color <- "yellow"
 plot(g,layout= layout.sugiyama(g)$layout)
 ```
 
+```{r, results='asis'}
+source("../common/make_bib.R")
 
+```
 

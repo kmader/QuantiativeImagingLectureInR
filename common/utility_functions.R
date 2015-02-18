@@ -12,7 +12,14 @@ require(reshape2) # for the melt function
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("EBImage")
 require(EBImage) # for more image processing
+used.libraries<-c("ggplot2","lattice","plyr","reshape2","grid","gridExtra","biOps","png","EBImage")
 
+if(exists("echo.val")){ 
+  if(echo.val) { 
+    library(knitcitations)
+    for(clib in used.libraries) citep(citation(clib))
+  }
+}
 
 # ---- common-functions ----
 # start parallel environment
