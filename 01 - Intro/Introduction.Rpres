@@ -26,14 +26,6 @@ transition: rotate
 ETHZ: 227-0966-00L
 # Introductions and Workflows
 
-Course Outline
-========================================================
-
-```{r, results='asis'}
-source('../common/schedule.R')
-```
-
-
 Who are we?
 ===
 - Kevin Mader (mader@biomed.ee.ethz.ch)
@@ -99,17 +91,17 @@ Course Expectations
 
 ### Exercises
  - Usually 1 set per lecture
- - Optional (but strongly recommended)
- - Easy - Completing Matlab Scripts (just lecture 2), using GUIs (KNIME and ImageJ)
+ - Optional (but recommended!)
+ - Easy - using GUIs (KNIME and ImageJ) and completing Matlab Scripts (just lecture 2)
  - Advanced - Writing Python, Java, Scala, ...
  
 ***
 
 ### Science Project
-- Optional (but even more strongly recommended)
-- Applying Techniques to answer scientific question and data
-- Ideally use a project relevant for your project, thesis, or personal activities
-- or choose from one of ours (will be online, soon)
+- Optional (but strongly recommended)
+- Applying Techniques to answer scientific question!
+ - Ideally use on a topic relevant for your current project, thesis, or personal activities
+ - or choose from one of ours (will be online, soon)
 - Present approach, analysis, and results
 
 Literature / Useful References
@@ -135,6 +127,7 @@ Literature / Useful References
  - [Trouble at the lab](http://www.economist.com/news/briefing/21588057-scientists-think-science-self-correcting-alarming-degree-it-not-trouble) _Scientists like to think of science as self-correcting. To an alarming degree, it is not_
  - [Why is reproducible research important?](http://simplystatistics.org/2014/06/06/the-real-reason-reproducible-research-is-important/) _The Real Reason Reproducible Research is Important_
  - [Science Code Manifesto](http://software-carpentry.org/blog/2011/10/the-science-code-manifestos-five-cs.html)
+ - [Reproducible Research Class](https://www.coursera.org/course/repdata) @ Johns Hopkins University
 
 
 Motivation
@@ -588,17 +581,246 @@ ggplot(scen.table.sub,aes(100*peak,months,fill=100*utility))+
 
 Course Overview
 ===
-```{r, results='asis'}
+```{r, results='hide'}
 source('../common/schedule.R')
+ksable<-function(in.df,...) {
+  rownames(in.df)<-1:nrow(in.df)
+  kable(in.df,...)
+}
+
+```
+```{r, results='asis'}
+kable(course.desc[c(1:3),])
+
+```
+
+Overview: Segmentation
+===
+```{r, results='asis'}
+ksable(course.desc[c(3:5),])
+```
+
+Overview: Analysis
+===
+```{r, results='asis'}
+ksable(course.desc[c(6:8),])
+```
+
+Overview: Big Imaging
+===
+```{r, results='asis'}
+ksable(course.desc[c(9:11),])
+```
+
+Overview: Wrapping Up
+===
+```{r, results='asis'}
+ksable(course.desc[c(12:13),])
+```
+
+What is an image?
+===
+
+A very abstract definition: __A pairing between spatial information (position) and some other kind of information (value).__
+
+In most cases this is a 2 dimensional position (x,y coordinates) and a numeric value (intensity)
+
+```{r, results='asis'}
+basic.image<-im.to.df(matrix(round(runif(5*5,0,100)),nrow=5))
+names(basic.image)[3]<-"Intensity"
+kable(head(basic.image))
 ```
 
 ***
 
-### More Detail
+This can then be rearranged from a table form into an array form and displayed as we are used to seeing images
 
-On Imaging
+
+```{r, fig.height=5}
+ggplot(basic.image,aes(x,y))+
+  geom_tile(fill="yellow",color="black")+
+  geom_text(aes(label=paste("(",x,",",y,")\n",Intensity)))+
+  coord_equal()+
+  theme_bw(15)
+```
+
+2D Intensity Images
 ===
-What is an image?
+
+The next step is to apply a color map (also called lookup table, LUT) to the image so it is a bit more exciting
+
+```{r, fig.height=5}
+simple.image<-ggplot(basic.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
+  coord_equal()+
+  theme_bw(15)
+
+simple.image
+```
+
+Which can be arbitrarily defined based on how we would like to visualize the information in the image
+
+***
+
+```{r, fig.height=5}
+simple.image+
+  scale_fill_gradientn(colours=rainbow(6))
+```
+
+```{r, fig.height=5}
+simple.image+
+  scale_fill_gradientn(colours=c("black","red","white"),trans="log")
+```
+
+Lookup Tables
+===
+
+Formally a lookup table is a function which 
+$$ f(\textrm{Intensity}) \rightarrow \textrm{Color} $$
+
+
+```{r, fig.height=5}
+ggplot(basic.image,aes(x=Intensity,y=Intensity))+
+  geom_bar(aes(fill=Intensity),stat="identity",position="dodge",color="black",width=2)+
+  scale_fill_gradientn(colours=rainbow(6))+
+  labs(y="Color")+
+  theme_bw(20)+
+  theme(axis.ticks = element_blank(), 
+        axis.text.y = element_blank())
+```
+
+
+These transformations can also be non-linear as is the case of the graph below where the mapping between the intensity and the color is a $\log$ relationship meaning the the difference between the lower values is much clearer than the higher ones
+
+***
+
+
+```{r, fig.height=5}
+ggplot(basic.image,aes(x=Intensity,y=log(Intensity)))+
+  geom_bar(aes(fill=Intensity),stat="identity",position="dodge",color="black",width=2)+
+  scale_fill_gradientn(colours=c("black","red","white"),trans="log")+
+  labs(y="Color")+
+  theme_bw(20)+
+  theme(axis.ticks = element_blank(), 
+        axis.text.y = element_blank())
+```
+
+On a real image the difference is even clearer
+
+```{r, fig.height=5}
+bone.img<-t(readPNG(qbi.file("tiny-bone.png")))
+attr(bone.img,"type")<-"grey"
+meas.img<-im.to.df(flip(gblur(bone.img,3)))
+both.img<-rbind(
+    cbind(mutate(meas.img,val=0.9*val+0.4),src="Normal"),
+    cbind(mutate(meas.img,val=log10(40*val)),src="Log-transformed")
+)
+ggplot(both.img,aes(x,y,fill=val))+
+  geom_tile()+
+  coord_equal()+
+  facet_wrap(~src)+
+  scale_fill_gradientn(colours=c("black","red","white"))+
+  #guides(fill=F)+
+  labs(x="",y="")+
+  theme_bw(20)+
+  theme(axis.ticks = element_blank(), 
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+
+3D Images
+===
+
+For a 3D image, the position or spatial component has a 3rd dimension (z if it is a spatial, or t if it is a movie)
+
+```{r, results='asis'}
+basic.image<-expand.grid(x=1:3,y=1:3,z=1:3)
+basic.image$Intensity<-round(runif(nrow(basic.image),0,100))
+kable(head(basic.image))
+```
+
+***
+
+This can then be rearranged from a table form into an array form and displayed as a series of slices
+
+```{r, fig.height=10}
+ggplot(basic.image,aes(x,y))+
+  geom_tile(aes(fill=Intensity),color="black",alpha=0.8)+
+  geom_text(aes(label=paste("(",x,",",y,",",z,")\n",Intensity)))+
+  facet_grid(z~.)+
+  guides(fill=F)+
+  scale_fill_gradientn(colours=rainbow(4))+
+  theme_bw(15)
+```
+
+
+Multiple Values
+===
+
+In the images thus far, we have had one value per position, but there is no reason there cannot be multiple values. In fact this is what color images are (red, green, and blue) values and even 4 channels with transparency (alpha) as a different. For clarity we call the __dimensionality__ of the image the number of dimensions in the spatial position, and the __depth__ the number in the value. 
+
+```{r, results='asis'}
+basic.image<-expand.grid(x=1:5,y=1:5)
+basic.image$Intensity<-round(runif(nrow(basic.image),0,100))
+basic.image$Transparency<-round(runif(nrow(basic.image),0,100))
+kable(head(basic.image))
+```
+
+***
+
+This can then be rearranged from a table form into an array form and displayed as a series of slices
+
+```{r, fig.height=8}
+ggplot(basic.image,aes(x,y))+
+  geom_tile(aes(fill=Intensity,alpha=Transparency),color="black")+
+  geom_text(aes(
+    label=paste("(",x,",",y,")\n","I:",Intensity,"\nT:",Transparency)
+    ))+
+  scale_fill_gradientn(colours=rainbow(4))+
+  theme_bw(15)
+```
+
+Hyperspectral Imaging
+===
+
+At each point in the image (black dot), instead of having just a single value, there is an entire spectrum. A selected group of these (red dots) are shown to illustrate the variations inside the sample. While certainly much more complicated, this still constitutes and image and requires the same sort of techniques to process correctly.
+
+```{r load_hypermap}
+hyper.path<-qbi.data
+map.img<-t(readJpeg(hyper.path("raw.jpg"))[,,3]+readJpeg(hyper.path("raw.jpg"))[,,1])#,1,rev)
+map.df<-im.to.df(map.img)
+impos<-read.table(hyper.path("impos.csv"),sep=",")
+names(impos)<-c("x","y")
+ggplot(map.df,aes(x,y))+
+  geom_raster(aes(fill=val))+
+  #geom_tile(data=impos,fill="red",alpha=0.5)+
+  geom_point(data=impos,alpha=0.7)+
+  geom_point(data=subset(impos, abs(x-252)<20 & abs(y-293)<20),color="red")+
+  labs(fill="White Field\nIntensity")+
+  xlim(min(impos$x),max(impos$x))+
+  ylim(min(impos$y),max(impos$y))+
+  coord_equal()+
+  theme_bw(20)#,aes(fill="Scanned"))
+```
+
+***
+
+```{r load_hyperdata}
+full.df<-read.csv(hyper.path("full_img.csv"))
+```
+
+```{r}
+full.df<-subset(full.df,wavenum<2500)
+ggplot(
+  subset(full.df, abs(x-252)<20 & abs(y-293)<20),aes(wavenum,val)
+  )+
+  geom_line()+
+  facet_grid(x~y)+
+  labs(x=expression(paste("Wavenumber (",cm^-1,")",sep="")),y="Intensity (au)")+
+  theme_bw(10)
+```
 
 Image Formation
 ===
@@ -733,79 +955,6 @@ Your browser does not support the video tag.
 ![Suface Topography](../common/figures/surface-plot.png)
 
 
-What is an image?
-===
-A very abstract definition: __A pairing between spatial information (position) and some other kind of information (value).__
-
-In most cases this is a 2 dimensional position (x,y coordinates) and a numeric value (intensity)
-
-```{r, results='asis'}
-basic.image<-im.to.df(matrix(runif(5*5,0,10),nrow=5))
-names(basic.image)[3]<-"Intensity"
-kable(head(basic.image))
-```
-
-***
-
-```{r, fig.height=5}
-ggplot(basic.image,aes(x,y))+
-  geom_tile(fill="yellow",color="black")+
-  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
-  theme_bw(20)
-```
-
-```{r, fig.height=5}
-ggplot(basic.image,aes(x,y,fill=Intensity))+
-  geom_tile(color="black")+
-  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
-  scale_fill_gradientn(colours=rainbow(6))+
-  theme_bw(20)
-```
-
-
-Hyperspectral Imaging
-===
-
-Hyperspectral imaging is a rapidly growing area with the potentially for massive datasets and a severe deficit of usuable tools. 
-
-```{r load_hypermap}
-hyper.path<-qbi.data
-map.img<-t(readJpeg(hyper.path("raw.jpg"))[,,3]+readJpeg(hyper.path("raw.jpg"))[,,1])#,1,rev)
-map.df<-im.to.df(map.img)
-impos<-read.table(hyper.path("impos.csv"),sep=",")
-names(impos)<-c("x","y")
-ggplot(map.df,aes(x,y))+
-  geom_raster(aes(fill=val))+
-  #geom_tile(data=impos,fill="red",alpha=0.5)+
-  geom_point(data=impos,alpha=0.7)+
-  geom_point(data=subset(impos, abs(x-252)<20 & abs(y-293)<20),color="red")+
-  labs(fill="White Field\nIntensity")+
-  xlim(min(impos$x),max(impos$x))+
-  ylim(min(impos$y),max(impos$y))+
-  coord_equal()+
-  theme_bw(20)#,aes(fill="Scanned"))
-```
-
-***
-
-At each point in the image (black dot), instead of having just a single value, there is an entire spectrum. A selected group of these (red dots) are shown to illustrate the variations inside the sample. While certainly much more complicated, this still constitutes and image and requires the same sort of techniques to process correctly.
-
-
-```{r load_hyperdata}
-full.df<-read.csv(hyper.path("full_img.csv"))
-```
-
-```{r}
-full.df<-subset(full.df,wavenum<2500)
-ggplot(
-  subset(full.df, abs(x-252)<20 & abs(y-293)<20),aes(wavenum,val)
-  )+
-  geom_line()+
-  facet_grid(x~y)+
-  labs(x=expression(paste("Wavenumber (",cm^-1,")",sep="")),y="Intensity (au)")+
-  theme_bw(10)
-```
-
 On Science
 ===
 ### What is the purpose?
@@ -858,6 +1007,7 @@ Science demands __repeatability__! and really wants __reproducability__
 - Many image processing tasks are multistep, have many parameters, use a variety of tools, and consume a very long time
 
 ### How can we keep track of everything for ourselves and others?
+- We can make the data analysis easy to repeat by an independent 3rd party
 
 Soup Example
 ===
