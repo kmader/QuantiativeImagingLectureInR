@@ -13,7 +13,7 @@ clean:
 	/bin/rm printable.html 
     
 printable:  $(presFile)
-	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Introduction.Rpres',output='printable.html',chooser=c('boot','code'))"
+	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Introduction.Rpres',output='01-Handout.html',chooser=c('boot','code'))"
 
 rocco:  $presFile
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('Introduction.Rpres','rocco.html')"
