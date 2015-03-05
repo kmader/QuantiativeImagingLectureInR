@@ -12,11 +12,10 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
-
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 6 March 2014
+date: 5 March 2015
 width: 1440
 height: 900
 css: ../common/template.css
@@ -68,7 +67,7 @@ Motivation:  Why do we do imaging experiments?
 ![Standard Cell, http://en.wikipedia.org/wiki/File:Average_prokaryote_cell-_en.svg](ext-figures/Average_prokaryote_cell.svg) 
 - What we get from the imaging modality 
 ```{r, fig.cap="Single Cell",fig.height=3}
-dkimg<-jpeg::readJPEG("ext-figures/Average_prokaryote_cell.jpg")
+dkimg<-jpeg::readJPEG("../common/figures/Average_prokaryote_cell.jpg")
 material.img<-1-(dkimg[,,1]+dkimg[,,2]+dkimg[,,3])/3
 # assume the sample is constant 0.1m thick and color indicates alpha
 gray.img<-1.0*exp(-material.img*0.1)
@@ -92,6 +91,7 @@ $$\downarrow$$
 
 What did we want in the first place
 ========================================================
+#incremental: true
 
 ### _Single number_:
 * volume fraction,
@@ -104,7 +104,8 @@ Why do we perform segmentation?
 
 - In model-based analysis every step we peform, simple or complicated is related to an underlying model of the system we are dealing with
 - [_Occam's Razor_](http://en.wikipedia.org/wiki/Occams_Razor) is very important here : The simplest solution is usually the right one
- - Bayesian, neural networks optimized using genetic algorithms with Fuzzy logic has a much larger parameter space to explore, establish sensitivity in, and must perform much better and be tested much more thoroughly than thresholding to be justified
+ - Bayesian, neural networks optimized using genetic algorithms with Fuzzy logic has a much larger parameter space to explore, establish sensitivity in, and must perform much better and be tested much more thoroughly than thresholding to be justified.
+ - We will cover some of these techniques in the next 2 lectures since they can be very powerful particularly with unknown data
 
 Review: Filtering and Image Enhancement
 ========================================================
@@ -129,16 +130,112 @@ What did people used to do?
 ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
   geom_tile()+guides(fill=F)+theme_bw(20)+labs(x="x",y="y")
 ```
+
 ***
+
 - Identify objects by eye
  - Count, describe qualitatively: "many little cilia on surface", "long curly flaggelum", "elongated nuclear structure"
 - Morphometrics
  - Trace the outline of the object (or sub-structures)
- - Can calculate the area by using equal-weight-paper and employing the "[cut-and-weigh](http://ion.chem.usu.edu/~sbialkow/Classes/361/GC/GC.html)" method
+ - Can calculate the area by using equal-weight-paper 
+ - Employing the "[cut-and-weigh](http://ion.chem.usu.edu/~sbialkow/Classes/361/GC/GC.html)" method
 
 
-Quantitative Analysis
-========================================================
+Model-based Analysis
+===
+- Many different imaging modalities ($\mu$CT to MRI to Confocal to Light-field to AFM). 
+- Similar equations
+ - different coefficients, units, and mechanism
+
+$$ S_{measured}(\vec{x}) = F_{system}(S_{stimulus}(\vec{x}),S_{sample}(\vec{x})) $$
+
+### Direct Imaging (simple)
+
+- $F_{system}(a,b) = a*b$
+- $S_{stimulus} = \textrm{Beam}_{profile}$
+- $S_{system} = \alpha(\vec{x})$
+- $\longrightarrow \alpha(\vec{x})=\frac{S_{measured}}{\textrm{Beam}_{profile}}$
+
+***
+
+```{r, fig.cap="Single Cell",fig.height=9}
+grad.beam.profile<-matrix(rep(0.9+0.00*c(1:nrow(gray.img)),ncol(gray.img)),dim(gray.img))
+sample.img<-1.0*exp(-material.img*0.1)
+ccd.img<-sample.img * grad.beam.profile
+model.image<-subset(
+  rbind(
+  cbind(im.to.df(grad.beam.profile),type="Beam"),
+  cbind(im.to.df(sample.img),type="Sample"),
+  cbind(im.to.df(ccd.img),type="Detector")
+  ),
+  x%%3==0 & y%%3==0 # downsample by 9
+  )
+ggplot(model.image,aes(x=y,y=x,fill=val))+
+  geom_tile()+
+  guides(fill=F)+
+  facet_grid(type~.)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+Nonuniform Beam-Profiles
+===
+
+In many setups there is un-even illumination caused by incorrectly adjusted equipment and fluctations in power and setups
+
+```{r, fig.cap="Gradient Profile",fig.height=8}
+grad.beam.profile<-matrix(rep(0.9+0.001*c(1:nrow(gray.img)),ncol(gray.img)),dim(gray.img))
+sample.img<-1.0*exp(-material.img*0.1)
+ccd.img<-sample.img * grad.beam.profile
+model.image<-subset(
+  rbind(
+  cbind(im.to.df(grad.beam.profile),type="Beam"),
+  cbind(im.to.df(sample.img),type="Sample"),
+  cbind(im.to.df(ccd.img),type="Detector")
+  ),
+  x%%3==0 & y%%3==0 # downsample by 9
+  )
+ggplot(model.image,aes(x=y,y=x,fill=val))+
+  geom_tile()+
+  facet_grid(type~.)+
+  coord_equal()+
+  labs(fill="")+
+  scale_fill_gradientn(colours=rainbow(6))+
+  theme_bw(20)
+```
+
+***
+
+Frequently there is a fall-off of the beam away from the center (as is the case of a Gaussian beam which frequently shows up for laser systems). This can make extracting detail away from the center challenging
+
+```{r, fig.cap="Gaussian Beam",fig.height=8}
+beam.profile<-mutate(
+  expand.grid(x=1:nrow(material.img),y=1:ncol(material.img)),
+  val=exp(-((x-mean(x))^2+(y-mean(y))^2)/350^2) # just a simple gaussian profile
+  )
+beam.profile<-df.to.im(beam.profile)
+sample.img<-1.0*exp(-material.img*0.1)
+ccd.img<-sample.img * beam.profile
+model.image<-subset(
+  rbind(
+  cbind(im.to.df(beam.profile),type="Beam"),
+  cbind(im.to.df(sample.img),type="Sample"),
+  cbind(im.to.df(ccd.img),type="Detector")
+  ),
+  x%%3==0 & y%%3==0 # downsample by 9
+  )
+ggplot(model.image,aes(x=y,y=x,fill=val))+
+  geom_tile()+
+  facet_grid(type~.)+
+  coord_equal()+
+  scale_fill_gradientn(colours=rainbow(6))+
+  labs(fill="")+
+  theme_bw(20)
+```
+
+
+Absorption Imaging (X-ray, Ultrasound, Optical)
+===
 - For segmentation this model is: 
  - there are 2 (or more) distinct components that make up the image
  - these components are distinguishable by their values (or vectors, colors, tensors, ...)

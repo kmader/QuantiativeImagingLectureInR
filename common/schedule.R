@@ -2,12 +2,12 @@ schedule.str<-"- 19th February - Introduction and Workflows
 - 26th February - Image Enhancement (A. Kaestner)
 - 5th March - Basic Segmentation, Discrete Binary Structures
 - 12th March - Advanced Segmentation
-- 19th March - Machine Learning in Image Processing (M. Jäggi and A. Lucchi)
+- 19th March - Applying Graphical Models and Machine Learning (A. Lucchi)
 - 26th March - Analyzing Single Objects
 - 2nd April -  Analyzing Complex Objects
 - 16th April -  Spatial Distribution
 - 23rd April -  Statistics and Reproducibility
-- 30th April - Dynamic Experiments
+- 30th April - Dynamic Experiments (K. Mader and A. Patera)
 - 7th May - Scaling Up / Big Data
 - 21th May - Guest Lecture, Applications in Material Science
 - 28th May - Project Presentations"
