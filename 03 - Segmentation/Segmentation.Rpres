@@ -34,13 +34,25 @@ source('../common/schedule.R')
 Lesson Outline
 ========================================================
 - Motivation
-- The old ways
+- Qualitative Approaches
 - Thresholding
  - Other types of images
  - Selecting a good threshold
 - Implementation
 - Morphology
-- Applications
+- Contouring / Mask Creation
+
+***
+
+### Applications
+
+- Simple two-phase materials (bone, cells, etc)
+  - Beyond 1 channel of depth
+- Multiple phase materials
+- Filling holes in materials
+- Segmenting Fossils
+- Attempting to segment the cortex in brain imaging
+![Cortex Image](ext-figures/cortex.png)
 
 
 Literature / Useful References
@@ -55,8 +67,11 @@ Motivation:  Why do we do imaging experiments?
 ========================================================
 #incremental: true
 
-- To get an idea of what is going on
+- Exploratory
+ - To visually, qualitatively examine samples and differences between them
+ - No prior knowledge or expectations
 - To test a hypothesis
+ - Quantitative assessment coupled with statistical analysis
  - Does temperature affect bubble size?
  - Is this gene important for cell shape and thus mechanosensation in bone?
  - Does higher canal volume make bones weaker?
@@ -122,7 +137,7 @@ $$ \textit{Filter} \ast I_{measured}(x,y) = 90\%  I_{real}(x,y) + 10\% \text{Noi
 - What bad filters do
 $$ \textit{Filter} \ast I_{measured}(x,y) = 10\% I_{real}(x,y) + 90\% \text{Noise}(x,y) $$
 
-What did people used to do?
+Qualitative Metrics: What did people used to do?
 ========================================================
 
 - What comes out of our detector / enhancement process 
@@ -143,18 +158,24 @@ ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
 
 Model-based Analysis
 ===
-- Many different imaging modalities ($\mu$CT to MRI to Confocal to Light-field to AFM). 
-- Similar equations
+
+![Traditional Imaging](../common/figures/image-formation.png)
+
+- Many different imaging modalities ( $\mu \textrm{CT}$ to MRI to Confocal to Light-field to AFM). 
+- Similarities in underlying equations
  - different coefficients, units, and mechanism
 
-$$ S_{measured}(\vec{x}) = F_{system}(S_{stimulus}(\vec{x}),S_{sample}(\vec{x})) $$
+$$ I_{measured}(\vec{x}) = F_{system}(I_{stimulus}(\vec{x}),S_{sample}(\vec{x})) $$
 
-### Direct Imaging (simple)
+
+Direct Imaging (simple)
+===
 
 - $F_{system}(a,b) = a*b$
-- $S_{stimulus} = \textrm{Beam}_{profile}$
+- $I_{stimulus} = \textrm{Beam}_{profile}$
 - $S_{system} = \alpha(\vec{x})$
-- $\longrightarrow \alpha(\vec{x})=\frac{S_{measured}}{\textrm{Beam}_{profile}}$
+
+$\longrightarrow \alpha(\vec{x})=\frac{I_{measured}(\vec{x})}{\textrm{Beam}_{profile}(\vec{x})}$
 
 ***
 
@@ -236,14 +257,15 @@ ggplot(model.image,aes(x=y,y=x,fill=val))+
 
 Absorption Imaging (X-ray, Ultrasound, Optical)
 ===
-- For segmentation this model is: 
- - there are 2 (or more) distinct components that make up the image
- - these components are distinguishable by their values (or vectors, colors, tensors, ...)
- - For absorption/attenuation microscopy, [Beer-Lambert Law](http://en.wikipedia.org/wiki/Attenuation_coefficient)
- $$ I_{detector} = I_{source}\exp(-\alpha d) $$
+- For absorption/attenuation imaging $\rightarrow$ [Beer-Lambert Law](http://en.wikipedia.org/wiki/Attenuation_coefficient)
+ $$ I_{detector} = \underbrace{I_{source}}_{I_{stimulus}}\underbrace{\exp(-\alpha d)}_{S_{sample}} $$
  - Different components have a different $\alpha$ based on the strength of the interaction between the light and the chemical / nuclear structure of the material
 $$ I_{sample}(x,y) = I_{source}\exp(-\alpha(x,y) d) $$
 $$ \alpha = f(N,Z,\sigma,\cdots) $$
+
+- For segmentation this model is: 
+ - there are 2 (or more) distinct components that make up the image
+ - these components are distinguishable by their values (or vectors, colors, tensors, ...)
 
 ***
 ```{r, fig.cap="Attenuation to Intensity",fig.height=4}
@@ -319,7 +341,9 @@ ggplot(cross.im,aes(x=col))+geom_histogram(binwidth=bn.wid)+
 
 Applying a threshold to an image
 ========================================================
+
 By examining the image and probability distribution function, we can _deduce_ that the underyling model is a whitish phase that makes up the cross and the darkish background
+
 ```{r, fig.cap="With Threshold Overlay"}
 thresh.val<-0.75
 cross.im$val<-(cross.im$col>=thresh.val)
@@ -335,19 +359,22 @@ ggplot(cross.im,aes(x=x,y=y))+
 ***
 
 Applying the threshold is a deceptively simple operation
+
 $$ I(x,y) = 
 \begin{cases}
 1, & f(x,y)\geq0.5 \\
 0, & f(x,y)<0.5
 \end{cases}$$
+
 ```{r, fig.cap="With Threshold Overlay"}
 ggplot(cbind(cross.im,in.thresh=cross.im$col>=thresh.val),aes(x=col))+
   geom_histogram(binwidth=bn.wid,aes(fill=in.thresh))+
   labs(x="Intensity",color="In Threshold")+scale_fill_manual(values=c("blue","red"))+
   theme_bw(20)
 ```
+
 Various Thresholds
-========================================================
+===
 
 ```{r, fig.cap="Threshold Histograms",fig.height=7}
 thresh.vals<-c(2:10)/10
@@ -701,7 +728,6 @@ for(int x=x_min;x<x_max;x++)
 
 Pitfalls with Segmentation
 ========================================================
-type: alert
 ### Partial Volume Effect
 - The [partial volume effect](http://bit.ly/1mW7kdP) is the name for the effect of discretization on the image into pixels or voxels.
 - Surfaces are complicated, voxels are simple boxes which make poor representations
@@ -731,7 +757,7 @@ part.vol.circ<-function(in.im,bin.count=2) {
                                           nx=c.df$nx[1]),
                 cols=2)
 }
-r.list<-seq(2,9.5,length.out=9)
+r.list<-seq(2,9.5,length.out=6)
 sph.list<-ldply(r.list,function(r) part.vol.circ(make.circle(100,r,10),20))
 ggplot(sph.list,aes(x=x,y=y,fill=val))+
   geom_raster()+facet_wrap(~r)+
@@ -740,10 +766,15 @@ ggplot(sph.list,aes(x=x,y=y,fill=val))+
 
 ***
 
-```{r, fig.cap="Partial Volume Effect",fig.height=3}
-ggplot(sph.list,aes(x=val,color=as.factor(r)))+
-  geom_density(trim=T,adjust=1,kernel="biweight")+#facet_wrap(~r)+#scale_y_log10()+
-  theme_bw(20)+labs(x="Intensity",y="Frequency",color="Radius")
+```{r, fig.cap="Partial Volume Effect",fig.height=3,results='asis'}
+binned.data<-
+  ddply.cutcols(subset(sph.list,val<0.25),.(cut_interval(val,20),r),function(x) data.frame(count=nrow(x)))
+# mutate(binned.data,ncount=ifelse(count>10,10,count)),
+       aes(x=val)
+ggplot(subset(sph.list,val<0.25),aes(y=as.factor(r),x=val))+
+  stat_bin2d(drop=T,bins=5)+
+  scale_fill_gradientn(colours=rainbow(5),trans="sqrt",lim=c(0,25),na.value="purple")+
+  theme_bw(20)+labs(x="Intensity",fill="Frequency",y="Radius")
 ```
 
 - Shown as a function of radius
