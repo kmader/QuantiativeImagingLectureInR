@@ -1,103 +1,37 @@
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
-require(knitr)
-# default settings, # settings for presentation version
-echo.val<-F
-fig.height<-5
-dpi<-150
-cache<-T
-fig.path<-"pres_figures/"
-cache.path<-"pres_cache/"
-
-if(exists("printed")) { # settings for printed version (if the variable exists)
-  echo.val<-T # show code
-  fig.height<-3
-  dpi<-150
-  cache<-T
-  fig.path<-"print_figures/"
-  cache.path<-"print_cache/"
-}
-
-opts_chunk$set(dpi=dpi,cache=cache,
-               cache.path=cache.path,results='hide',
-               warning=F,fig.align='center',echo=echo.val,
-               fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+source("../common/slide_setup.R")
 ```
 
-```{r script_setup,results='hide',cache=FALSE}
-require(ggplot2)
-require(lattice) # nicer scatter plots
-require(plyr)
-require(grid) # contains the arrow function
-require(biOps)
-require(doMC) # for parallel code
-require(EBImage)
-## To install EBImage
-# source("http://bioconductor.org/biocLite.R")
-# biocLite("EBImage")
-
-# start parallel environment
-registerDoMC()
-# functions for converting images back and forth
-im.to.df<-function(in.img) {
-    out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-    out.im$val<-as.vector(in.img)
-    out.im
-}
-df.to.im<-function(in.df,val.col="val",inv=F) {
-  in.vals<-in.df[[val.col]]
-  if(class(in.vals[1])=="logical") in.vals<-as.integer(in.vals*255)
-  if(inv) in.vals<-255-in.vals
-  out.mat<-matrix(in.vals,nrow=length(unique(in.df$x)),byrow=F)
-  attr(out.mat,"type")<-"grey"
-  out.mat
-}
-ddply.cutcols<-function(...,cols=1) {
-  # run standard ddply command
-  cur.table<-ddply(...)
-  cutlabel.fixer<-function(oVal) {
-    sapply(oVal,function(x) {
-      cnv<-as.character(x)
-      mean(as.numeric(strsplit(substr(cnv,2,nchar(cnv)-1),",")[[1]]))
-    })
-  }
-  cutname.fixer<-function(c.str) {
-    s.str<-strsplit(c.str,"(",fixed=T)[[1]]
-    t.str<-strsplit(paste(s.str[c(2:length(s.str))],collapse="("),",")[[1]]
-    paste(t.str[c(1:length(t.str)-1)],collapse=",")
-  }
-  for(i in c(1:cols)) {
-    cur.table[,i]<-cutlabel.fixer(cur.table[,i])
-    names(cur.table)[i]<-cutname.fixer(names(cur.table)[i])
-  }
-  cur.table
-}
+```{r script_setup, cache=F}
+## The basic files and libraries needed for most presentations
+# creates the libraries and common-functions sections
+read_chunk("../common/utility_functions.R")
+```
+```{r libraries}
+```
+```{r common-functions}
 ```
 
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 13 March 2014
+date: 12 March 2015
 width: 1440
 height: 900
+css: ../common/template.css
 transition: rotate
 
+ETHZ: 227-0966-00L
 ## Advanced Segmentation and Labeling
 
 
 Course Outline
 ========================================================
-- 20th February - Introductory Lecture
-- 27th February - Filtering and Image Enhancement (A. Kaestner)
-- 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - **Advanced Segmentation**
-- 20th March - Analyzing Single Objects
-- 27th March -  Analyzing Complex Objects
-- 3rd April -  Spatial Distribution
-- 10th April -  Statistics and Reproducibility
-- 17th April - Dynamic Experiments
-- 8th May - Big Data
-- 15th May - Guest Lecture - Applications in Material Science
-- 22th May - Project Presentations
+
+```{r, results='asis'}
+source('../common/schedule.R')
+```
+
 
 Literature / Useful References
 ========================================================
@@ -119,10 +53,12 @@ Lesson Outline
 
 - Motivation
  - Many Samples
- - Difficult Samples 
+ - Difficult Samples
+ - Training / Learning
 - Thresholding
  - Automated Methods
  - Hysteresis Method
+- Feature Vectors
  - K-Means Clustering
  - Fuzzy Models
  - Probabalistic Models
@@ -147,7 +83,7 @@ Where segmentation fails: Inconsistent Illumination
 With inconsistent or every changing illumination it may not be possible to apply the same threshold to every image. 
 
 ```{r, fig.cap="Cell Colony with Different Illuminations",fig.height=7}
-cellImage<-im.to.df(jpeg::readJPEG("ext-figures/Cell_Colony.jpg"))
+cellImage<-im.to.df(jpeg::readJPEG(qbi.file("Cell_Colony.jpg")))
 max.il<-2.5
 il.vals<-runif(9,min=1/max.il,max=max.il)
 im.vals<-ldply(1:length(il.vals),function(il.idx,th.val=0.75)
@@ -448,6 +384,152 @@ ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=col))+
   geom_polygon(color="black")+coord_fixed(ratio=1)+scale_fill_gradient(low="black",high="white")+guides(fill=F)+
   theme_bw(20)
 ```
+
+Feature Vectors
+===
+
+__A pairing between spatial information (position) and some other kind of information (value).__
+$$ \vec{x} \rightarrow \vec{f} $$
+
+We are used to seeing images in a grid format where the position indicates the row and column in the grid and the intensity (absorption, reflection, tip deflection, etc) is shown as a different color
+
+```{r makebasicimage}
+basic.image<-im.to.df(matrix(round(runif(5*5,0,100)),nrow=5))
+names(basic.image)[3]<-"Intensity"
+```
+
+```{r, fig.height=5}
+simple.image<-ggplot(basic.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  geom_text(aes(label=paste("(",x,",",y,")\n",round(Intensity))))+
+  coord_equal()+
+  theme_bw(15)
+
+simple.image
+```
+
+***
+
+The alternative form for this image is as a list of positions and a corresponding value
+
+$$ \hat{I} = (\vec{x},\vec{f}) $$
+
+```{r, results='asis'}
+kable(head(basic.image))
+```
+
+This representation can be called the __feature vector__ and in this case it only has Intensity
+
+Why Feature Vectors
+===
+
+If we use feature vectors to describe our image, we are no longer to worrying about how the images will be displayed, and can focus on the segmentation/thresholding problem from a classification rather than a image-processing stand point. 
+
+### Example
+So we have an image of a cell and we want to identify the membrane (the ring) from the nucleus (the point in the middle).
+
+```{r makeringimage}
+ring.image<-mutate(
+  expand.grid(x=c(-10:10),y=c(-10:10)),
+  Intensity = abs(cos(sqrt(x^2+y^2)/15*6.28))
+  )
+```
+
+```{r, fig.height=5}
+simple.image<-ggplot(ring.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  coord_equal()+
+  theme_bw(15)
+
+simple.image
+```
+
+***
+
+A simple threshold doesn't work because we identify the point in the middle as well. We could try to use morphological tricks to get rid of the point in the middle, or we could better tune our segmentation to the ring structure.
+
+```{r, fig.height=5}
+ggplot(ring.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  geom_tile(data=subset(ring.image,Intensity>0.75),aes(color="Threshold"),fill="red",alpha=0.5)+
+  coord_equal()+
+  labs(color="")+
+  theme_bw(15)
+```
+
+Adding a new feature
+===
+
+In this case we add a very simple feature to the image, the distance from the center of the image (distance).
+```{r ringadddist}
+ring.image.dist<-ddply(ring.image,.(x,y),function(in.pts) {
+  in.pts$Distance<-with(in.pts,sqrt(
+      min(
+        x^2+y^2
+      )
+    ))
+  in.pts
+})
+```
+
+```{r, fig.height=5}
+ggplot(ring.image.dist,aes(x,y,fill=Distance))+
+  geom_tile(color="black")+
+  coord_equal()+
+  scale_fill_gradientn(colours=rainbow(5))+
+  theme_bw(15)
+```
+
+```{r, results='asis'}
+kable(head(ring.image.dist))
+```
+
+***
+
+We now have a more complicated image, which we can't as easily visualize, but we can incorporate these two pieces of information together. 
+
+```{r}
+ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
+  geom_density2d(aes(color="Density"))+
+  geom_point()+
+  labs(color="")+
+  theme_bw(20)
+```
+
+
+Dual Thresholds
+===
+
+Now instead of trying to find the intensity for the ring, we can combine density and distance to identify it 
+
+$$ iff (\textrm{Distance}>5 & \textrm{Distance}<10 & \textrm{Intensity}>0.5) $$
+
+```{r}
+ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
+  #stat_binhex(bins=5)+
+  geom_density2d(aes(color="Density"))+
+  geom_point()+
+  geom_rect(aes(color="Threshold"),xmin=0.5,xmax=1,ymin=5,ymax=10,fill=NA)+
+  labs(color="")+
+  theme_bw(20)
+```
+
+***
+
+
+```{r, fig.height=5}
+ggplot(ring.image,aes(x,y,fill=Intensity))+
+  geom_tile(color="black")+
+  geom_tile(data=subset(ring.image.dist,Intensity>0.5 & Distance>5 & Distance<10),
+            aes(color="Threshold"),fill="red",alpha=0.5)+
+  coord_equal()+
+  labs(color="")+
+  theme_bw(15)
+```
+
+
+
+
 
 K-Means Clustering / Classification
 ===

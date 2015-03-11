@@ -14,7 +14,7 @@ read_chunk("../common/utility_functions.R")
 
 Quantitative Big Imaging 
 ========================================================
-author: Kevin Mader, Christian Dietz
+author: Kevin Mader
 date: 19 February 2015
 width: 1440
 height: 900
