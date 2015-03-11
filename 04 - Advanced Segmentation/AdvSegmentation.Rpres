@@ -490,23 +490,23 @@ We now have a more complicated image, which we can't as easily visualize, but we
 
 ```{r}
 ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
-  geom_density2d(aes(color="Density"))+
-  geom_point()+
-  labs(color="")+
+  geom_density2d()+
+  geom_point(aes(color=Distance,size=Intensity))+
+  scale_color_gradientn(colours=rainbow(5))+
+  labs(color="Distance",size="Intensity")+
   theme_bw(20)
 ```
 
 
-Dual Thresholds
+Applying two criteria
 ===
 
 Now instead of trying to find the intensity for the ring, we can combine density and distance to identify it 
 
-$$ iff (\textrm{Distance}>5 & \textrm{Distance}<10 & \textrm{Intensity}>0.5) $$
+$$ iff (5<\textrm{Distance}<10 \\ \& 0.5<\textrm{Intensity}>1.0) $$
 
 ```{r}
 ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
-  #stat_binhex(bins=5)+
   geom_density2d(aes(color="Density"))+
   geom_point()+
   geom_rect(aes(color="Threshold"),xmin=0.5,xmax=1,ymin=5,ymax=10,fill=NA)+
@@ -518,24 +518,121 @@ ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
 
 
 ```{r, fig.height=5}
+ring.image.seg<-mutate(ring.image.dist,
+                       Segmented = Intensity>0.5 & Distance>5 & Distance<10)
 ggplot(ring.image,aes(x,y,fill=Intensity))+
   geom_tile(color="black")+
-  geom_tile(data=subset(ring.image.dist,Intensity>0.5 & Distance>5 & Distance<10),
+  geom_tile(data=subset(ring.image.seg,Segmented),
             aes(color="Threshold"),fill="red",alpha=0.5)+
   coord_equal()+
   labs(color="")+
   theme_bw(15)
 ```
 
+Common Features
+===
+The distance while illustrative is not a commonly used features, more common various filters applied to the image
+- Gaussian Filter (information on the values of the surrounding pixels)
+- Sobel / Canny Edge Detection (information on edges in the vicinity)
+- Entroy (information on variability in vicinity)
+```{r makefeaturevecimage}
+ring.array<-df.to.im(ring.image,val.col="Intensity")
+sobel.image<-im.to.df(imgSobel(ring.array*255)/255,out.col="Sobel")
+gauss.image<-im.to.df(imgStdBlur(ring.array*255,10)/220,out.col="Gaussian")
+merged.ring.image<-merge(
+  merge(
+        mutate(ring.image.seg,x=x+11,y=y+11,Distance=Distance/10),
+        sobel.image),
+        gauss.image
+        )
+```
+
+```{r, results='asis'}
+kable(head(merged.ring.image[,c("x","y","Intensity","Sobel","Gaussian")]),digits=2)
+```
+
+***
+
+```{r, fig.height=8}
+mfeat.vec<-melt(merged.ring.image,id.vars=c("x","y","Segmented","Distance"))
+ggplot(mfeat.vec,
+       aes(x=x,y=y,fill=value))+
+  geom_tile(size=1,alpha=0.75)+
+  scale_fill_gradientn(colours=rainbow(5))+
+  coord_equal()+
+  labs(fill="")+
+  facet_grid(variable~.)+
+  theme_bw(20)
+```
+
+Analyzing the feature vector
+===
+
+The distributions of the features appear very different and can thus likely be used for identifying different parts of the images. 
+
+```{r}
+ggplot(mfeat.vec,aes(x=value,color=variable))+
+  geom_density()+
+  scale_y_sqrt()+
+  labs(x="Feature Value",color="Feature")+
+  theme_bw(20)
+```
+
+***
+
+Combine this with our _a priori_ information (called supervised analysis)
+
+```{r, fig.height=3}
+ggplot(mutate(mfeat.vec,Structure=ifelse(Segmented,"Ring","Background")),
+       aes(x=value,color=Structure))+
+  geom_density()+
+  labs(x="Feature Value",color="Structure")+
+  facet_grid(variable~.,scales="free")+
+  theme_bw(12)
+```
+
+```{r fig.height=5}
+splom(merged.ring.image[,c("Intensity","Sobel","Gaussian")],groups=merged.ring.image$Segmented,pch=16)
+```
 
 
-
-
-K-Means Clustering / Classification
+K-Means Clustering / Classification (Unsupervised)
 ===
 - Automatic clustering of multidimensional data into groups based on a distance metric
 - Fast and scalable to petabytes of data (Google, Facebook, Twitter, etc. use it regularly to classify customers, advertisements, queries)
-- Segementation / Thresholding is really a classification task: given the gray value classify the pixel as either bone or air
+- __Input__ = feature vectors, distance metric, number of groups
+- __Output__ = a classification for each feature vector to a group
+
+
+K-Means Example
+===
+
+### Input
+- Feature vectors ($\vec{v}$)
+```{r, results='asis'}
+kable(row.names=T,head(merged.ring.image[,c("x","y","Intensity","Sobel","Gaussian")]),digits=2)
+```
+
+- Distance metric 
+$$ D_{ij}=||\vec{v}_i-\vec{v}_j|| $$
+
+- Group Count ($N=2$)
+
+
+***
+
+$$\downarrow$$
+### Output
+
+- Group 1
+```{r, results='asis'}
+kable(row.names=T,merged.ring.image[c(20:24),c("x","y","Intensity","Sobel","Gaussian")],digits=2)
+```
+
+- Group 2
+```{r, results='asis'}
+kable(row.names=T,merged.ring.image[c(100:104),c("x","y","Intensity","Sobel","Gaussian")],digits=2)
+```
 
 K-Means Algorithm
 ===
@@ -553,51 +650,97 @@ What vector space to we have?
 - Can include intensity or color (K-means can be used as a thresholding technique when you give it image intensity as the vector and tell it to find two or more groups)
 - Can also include orientation, shape, or in extreme cases full spectra (chemically sensitive imaging)
 
-#### Note:  If you look for 2 groups you will almost always find two groups, whether or not they make any sense
+#### Note:  If you look for N groups you will almost always find N groups with K-Means, whether or not they make any sense
 
 K-Means Example
 ===
-```{matlab}
-objColor=kmeans(indata,2);
-```
-```{r, fig.cap="KMeans",fig.height=3}
-grad.im$km.cluster<-kmeans(grad.im,2)$cluster
-# normalize vector
-tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
-                                                     km.cluster=c.data[1,"km.cluster"]
-                                                     )
-               )
+Continuing with our previous image and applying K-means to the Intensity, Sobel and Gaussian channels looking for 2 groups we find
 
-ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
-  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
-  theme_bw(20)
+```{r, fig.cap="KMeans",fig.height=4}
+sring.image<-merged.ring.image[,c("x","y","Intensity","Sobel","Gaussian")]
+sring.image$km.cluster<-kmeans(sring.image[,c("Intensity","Sobel","Gaussian")],2)$cluster
+sring.vec<-melt(sring.image,id.vars=c("x","y","km.cluster"))
+ggplot(sring.vec,
+       aes(x=x,y=y,fill=value,color=as.factor(km.cluster)))+
+  geom_tile(size=0.75,alpha=0.75)+
+  #scale_fill_gradientn(colours=rainbow(5))+
+  coord_equal()+
+  labs(fill="",color="Cluster")+
+  facet_grid(~variable)+
+  theme_bw(10)
 ```
+
 ```{r, fig.cap="Variable distributions",fig.height=4}
-splom(grad.im[,c("x","y","th","aiso")],groups=grad.im$km.cluster,pch=16)
+splom(sring.image[,c("Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
 ```
 
 ***
 
-Or just the orientation
-```{matlab}
-objColor=kmeans(indata(:,[aisoCol,thCol]),2);
-```
-
-```{r, fig.cap="KMeans",fig.height=3}
-grad.im$km.cluster<-kmeans(grad.im[,c("th")],2)$cluster
-# normalize vector
-tens.im<-ddply(grad.im,.(x,y),function(c.data) cbind(deform.ellipse.draw(c.data),
-                                                     km.cluster=c.data[1,"km.cluster"]
-                                                     )
-               )
-ggplot(tens.im,aes(x=x,y=y,group=as.factor(id),fill=as.factor(km.cluster)))+
-  geom_polygon(color="black")+coord_fixed(ratio=1)+labs(fill="KMeans\nCluster")+
-  theme_bw(20)
+Looking for 5 groups
+```{r, fig.cap="KMeans",fig.height=4}
+sring.image$km.cluster<-kmeans(sring.image[,c("Intensity","Sobel","Gaussian")],5)$cluster
+sring.vec<-melt(sring.image,id.vars=c("x","y","km.cluster"))
+ggplot(sring.vec,
+       aes(x=x,y=y,fill=value,color=as.factor(km.cluster)))+
+  geom_tile(size=0.75,alpha=0.75)+
+  #scale_fill_gradientn(colours=rainbow(5))+
+  coord_equal()+
+  labs(fill="",color="Cluster")+
+  facet_grid(~variable)+
+  theme_bw(10)
 ```
 
 ```{r, fig.cap="Variable distributions",fig.height=4}
-splom(grad.im[,c("x","y","th","aiso")],
-      groups=grad.im$km.cluster,pch=16)
+splom(sring.image[,c("Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
+```
+
+Changing the feature vector
+===
+Including the position in the features as well
+
+```{r, fig.cap="KMeans",fig.height=4, fig.width=8}
+sring.image$km.cluster<-kmeans(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],5)$cluster
+sring.vec<-melt(sring.image,id.vars=c("x","y","km.cluster"))
+ggplot(sring.vec,
+       aes(x=x,y=y,fill=value,color=as.factor(km.cluster)))+
+  geom_tile(size=0.75,alpha=0.75)+
+  #scale_fill_gradientn(colours=rainbow(5))+
+  coord_equal()+
+  labs(fill="",color="Cluster")+
+  facet_grid(~variable)+
+  theme_bw(10)
+```
+
+```{r, fig.cap="Variable distributions",fig.height=4}
+splom(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
+```
+
+Rescaling components 
+===
+Since the distance is currently calculated by $||\vec{v}_i-\vec{v}_j||$ and the values for the position is much larger than the values for the _Intensity_, _Sobel_ or _Gaussian_ they need to be rescaled so they all fit on the same axis 
+$$\vec{v} = \left\{\frac{x}{10}, \frac{y}{10}, \textrm{Intensity},\textrm{Sobel},\textrm{Gaussian}\right\}$$
+
+```{r, fig.cap="KMeans",fig.height=6}
+sring.image$km.cluster<-kmeans(mutate(
+  sring.image[,c("x","y","Intensity","Sobel","Gaussian")],
+  x=x/20,y=y/20)
+                               ,5)$cluster
+
+sring.vec<-melt(sring.image,id.vars=c("x","y","km.cluster"))
+ggplot(sring.vec,
+       aes(x=x,y=y,fill=value,color=as.factor(km.cluster)))+
+  geom_tile(size=0.75,alpha=0.75)+
+  #scale_fill_gradientn(colours=rainbow(5))+
+  coord_equal()+
+  labs(fill="",color="Cluster")+
+  facet_grid(~variable)+
+  theme_bw(10)
+```
+
+***
+
+```{r, fig.cap="Variable distributions",fig.height=8}
+splom(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
 ```
 
 Probabilistic Models of Segmentation
@@ -754,270 +897,7 @@ The basic principal behind many of these methods is to optimize a set of user gi
 
 [Active Contours / Snakes](http://link.springer.com/article/10.1007%2FBF00133570#page-1)
 
-Component Labeling
-===
-Once we have a clearly segmented image, it is often helpful to identify the sub-components of this image. The easist method for identifying these subcomponents is called component labeling which again uses the neighborhood $\mathcal{N}$ as a criterion for connectivity, resulting in pixels which are touching being part of the same object.
 
-
-In general, the approach works well since usually when different regions are touching, they are related. It runs into issues when you have multiple regions which agglomerate together, for example a continuous pore network (1 object) or a cluster of touching cells
-
-***
-
-The more general formulation of the problem is for networks (roads, computers, social). Are the points start and finish connected?
-
-```{r, fig.cap="Network connectivity",fig.height=6}
-nx<-5
-ny<-10
-cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
-max.nodes.fn<-function(x,y) 1+round(abs(x+y/2)) # non-homogenous network connectivity
-cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
-    out.df<-data.frame(xv=c(),yv=c())
-    max.nodes<-max.nodes.fn(in.pt[1,"x"],in.pt[1,"y"])
-    for(i in 1:round(runif(1,max=max.nodes))) {
-      c.angle<-runif(1,max=pi)
-      out.df<-rbind(out.df,data.frame(
-        xv=round(cos(c.angle)),
-        yv=round(sin(c.angle))
-        ))
-    }
-    out.df
-  })
-id.fn<-function(x,y) (y*100+x)
-cross.im$id<-with(cross.im,id.fn(x,y))
-
-cross.lab.im<-cbind(cross.im,label="Normal")
-cross.lab.im$label<-as.character(cross.lab.im$label)
-cross.lab.im[which(cross.lab.im$id==cross.lab.im[1,]$id),"label"]<-"Begin"
-cross.lab.im[which(cross.lab.im$id==cross.lab.im[nrow(cross.lab.im),]$id),"label"]<-"End"
-cross.lab.im$label<-as.factor(cross.lab.im$label)
-ggplot(cross.lab.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Goal")
-```
-
-
-Component Labeling: Algorithm
-===
-
-We start out with the network and we _grow_ __Begin__ to its connections. In a [brushfire](http://www.sciencedirect.com/science/article/pii/S0921889007000966)-style algorithm
-
-- For each point $(x,y)\in\{\text{Begin},\text{Pixels Grown}\}$
- - For each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
- - Set the label to _Pixels Grown_
-- Repeat until no more labels have been changed
-
-***
-
-```{r itergrow_code}
-# Network traversing algorithm
-iter.grow<-function(ncross.lab.im,iter.cnt=10,source.phase="Begin",target.phase=NA,grow.into.phase="Normal") {
-  if(is.na(target.phase)) target.phase<-source.phase
-  
-  for(iters in 1:iter.cnt) {
-    begin.pts<-subset(ncross.lab.im,label==source.phase | label==target.phase)
-    begin.ids<-unique(begin.pts$id)
-    begin.pts.term<-subset(ncross.lab.im,id.fn(x+xv,y+yv) %in% begin.ids)  
-    begin.pts<-rbind(begin.pts,
-                     begin.pts.term
-                     )
-    ncross.lab.im$label<-as.character(ncross.lab.im$label)
-    for(i in 1:nrow(begin.pts)) {
-      cur.pt<-begin.pts[i,]
-      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
-      switch.pixs<-which(ncross.lab.im$id==child.id & 
-                            ncross.lab.im$label == grow.into.phase)
-      if(length(switch.pixs)>1) ncross.lab.im[switch.pixs ,"label"]<-target.phase
-      }
-    switch.pixs<-which(ncross.lab.im$id %in% begin.pts.term$id &
-                          ncross.lab.im$label == grow.into.phase)
-    
-    if(length(switch.pixs)>1) ncross.lab.im[switch.pixs,"label"]<-target.phase
-    }
-  ncross.lab.im$label<-as.factor(ncross.lab.im$label)
-  ncross.lab.im
-  }
-```
-
-```{r, fig.cap="One Growth Step",fig.height=6}
-
-ggplot(iter.grow(cross.lab.im,1,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Type",title="1 Iteration from Begin")
-```
-
-
-Component Labeling: Algorithm Steps
-===
-
-```{r, fig.cap="10 Growth Steps",fig.height=4}
-
-ggplot(iter.grow(cross.lab.im,10,target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="10 iterations from Begin")
-```
-
-```{r, fig.cap="10 Growth Steps",fig.height=4}
-
-ggplot(iter.grow(cross.lab.im,10,source.phase="End",target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="10 iterations from End")
-```
-
-
-***
-
-```{r, fig.cap="Diagonal Growth Steps",fig.height=8}
-
-ggplot(iter.grow(cross.lab.im,round(2*sqrt(20^2+10^2)),target.phase="Pixels Grown"),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=label),size=5)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="Diagonal iterations from Begin")
-```
-
-
-Component Labeling: Images Algorithm
-===
-Same as for networks but the neighborhood is defined with a kernel (circular, full, line, etc) and labels must be generate for the image
-
-- Assign a unique label to each point in the image
-$$ L(x,y) = y*\text{Im}_{width}+x $$
-
-- For each point $(x,y)$
- - Check each point $(x^{\prime},y^{\prime})\in\mathcal{N}(x,y)$
- - Set 
- $$L(x,y)=\text{min}(L(x,y),L(x^{\prime},y^{\prime}))$$
- $$L(x^{\prime},y^{\prime})=L(x,y)$$
-- Repeat until no more $L$ values are changed
-
-***
-
-```{r, fig.cap="Image as Network",fig.height=6}
-
-nx<-10
-ny<-5
-ang.vals<-seq(0,pi/2,length.out=2)
-cross.im<-expand.grid(x=c(-nx:nx),y=c(-ny:ny))
-cross.im<-ddply(cross.im,.(x,y), function(in.pt) {
-    out.df<-data.frame(xv=c(),yv=c())
-    
-    for(i in 1:length(ang.vals)) {
-      c.angle<-ang.vals[i]
-      out.df<-rbind(out.df,data.frame(
-        xv=round(cos(c.angle)),
-        yv=round(sin(c.angle))
-        ))
-    }
-    out.df
-  })
-
-id.fn<-function(x,y) (y*100+x)
-cross.im$id<-with(cross.im,id.fn(x,y))
-cross.im<-subset(cross.im,x!=0 & y!=0)
-ggplot(cross.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Goal")
-```
-
-
-Component Labeling: Image Algorithm
-===
-
-```{r im_itergrow_code}
-# Component labeling algorithm
-im.iter.grow<-function(icross.im,iter.cnt=10) {
-  ncross.im<-icross.im
-  for(iters in 1:iter.cnt) {
-    
-    begin.pts<-ncross.im
-    for(i in 1:nrow(begin.pts)) {
-      cur.pt<-begin.pts[i,]
-      child.id<-id.fn(cur.pt$x+cur.pt$xv,cur.pt$y+cur.pt$yv)
-      # fill into lower points
-      switch.pixs<-which(icross.im$id==child.id & 
-                            icross.im$id > cur.pt$id)
-      if(length(switch.pixs)>1) ncross.im[switch.pixs ,"id"]<-cur.pt$id
-      }
-    icross.im<-ncross.im
-    }
-  ncross.im
-  }
-```
-
-```{r, fig.cap="One Growth Step",fig.height=4}
-ggplot(im.iter.grow(cross.im,2),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="2 Iterations")
-```
-
-```{r, fig.cap="One Growth Step",fig.height=4}
-ggplot(im.iter.grow(cross.im,3),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=3)+geom_segment()+
-  coord_equal()+
-  theme_bw(20)+labs(color="Type",title="3 Iterations")
-```
-
-***
-
-The image very quickly converges and after 4 iterations the task is complete. For larger more complicated images with thousands of components this task can take longer, but there exist much more efficient [algorithms](https://www.cs.princeton.edu/~rs/AlgsDS07/01UnionFind.pdf) for labeling components which alleviate this issue.
-
-```{r, fig.cap="One Growth Step",fig.height=6}
-ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
-  geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+coord_equal()+
-  theme_bw(20)+labs(color="Type",title="4 iterations")
-```
-
-Component Labeling: Image Algorithm
-===
-
-In reality the component labeling algorithms are usually implemented, but it is important to understand how they work and their relationship with neighborhood in order to interpret the results correctly.
-
-```{matlab}
-labImg=bwlabel(imName)
-```
-
-Component Labeling: Image Algorithm
-===
-
-
-```{r, fig.cap="Cell Colony",fig.height=4}
-cell.im<-jpeg::readJPEG("ext-figures/Cell_Colony.jpg")
-cell.lab.df<-im.to.df(bwlabel(cell.im<.6))
-ggplot(subset(cell.lab.df,val>0),aes(x=x,y=y,fill=val))+
-  geom_raster()+
-  labs(fill="Label",title="Labeled Image")+
-  theme_bw(20)+coord_equal()
-```
-
-```{r, fig.cap="Cell Colony",fig.height=4}
-size.histogram<-ddply(subset(cell.lab.df,val>0),.(val),function(c.label) data.frame(count=nrow(c.label)))
-keep.vals<-subset(size.histogram,count>25)
-ggplot(size.histogram,aes(x=count))+
-  geom_density(aes(color="Entire Labeled Images"))+
-  geom_density(data=keep.vals,aes(color="Larger Cells"))+
-  labs(x="Cell Volume",y="Frequency of Cells",title="Size Distribution",color="Distribution")+
-  scale_y_sqrt()+
-  theme_bw(20)
-```
-
-***
-
-```{r, fig.cap="Cell Colony",fig.height=4}
-
-ggplot(subset(cell.lab.df,val %in% keep.vals$val),aes(x=x,y=y,fill=as.factor(val)))+
-  geom_raster()+
-  labs(fill="Intensity",title="Larger Cells (>25px)")+
-  theme_bw(20)+coord_equal()
-```
-
-
-Component Labeling: Beyond
-===
-
-
-Now all the voxels which are connected have the same label. We can then perform simple metrics like
-- counting the number of voxels in each label to estimate volume.
-- looking at the change in volume during erosion or dilation to estimate surface area
-
-Next week we will cover how more detailed analysis can be performed on these data.
 
 
 
