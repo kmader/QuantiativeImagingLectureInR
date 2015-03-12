@@ -22,7 +22,7 @@ css: ../common/template.css
 transition: rotate
 
 ETHZ: 227-0966-00L
-## Advanced Segmentation and Labeling
+## Advanced Segmentation 
 
 
 Course Outline
@@ -41,9 +41,17 @@ Literature / Useful References
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+ 
+### Advanced Segmentation
+
 - [Markov Random Fields for Image Processing Lecture](https://www.youtube.com/watch?v=vRN_j2j-CC4)
 - [Markov Random Fields Chapter](http://www.cise.ufl.edu/~anand/pdf/bookchap.pdf)
 - [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing)
+- [Superpixels](http://ivrg.epfl.ch/research/superpixels)
+
+***
+
+### Contouring
 - [Active Contours / Snakes](http://link.springer.com/article/10.1007%2FBF00133570#page-1)
 
 
@@ -60,22 +68,28 @@ Lesson Outline
  - Hysteresis Method
 - Feature Vectors
  - K-Means Clustering
- - Fuzzy Models
+ - Superpixels
  - Probabalistic Models
 - Working with Segmented Images
  - Contouring
+- Beyond
+ - Fuzzy Models
  - Component Labeling
 
 
-What we covered last time
+Previously on QBI
 ========================================================
 
+- Image acquisition and representations
+- Enhancement and noise reduction
 - Understanding models and interpreting histograms
 - Choosing a threshold
  - Examining more complicated, multivariate data sets
 - Improving segementation with morphological operations
  - Filling holes
-- Partial Volume Effect Caution
+ - Connecting objects
+ - Removing Noise
+- Partial Volume Effect
 
 Where segmentation fails: Inconsistent Illumination
 ========================================================
@@ -179,6 +193,55 @@ These look at the statistics of the thresheld image themselves (like entropy) to
 ### Results-based Methods
 These search for a threshold which delivers the desired results in the final objects. For example if you know you have an image of cells and each cell is between 200-10000 pixels the algorithm runs thresholds until the objects are of the desired size
 - More specific requirements need to be implemented manually
+
+Histogram Methods
+===
+
+Taking a typical image of a bone slice, we can examine the variations in calcification density in the image
+
+```{r, fig.cap="Bone Slice",fig.height=5}
+bone.df<-im.to.df(png::readPNG("ext-figures/bonegfiltslice.png"))
+ggplot(bone.df,aes(x=x,y=y))+
+  geom_raster(aes(fill=val))+
+  labs(fill="Calcification Dens",y="y",x="x")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+We can see in the histogram that there are two peaks, one at 0 (no absorption / air) and one at 0.5 (stronger absorption / bone)
+
+```{r, fig.cap="Bone Slice Histogram ",fig.height=5}
+bhist<-ggplot(bone.df,aes(x=val))+
+  geom_histogram(binwidth=0.05)+
+  labs(x="Calcification Density")+
+  theme_bw(20)
+bhist
+```
+
+Histogram Methods
+===
+```{r, fig.cap="Bone Slice Histogram ",fig.height=5}
+bhist
+```
+
+***
+
+### Intermodes
+ - Take the point between the two modes (peaks) in the histogram
+ 
+### Otsu
+
+Search and minimize intra-class (within) variance
+$$\sigma^2_w(t)=\omega_{bg}(t)\sigma^2_{bg}(t)+\omega_{fg}(t)\sigma^2_{fg}(t)$$
+
+### Isodata
+
+- $\textrm{thresh}= \max(img)+\min(img)/2$
+- _while_ the thresh is changing
+ - $bg = img<\textrm{thresh}, obj = img>\textrm{thresh}$
+ - $\textrm{thresh} = (\textrm{avg}(bg) + \textrm{avg}(obj))/2$
 
 
 Fiji -> Adjust -> Auto Threshold
@@ -698,7 +761,7 @@ Changing the feature vector
 ===
 Including the position in the features as well
 
-```{r, fig.cap="KMeans",fig.height=4, fig.width=8}
+```{r, fig.cap="KMeans",fig.height=4, fig.height=9}
 sring.image$km.cluster<-kmeans(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],5)$cluster
 sring.vec<-melt(sring.image,id.vars=c("x","y","km.cluster"))
 ggplot(sring.vec,
@@ -707,11 +770,13 @@ ggplot(sring.vec,
   #scale_fill_gradientn(colours=rainbow(5))+
   coord_equal()+
   labs(fill="",color="Cluster")+
-  facet_grid(~variable)+
+  facet_grid(variable~.)+
   theme_bw(10)
 ```
 
-```{r, fig.cap="Variable distributions",fig.height=4}
+***
+
+```{r, fig.cap="Variable distributions",fig.height=8}
 splom(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
 ```
 
@@ -743,6 +808,141 @@ ggplot(sring.vec,
 splom(sring.image[,c("x","y","Intensity","Sobel","Gaussian")],groups=sring.image$km.cluster,pch=16)
 ```
 
+Super-pixels
+===
+An approach for simplifying images by performing a clustering and forming super-pixels from groups of similar pixels.
+
+```{r}
+shale.array<-readTiff(qbi.file("shale-slice.tiff"))
+shale.image<-im.to.df(shale.array[,,1],out.col="Intensity")
+ggplot(shale.image,aes(x,y,fill=Intensity))+
+  geom_tile()+
+  coord_equal()+
+  labs(fill="")+
+  theme_bw(10)
+  
+```
+
+***
+
+```{r}
+pos.scale<-5
+shale.kmeans.data<-mutate(
+  shale.image[,c("x","y","Intensity")],
+  x=x/pos.scale,y=y/pos.scale)
+# evenly spaced grid
+grid.size<-40
+grid.center<-round(grid.size/2)
+shale.superpixels.centers<-subset(shale.kmeans.data, 
+                                  x%%grid.size==grid.center & x%%grid.size==grid.center)
+# not the real super pixels algorithm but close enough, see paper and websites
+# http://www.kev-smith.com/papers/SLIC_Superpixels.pdf
+# http://ivrg.epfl.ch/research/superpixels
+shale.kmeans<-kmeans(shale.kmeans.data,
+                               centers=shale.superpixels.centers,
+                               iter.max=50
+  )
+shale.image$km.cluster<-shale.kmeans$cluster
+```
+
+
+```{r, fig.cap="KMeans",fig.height=6}
+ggplot(shale.image,
+       aes(x=x,y=y,alpha=Intensity))+
+  geom_tile(aes(fill=as.factor(km.cluster)),size=0)+#,alpha=0.75)+
+  scale_alpha_continuous(range=c(0.5,1))+
+  guides(fill=F)+
+  coord_equal()+
+  labs(fill="")+
+  theme_bw(10)
+
+```
+
+Why use superpixels
+===
+
+Drastically reduced data size, serves as an initial segmentation showing spatially meaningful groups
+```{r}
+
+shale.centers<-mutate(as.data.frame(shale.kmeans$centers),x=pos.scale*x,y=pos.scale*y)
+ggplot(shale.centers,
+       aes(x,y,color=Intensity))+
+  geom_point(size=3)+
+  scale_color_gradientn(colours=rainbow(5))+
+  labs(x="X",y="Y")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=4}
+
+ggplot(shale.centers,
+       aes(x=Intensity))+
+  geom_vline(aes(xintercept=Intensity),alpha=0.02)+
+  geom_density(aes(y=..count..))+
+  geom_vline(aes(color="Threshold"),color="red",xintercept=c(130,180))+
+  labs(y="Number of Superpixels")+
+  theme_bw(20)
+```
+
+Segment the superpixels and apply them to the whole image (only a fraction of the data and much smaller datasets)
+
+```{r}
+
+shale.centers<-mutate(shale.centers,
+                      cluster=1:nrow(shale.centers),
+                      group=as.factor(ifelse(Intensity<130,"Dark",
+                                   ifelse(Intensity<180,"Medium","Light")))
+                      )
+grp.image<-merge(shale.image,shale.centers[,c("cluster","group")],by.x="km.cluster",by.y="cluster")
+```
+
+```{r, fig.height=4}
+
+ggplot(grp.image,
+       aes(x=x,y=y,alpha=Intensity))+
+  geom_tile(aes(fill=as.factor(group)),size=0)+#,alpha=0.75)+
+  scale_alpha_continuous(range=c(0.5,1))+
+  coord_equal()+
+  labs(fill="")+
+  theme_bw(10)
+```
+
+Superpixels vs Standard Segmentation
+===
+
+### Superpixels (0.06% of the original)
+
+```{r, fig.height=9}
+ggplot(grp.image,
+       aes(x=x,y=y,alpha=Intensity))+
+  geom_tile(aes(fill=as.factor(group)),size=0)+#,alpha=0.75)+
+  scale_alpha_continuous(range=c(0.5,1))+
+  coord_equal()+
+  labs(fill="")+
+  theme_bw(10)
+
+```
+
+***
+
+### Original
+
+```{r, fig.height=9}
+
+ggplot(
+  mutate(shale.image,group=as.factor(ifelse(Intensity<130,"Dark",
+                                   ifelse(Intensity<180,"Medium","Light")))),
+       aes(x=x,y=y,alpha=Intensity))+
+  geom_tile(aes(fill=as.factor(group)),size=0)+#,alpha=0.75)+
+  scale_alpha_continuous(range=c(0.5,1))+
+  coord_equal()+
+  labs(fill="")+
+  theme_bw(10)
+```
+
 Probabilistic Models of Segmentation
 ===
 A more general approach is to use a probabilistic model to segmentation. We start with our image $I(\vec{x}) \forall \vec{x}\in \mathbb{R}^N$ and we classify it into two phases $\alpha$ and $\beta$
@@ -753,34 +953,7 @@ $$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(I(\vec{x}) | \alph
 - $P(I(\vec{x}) | \alpha)$ probability adjustment based on knowing the value of $I$ at the given point (standard threshold)
 - $P(f(\vec{x^{\prime}}) |  \alpha)$ are the collective probability adjustments based on knowing the value of a pixels neighbors (very simple version of [Markov Random Field](http://en.wikipedia.org/wiki/Markov_random_field) approaches)
 
-Fuzzy Classification
-===
-Fuzzy classification based on [Fuzzy logic](http://en.wikipedia.org/wiki/Fuzzy_logic) and [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing) and is a general catagory for multi-value logic instead of simply __true__ and __false__ and can be used to build __IF__ and __THEN__ statements from our probabilistic models.
 
-### Instead of
-
-$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(I(\vec{x}) | \alpha)+$$
-$$P(\sum_{x^{\prime} \in \mathcal{N}} I(\vec{x^{\prime}}) |  \alpha)$$
-
-***
-
-### Clear simple rules
-which encompass aspects of filtering, thresholding, and morphological operations
-- __IF__ the intensity if dark ($<100$)
- - __AND__ a majority of the neighborhood ($\mathcal{N}$) values are dark ($<100$)
-- __THEN__ it is a cell
-
-
-![Cell Colony](ext-figures/Cell_Colony.jpg)
-
-
-Beyond
-===
-- A multitude of other techniques exist for classifying groups and courses in Data Science and Artificial Intelligence go into much greater details. 
-- These techniques are generally underused because they are complicated to explain and robustly test and can arouse suspicion from reviewers. 
- - Because of their added complexity it is easier to manipulate these methods to get desired results from almost any dataset
- - But if the approach is based on a physical model of the images and the underyling system it is acceptable
-- Additionally they usually require some degree of implementation (coding).
 
 Contouring
 ===
@@ -796,9 +969,84 @@ Expanding on the hole filling issues examined before, a general problem in imagi
 
 Convex Hull Approach
 ===
-takes all of the points in a given slice or volume and finds the smallest convex 3D volume which encloses all of those points.
+takes all of the points in a given slice or volume and finds the smallest convex 2D area or 3D volume (respectively) which encloses all of those points.
+
+```{r}
+test.im<-function(n) mutate(
+  data.frame(th=c(0:200)/200.0*2*pi),
+  r=cos(th*n),
+  x=r*cos(th),
+  y=r*sin(th)
+  )
+pthull<-function(pts,x.col="x",y.col="y") {
+  pts.hull<-chull(pts[,c(x.col,y.col)])
+  pts[c(pts.hull,pts.hull[1]),c(x.col,y.col)]
+}
+test.imgs<-ldply(c(1:6),function(n) {
+  tdata<-test.im(n)[,c("x","y")]
+  cbind(rbind(cbind(tdata,src="pts"),
+        cbind(pthull(tdata),src="hull")),n=n)
+})
+
+ggplot(subset(test.imgs,src=="pts"),aes(x,y))+
+  geom_polygon(data=subset(test.imgs,src=="hull"),aes(fill="convex\nhull"),alpha=0.5)+
+  geom_point()+
+  labs(fill="")+
+  facet_wrap(~n)+
+  theme_bw(20)
+```
+
+***
+
+Depending on the type of sample the convex hull can make sense for filling in the gaps and defining the boundaries for a sample.
+```{r}
+test.img<-subset(test.imgs,n==2 & src=="pts")[,c("x","y")]
+ggplot(test.img,aes(x,y))+
+  geom_polygon(data=pthull(test.img),aes(fill="convex\nhull"),alpha=0.5)+
+  geom_point()+
+  labs(fill="")+
+  theme_bw(20)
+```
+
+The critical short coming is it is very sensitive to single outlier points. 
+ 
+```{r}
+test.img<-rbind(subset(test.imgs,n==2 & src=="pts")[,c("x","y")],data.frame(x=-1,y=-1))
+ggplot(test.img,aes(x,y))+
+  geom_polygon(data=pthull(test.img),aes(fill="convex\nhull"),alpha=0.5)+
+  geom_point()+
+  labs(fill="")+
+  theme_bw(20)
+```
+
+Convex Hull Example
+===
+
+
+The convex hull very closely matches the area we would define as 'bone' without requiring any parameter adjustment, resolution specific adjustments, or extensive image-processing, for such a sample a convex hull is usually sufficient.
+
 ```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
-cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
+cortbone.im<-imagedata(t(png::readPNG(qbi.file("bone-section.png"))[,,1]),"grey")
+cortbone.df<-im.to.df(cortbone.im)
+# calculate convex hull
+cortbone.chull<-chull(subset(cortbone.df,val>0.5)[,c("x","y")])
+cortbone.chull<-c(cortbone.chull,cortbone.chull[1])
+cortbone.chull<-subset(cortbone.df,val>0.5)[cortbone.chull,c("x","y")]
+ggplot(subset(cortbone.df,val>0.5),aes(x=x,y=518-y))+
+  geom_polygon(data=cortbone.chull,aes(fill="convex hull"),alpha=0.5)+
+  geom_raster(aes(fill="original"),alpha=0.8)+
+  labs(fill="Image",y="y",x="x",title="Convex Hull Creation")+
+  coord_equal()+
+  theme_bw(20)
+```
+
+***
+
+
+Here is an example of the convex hull applied to a region of a cortical bone sample. The green shows the bone and the red shows the convex hull. Compared to a visual inspection, the convex hull overestimates the bone area as we probably would not associate the region where the bone curves to the right with 'bone area'
+
+```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
+cortbone.im<-imagedata(t(png::readPNG(qbi.file("bone.png"))),"grey")
 cortbone.df<-im.to.df(cortbone.im)
 # calculate convex hull
 cortbone.chull<-chull(subset(cortbone.df,val<1)[,c("x","y")])
@@ -811,6 +1059,10 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
   coord_equal()+
   theme_bw(20)
 ```
+
+***
+
+
 
 Rubber Band
 ===
@@ -837,6 +1089,7 @@ Useful for a variety of samples (needn't be radially symmetric) and offers more 
 1. Calculates a piecewise linear fit $r=f(\theta)$
 
 ```{r, fig.cap="First Rubber Bands",fig.height=5}
+
 ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
   geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),9),aes(fill="rubber band   9pts"),alpha=0.5)+
   geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),36),aes(fill="rubber band  36pts"),alpha=0.5)+
@@ -849,6 +1102,7 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
 ***
 
 ```{r, fig.cap="Better Rubber Bands",fig.height=4}
+
 ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
   geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),90),aes(fill="rubber band  90pts"),alpha=0.5)+
   geom_polygon(data=rubber.band.data(subset(cortbone.df,val<1),180),aes(fill="rubber band 180pts"),alpha=0.5)+
@@ -888,7 +1142,7 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
   theme_bw(20)
 ```
 
-Contouring: Guided Methods
+Contouring: Manual - Guided Methods
 ===
 
 Many forms of guided methods exist, the most popular is known simply as the _Magnetic Lasso_ in Adobe Photoshop ([video](http://people.ee.ethz.ch/~maderk/videos/MagneticLasso.swf)).
@@ -899,6 +1153,34 @@ The basic principal behind many of these methods is to optimize a set of user gi
 
 
 
+
+Beyond
+===
+- A multitude of other techniques exist for classifying groups and courses in Data Science and Artificial Intelligence go into much greater details. 
+- These techniques are generally underused because they are complicated to explain and robustly test and can arouse suspicion from reviewers. 
+ - Because of their added complexity it is easier to manipulate these methods to get desired results from almost any dataset
+ - But if the approach is based on a physical model of the images and the underyling system it is acceptable
+- Additionally they usually require some degree of implementation (coding).
+
+Fuzzy Classification
+===
+Fuzzy classification based on [Fuzzy logic](http://en.wikipedia.org/wiki/Fuzzy_logic) and [Fuzzy set theory](http://www.academia.edu/4978200/Applications_of_Fuzzy_Set_Theory_and_Fuzzy_Logic_in_Image_Processing) and is a general catagory for multi-value logic instead of simply __true__ and __false__ and can be used to build __IF__ and __THEN__ statements from our probabilistic models.
+
+### Instead of
+
+$$P(\{\vec{x} , I(\vec{x})\}  | \alpha) \propto P(\alpha) + P(I(\vec{x}) | \alpha)+$$
+$$P(\sum_{x^{\prime} \in \mathcal{N}} I(\vec{x^{\prime}}) |  \alpha)$$
+
+***
+
+### Clear simple rules
+which encompass aspects of filtering, thresholding, and morphological operations
+- __IF__ the intensity if dark ($<100$)
+ - __AND__ a majority of the neighborhood ($\mathcal{N}$) values are dark ($<100$)
+- __THEN__ it is a cell
+
+
+![Cell Colony](ext-figures/Cell_Colony.jpg)
 
 
 
