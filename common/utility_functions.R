@@ -18,9 +18,9 @@ used.libraries<-c("ggplot2","lattice","plyr","reshape2","grid","gridExtra","biOp
 # start parallel environment
 registerDoMC()
 # functions for converting images back and forth
-im.to.df<-function(in.img) {
+im.to.df<-function(in.img,out.col="val") {
   out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))
-  out.im$val<-as.vector(in.img)
+  out.im[,out.col]<-as.vector(in.img)
   out.im
 }
 df.to.im<-function(in.df,val.col="val",inv=F) {
