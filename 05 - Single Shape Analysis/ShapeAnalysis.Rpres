@@ -124,18 +124,13 @@ How do we quantify this?
 - __False Positive__ values outside the ring that are classified as _Foreground_
 - __False Negative__ values in the ring that are classified as _Background_
 
-
-
-Recall and Precision
+Ring Threshold Example
 ===
-
-- __Recall__ (sensitivity)= $TP/(TP+FN)$
-- __Precision__ = $TP/(TP+FP)$
 
 Try a number of different threshold values on the image and compare them to the original classification
 
 ```{r}
-mk.th.img<-function(in.img,steps) ldply(seq(0.3,0.7,length.out=steps),function(c.thresh) {
+mk.th.img<-function(in.img,steps,smin=0.3,smax=0.7) ldply(seq(smin,smax,length.out=steps),function(c.thresh) {
   mutate(in.img,
          Segmented = ifelse(
                          Intensity>c.thresh*255,
@@ -155,11 +150,10 @@ ggplot(mk.th.img(ring.img,9),aes(x,y,fill=Segmented))+
 
 ***
 
-### ROC Curve 
-Reciever Operating Characteristic (first developed for WW2 soldiers detecting objects in battlefields using radar)
+
 ```{r, results='asis'}
-mk.stat.table<-function(in.img,steps) 
-  ddply(mk.th.img(in.img,steps),.(Thresh),function(c.img) {
+mk.stat.table<-function(in.img,steps,smin=0.3,smax=0.7) 
+  ddply(mk.th.img(in.img,steps,smin,smax),.(Thresh),function(c.img) {
   in.df<-merge(c.img[,c("x","y","Segmented")],
                ring.image.seg[,c("x","y","Segmented")],
                by=c("x","y"),suffixes=c("C","GT"))
@@ -170,11 +164,25 @@ mk.stat.table<-function(in.img,steps)
              FN=nrow(subset(in.df,SegmentedGT=="Background" & !Match))
              )
 })
-kable(mk.stat.table(ring.img,6))
+tp.table<-mk.stat.table(ring.img,6,smin=0,smax=1)
+kable(tp.table)
 ```
+
+```{r, fig.height=5}
+ggplot(melt(tp.table,id.vars=c("Thresh")),
+       aes(x=Thresh*100,y=100*value/200,color=variable))+
+  geom_point()+
+  geom_path()+
+  labs(color="",y="Percent (%)",x="Threshold Value (%)")+
+  theme_bw(20)
+```
+
 
 Apply Precision and Recall
 ===
+
+- __Recall__ (sensitivity)= $TP/(TP+FN)$
+- __Precision__ = $TP/(TP+FP)$
 
 ```{r, results='asis'}
 prec.table<-mutate(mk.stat.table(ring.img,6),
@@ -185,8 +193,8 @@ kable(prec.table)
 ```
 
 ***
-
-The ideal is the top-right (identify everything and miss nothing)
+### ROC Curve 
+Reciever Operating Characteristic (first developed for WW2 soldiers detecting objects in battlefields using radar). The ideal is the top-right (identify everything and miss nothing)
 ```{r}
 prec.table<-mutate(mk.stat.table(ring.img,100),
                    Precision=TP/(TP+FN),
@@ -197,7 +205,7 @@ ggplot(prec.table,aes(x=Recall,y=Precision))+
   geom_point(data=data.frame(Recall=1,Precision=1),
              aes(shape="Ideal"),size=5,color="red")+
   geom_path()+
-  coord_equal()+
+  #coord_equal()+
   scale_color_gradientn(colours=rainbow(6))+
   labs(shape="")+
   theme_bw(20)
@@ -229,10 +237,11 @@ simple.image
 Different approaches can be compared by area under the curve
 
 ```{r}
+stab<-function(img) mk.stat.table(img,100,smin=0.05,smax=0.95)
 all.table<-rbind(
-  cbind(mk.stat.table(ring.img,100), name="Normal"),
-  cbind(mk.stat.table(blur.img,100), name="Gaussian"),
-  cbind(mk.stat.table(med.img,100), name="Median")
+  cbind(stab(ring.img), name="Normal"),
+  cbind(stab(blur.img), name="Gaussian"),
+  cbind(stab(med.img), name="Median")
   )
 
 prec.table<-mutate(all.table,
@@ -249,6 +258,31 @@ ggplot(prec.table,aes(x=Recall,y=Precision,color=name))+
   theme_bw(20)
 ```
 
+True Positive Rate and False Positive Rate
+===
+Another way of showing the ROC curve (more common for machine learning rather than medical diagnosis) is using the True positive rate and False positive rate
+
+- __True Positive Rate__ (recall)= $TP/(TP+FN)$
+- __False Positive Rate__ = $FP/(FP+TN)$
+
+***
+
+These show very similar information with the major difference being the goal is to be in the upper left-hand corner. Additionally random guesses can be shown as the slope 1 line. Therefore for a system to be useful it must lie above the random line.
+```{r}
+tp.table<-mutate(all.table,
+                   TPRate=TP/(TP+FN),
+                   FPRate=FP/(FP+TN)
+                   )
+ggplot(tp.table,aes(x=FPRate,y=TPRate,color=name))+
+  geom_point(aes(shape="Image"),size=2)+
+  geom_point(data=data.frame(TPRate=1,FPRate=0),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  geom_segment(x=0,xend=1,y=0,yend=1,aes(color="Random Guess"))+
+  xlim(0,1)+ylim(0,1)+coord_equal()+
+  labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
+  theme_bw(20)
+```
 
 Learning Objectives
 ========================================================
