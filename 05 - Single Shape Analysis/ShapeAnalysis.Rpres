@@ -54,7 +54,7 @@ Previously on QBI ...
 - Image Enhancment 
  - Highlighting the contrast of interest in images
  - Minimizing Noise
-- Segementation
+- Segmentation
  - Understanding value histograms
  - Dealing with multi-valued data
 - Automatic Methods
@@ -566,15 +566,6 @@ ggplot(im.iter.grow(cross.im,4),aes(x=x,y=y,xend=x+xv,yend=y+yv))+
 Component Labeling: Image Algorithm
 ===
 
-In reality the component labeling algorithms are usually implemented, but it is important to understand how they work and their relationship with neighborhood in order to interpret the results correctly.
-
-```{matlab}
-labImg=bwlabel(imName)
-```
-
-Component Labeling: Image Algorithm
-===
-
 
 ```{r, fig.cap="Cell Colony",fig.height=4}
 cell.im<-jpeg::readJPEG("ext-figures/Cell_Colony.jpg")
@@ -1054,13 +1045,14 @@ Applied PCA: Shape Tensor
 ### How do these statistical analyses help us?
 Going back to a single cell, we have the a distribution of $x$ and $y$ values.
 - are not however completely independent
-- greatest variance does not lie in either x nor y itself. 
+- greatest variance does not normally lie in either x nor y alone. 
 
 A principal component analysis of the voxel positions, will calculate two new principal components (the components themselves are the relationships between the input variables and the scores are the final values.)
+- An optimal rotation of the coordinate system
 
 ***
 
-```{r, fig.cap="Single Cell",fig.height=8}
+```{r, fig.cap="Single Cell",fig.height=5}
 pca.fun<-function(in.df) {
   ddply(in.df,.(val), function(c.cell) {
     c.cell.cov<-cov(c.cell[,c("x","y")])
@@ -1081,15 +1073,37 @@ cur.cell.id<-58
 cur.cell.df<-subset(cell.lab.df,val==cur.cell.id)
 
 cell.pca<-pca.fun(cur.cell.df)
+
 ggplot(cur.cell.df,aes(x=x,y=y))+
   geom_tile(color="black",fill="grey")+
   geom_segment(data=cell.pca,aes(x=x,y=y,xend=x+vx*vw,yend=y+vy*vw,
                                  color=as.factor(round(vw*10)/10)),
                arrow=arrow(length = unit(0.3,"cm")),size=2)+
-  labs(title="Single Cell",color="Score /\nEigenvalue")+
+  labs(title="Single Cell (Original)",color="Score /\nEigenvalue")+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
+```{r, fig.height=4}
+x1<-cell.pca[1,"x"]
+y1<-cell.pca[1,"y"]
+vx1<-cell.pca[1,"vx"]
+vy1<-cell.pca[1,"vy"]
+vx2<-cell.pca[2,"vx"]
+vy2<-cell.pca[2,"vy"]
+ggplot(mutate(
+  cur.cell.df,
+  xd = vx1*(x-x1)+vy1*(y-y1)+x1,
+  yd = vx2*(x-x1)+vy2*(y-y1)+y1,
+  ),
+       aes(x=xd,y=yd))+
+  geom_tile(color="black",fill="grey",width=1,height=1)+
+  geom_segment(data=mutate(cell.pca,vx=c(1,0),vy=c(0,1)),
+               aes(x=x,y=y,xend=x+vx*vw,yend=y+vy*vw,
+                                 color=as.factor(round(vw*10)/10)),
+               arrow=arrow(length = unit(0.3,"cm")),size=2)+
+  labs(title="Single Cell (PCA Transformed)",color="Score /\nEigenvalue")+
+  theme_bw(20)+coord_equal()+guides(fill=F)
+```
 
 How did we calculate that?
 ===

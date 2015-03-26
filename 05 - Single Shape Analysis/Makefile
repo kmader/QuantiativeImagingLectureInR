@@ -10,10 +10,10 @@ mdFile = $(mainFile).md
 all: printable
 
 clean:
-	/bin/rm printable.html 
+	/bin/rm 06-handout.html 
     
 printable:  $(presFile)
-	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('ShapeAnalysis.Rpres',output='printable.html',chooser=c('boot','code'))"
+	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('ShapeAnalysis.Rpres',output='06-handout.html',chooser=c('boot','code'))"
 
 rocco:  $presFile
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('AdvSegmentation.Rpres','rocco.html')"
