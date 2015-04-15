@@ -10,6 +10,5 @@
 *.png
 *.Rcache
 *.js
-*.css
 *.RData
 *.rd*

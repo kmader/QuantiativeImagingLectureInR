@@ -16,14 +16,14 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 3 April 2014
+date: 16 April 2015
 width: 1440
 height: 900
 css: ../common/template.css
 transition: rotate
 
 ETHZ: 227-0966-00L
-# Many Objects and Distributions
+# Groups of Objects and Distributions
 
 Course Outline
 ========================================================
@@ -90,7 +90,40 @@ Outline
  - Alignment
  - Self-Avoidance
  - Two Point Correlation Function
- 
+
+Metrics
+===
+We examine a number of different metrics in this lecture and additionally to classifying them as Local and Global we can define them as point and voxel-based operations. 
+
+### Point Operations
+- Nearest Neighbor
+- Delaunay Triangulation
+  - Distribution Tensor
+- Point (Center of Volume)-based Voronoi Tesselation
+- Alignment
+
+```{r, results='asis'}
+kable(data.frame(x=round(4*runif(4)),y=round(4*runif(4)), z=round(4*runif(4))))
+```
+
+***
+
+### Voxel Operation
+- Voronoi Tesselation
+- Neighbor Counting
+- 2-point (N-point) correlation functions
+
+```{r}
+xymesh<-mutate(
+  expand.grid(x=c(-1:1),y=c(-1:1)),
+  color=ifelse((x==0) & (y==0),"center",ifelse(sqrt(x^2+y^2)==1,"4C","6C"))
+  )
+ggplot(xymesh,aes(x,y,fill=color))+
+  geom_tile()+
+  geom_text(aes(label=color))+
+  labs(color="")+
+  theme_bw(20)
+```
  
 What do we start with?
 ===
@@ -188,9 +221,7 @@ So what do we still need
 1. A way for finding out how many cells are _near_ a given cell, it's nearest neighbors
 1. A way for quantifying how far apart cells are and then comparing different regions within a sample
 1. A way for quantifying and comparing orientations
- - the mean of 0$^\circ$ and 180$^\circ$ = 90$^\circ$
- - the distance between -180$^\circ$ and 179$^\circ$ is 359$^\circ$
- - since we have not defined a tip or head, 0$^\circ$ and 180$^\circ$ are actually the same
+
  
 ***
 
@@ -252,6 +283,32 @@ kable(t(s.table),align='c',digits=2)
 ```
 
 - But what if we want more or other information?
+
+
+Simple Statistics
+===
+When given a group of data, it is common to take a mean value since this is easy. The mean bone thickness is 0.3mm. This is particularly relevant for groups with many samples because the mean is much smaller than all of the individual points.
+### but means can lie
+ - the mean of 0$^\circ$ and 180$^\circ$ = 90$^\circ$
+ - the distance between -180$^\circ$ and 179$^\circ$ is 359$^\circ$
+ - since we have not defined a tip or head, 0$^\circ$ and 180$^\circ$ are actually the same
+ 
+***
+
+### some means are not very useful
+
+```{r}
+mean.example<-rbind(
+    data.frame(x=rnorm(10000,mean=0.5),group="healthy"),
+    data.frame(x=rnorm(10000,mean=0.65),group="sick")
+  )
+mean.means<-ddply(mean.example,.(group),function(x) data.frame(mean.x=mean(x$x)))
+ggplot(mean.example,aes(x=x,colour=group))+
+  geom_density()+
+  geom_vline(data=mean.means,aes(xintercept=mean.x,colour=group),size=2)+
+  labs(color="")+
+  theme_bw(20)
+```
 
 Calculating Density
 ===
