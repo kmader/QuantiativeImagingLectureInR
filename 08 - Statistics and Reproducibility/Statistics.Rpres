@@ -690,7 +690,6 @@ Given the complexity of the tree, we need to do some pruning
 ```{r , fig.height=9}
 title.fun<-function(file.name) ""
 show.pngs.as.grid(Sys.glob("ext-figures/poros*.png"),title.fun,zoom=0.5)
-
 ```
 
 
@@ -706,11 +705,12 @@ The way we do this is usually a parameter sweep which means taking one (or more)
 ***
 
 ```{r, load-metrics}
-source('~/Dropbox/TIPL/src/R/shapeAnalysisProcess.R')
-source('~/Dropbox/TIPL/src/R/commonReportFunctions.R')
+source('~/Dropbox/tipl_maven/snippets/R/shapeAnalysisProcess.R')
+source('~/Dropbox/tipl_maven/snippets/R/commonReportFunctions.R')
 # read and correct the coordinate system
 thresh.fun<-function(x) {
-  t<-sample.name.fcn(9,3)(x)
+  pth<-rev(strsplit(x,"/")[[1]])[2]
+  t<-strsplit(pth,"_")[[1]][3]
   as.numeric(substring(t,2,nchar(t)))
 }
 readfcn<-function(x) cbind(compare.foam.corrected(x,
@@ -720,7 +720,7 @@ readfcn<-function(x) cbind(compare.foam.corrected(x,
                            thresh=thresh.fun(x) # how to parse the sample names
                            )
 # Where are the csv files located
-rootDir<-"/Users/mader/Dropbox/WorkRelated/Casanova/mcastudy" 
+rootDir<-"../common/data/mcastudy" 
 clpor.files<-Sys.glob(paste(rootDir,"/a*/lacun_0.csv",sep="/")) # list all of the files
 
 # Read in all of the files
@@ -876,6 +876,18 @@ Unit Testing in ImageJ
 [On this page](https://github.com/imagej/ij1-tests/blob/master/src/test/java/ij/VirtualStackTest.java)
 
 <iframe src='https://raw.githubusercontent.com/imagej/ij1-tests/master/src/test/java/ij/VirtualStackTest.java' width='100%' height='800'></iframe>
+
+Unit Testing in KNIME
+===
+[Read more](https://tech.knime.org/community/developers) and [Here](https://www.knime.org/files/kos-11/KNIME_Testing.pdf)
+The Java-based unit-testing can be used (JUnit) before any of the plugins are compiled, additionally entire workflows can be made to test the objects using special testing nodes like
+- difference node (check the if two values are different)
+
+![KNIME Tests](ext-figures/KnimeTests.png)
+
+- disturber node (insert random / missing values to determine fault tolerance)
+
+
 
 Test Driven Programming
 ===
