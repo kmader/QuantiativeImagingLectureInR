@@ -5,11 +5,11 @@ schedule.str<-"- 19th February - Introduction and Workflows
 - 19th March - Applying Graphical Models and Machine Learning (A. Lucchi)
 - 26th March - Analyzing Single Objects
 - 2nd April -  Analyzing Complex Objects
-- 16th April -  Spatial Distribution
+- 16th April -  Groups and Spatial Distribution
 - 23rd April -  Statistics and Reproducibility
-- 30th April - Dynamic Experiments (K. Mader and A. Patera)
+- 30th April - Dynamic Experiments
 - 7th May - Scaling Up / Big Data
-- 21th May - Guest Lecture, Applications in Material Science
+- 21th May - Guest Lecture, Applications in Material Science and Wood (? and A. Patera)
 - 28th May - Project Presentations"
 course.desc<-
   data.frame(Lecture=substring(gsub("\\s+"," ",strsplit(schedule.str,"\n")[[1]]),3),
