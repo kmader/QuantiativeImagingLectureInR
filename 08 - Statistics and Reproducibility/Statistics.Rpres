@@ -42,6 +42,7 @@ Literature / Useful References
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 - [Hypothesis Testing Chapter](http://www.sagepub.com/upm-data/40007_Chapter8.pdf)
+- Grammar of Graphics: Leland and Wilkinson - http://www.springer.com/gp/book/9780387245447
 
 *** 
 ### Papers / Sites
@@ -1018,10 +1019,9 @@ Grammar of Graphics
 
 ***
 
-~~The most important modern work in graphical grammars is “The Grammar of Graphics” by Wilkinson, Anand, and Grossman (2005). This work built on earlier work by Bertin (1983) and proposed a grammar that can be used to describe and construct a wide range of statistical graphics.~~
+- The most important modern work in graphical grammars is “The Grammar of Graphics” by Wilkinson, Anand, and Grossman (2005). This work built on earlier work by Bertin (1983) and proposed a grammar that can be used to describe and construct a wide range of statistical graphics.
 
-
-<small> H. Wickham. ggplot2: elegant graphics for data analysis. Springer New York, 2009.</small>
+- This can be applied in R using the ggplot2 library (<small>H. Wickham. ggplot2: elegant graphics for data analysis. Springer New York, 2009.</small>)
 
 Grammar Explained
 ===
@@ -1037,7 +1037,6 @@ Normally we think of plots in terms of some sort of data which is fed into a plo
 ### Grammar
 
 Separate the graph into its component parts
-
 
 
 1. Data Mapping
@@ -1061,6 +1060,9 @@ Wrapping up
  
 ***
 
-- Simulations are very helpful
+- Simulations (even simple ones) are very helpful (see [StatisticalSignificanceHunter
+](knime://LOCAL/Exercise%209%20StatsRepro/StatisticalSignificanceHunter
+))
+
 - Try and understand the tests you are performing
  
