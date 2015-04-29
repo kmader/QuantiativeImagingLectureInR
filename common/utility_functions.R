@@ -3,15 +3,22 @@ require(ggplot2) #for plots
 require(lattice) # nicer scatter plots
 require(plyr) # for processing data.frames
 require(grid) # contains the arrow function
-require(biOps) # for basic image processing
+
 require(doMC) # for parallel code
 require(png) # for reading png images
 require(gridExtra)
 require(reshape2) # for the melt function
+#if (!require("biOps")) {
+#  # for basic image processing
+#  devtools::install_github("cran/biOps")
+#  library("biOps")
+#}
 ## To install EBImage
-# source("http://bioconductor.org/biocLite.R")
-# biocLite("EBImage")
-require(EBImage) # for more image processing
+if (!require("EBImage")) { # for more image processing
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("EBImage")
+}
+
 used.libraries<-c("ggplot2","lattice","plyr","reshape2","grid","gridExtra","biOps","png","EBImage")
 
 # ---- common-functions ----

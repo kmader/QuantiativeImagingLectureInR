@@ -15,12 +15,11 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 17 April 2014
+date: 30 April 2015
 width: 1440
 height: 900
 css: ../common/template.css
 transition: rotate
-bibliography: /Users/mader/Documents/library.bib
 
 ETHZ: 227-0966-00L
 # Dynamic Experiments
@@ -500,8 +499,8 @@ There are a number of more sensitive scoring metrics which can be used, by findi
 
 
 ```{r track_code}
-source('~/Dropbox/TIPL/src/R/trackingCode.R')
-source('~/Dropbox/WorkRelated/TrackTopology/simFlow.R')
+source('~/Dropbox/tipl_maven/snippets/R/trackingCode.R')
+source('../common/data/simFlow.R')
 ```
 
 Basic Simulations
