@@ -17,19 +17,21 @@ library(plyr)
 #'                    takes (x0,y0,z0) and returns (vx,vy,vz) which will then be scaled by the mean
 #' @param base.rand Base randomness used for the default values of the flow.x,y,z.rand
 #' @param rand.fun The function to use to generate random numbers
+#' @param force.2d make the simulation run in 2D
 #' 
 generate.frames<-function(n.objects=50,n.frames=10,box.size=0.5,crop.size=c(-.5,.5),
                           base.rand=0.05,flow.x.rand=NA,flow.y.rand=NA,flow.z.rand=NA,rand.fun=runif,
-                          flow.field=NA,flow.rate=0.1,obj.creation=0,obj.destruction=0) {
+                          flow.field=NA,flow.rate=0.1,obj.creation=0,obj.destruction=0,force.2d=FALSE) {
+  if(force.2d) flow.y.rand<-0
   if(is.na(flow.x.rand)) flow.x.rand<-base.rand
   if(is.na(flow.y.rand)) flow.y.rand<-base.rand
   if(is.na(flow.z.rand)) flow.z.rand<-base.rand
   if(suppressWarnings(is.na(flow.field))) flow.field<-flow.linear(0,0,flow.rate)
-  prf<-function(n=n.objects) rand.fun(n,-box.size,box.size)
+  prf<-function(n=n.objects) rand.fun(n,min=-box.size,max=box.size)
   start.objs<-data.frame(LACUNA_NUMBER=c(1:n.objects),
                          REAL_LACUNA_NUMBER=c(1:n.objects),
                          POS_X=prf(),
-                         POS_Y=prf(),
+                         POS_Y=ifelse(force.2d,0,prf()),
                          POS_Z=prf(),
                          sample=1)
   out.frames<-list(start.objs)
@@ -160,3 +162,4 @@ flow.fields<-list(Linear=function(flow.z) flow.linear(flow.z=flow.z),
 #cur.flow<-generate.flow()
 #ggplot(do.call(rbind,cur.flow$frames),aes(x=POS_X,y=POS_Z,color=sample))+geom_point()
 #ggplot(do.call(rbind,cur.flow$frames),aes(x=POS_X,y=POS_Z,color=as.factor(REAL_LACUNA_NUMBER),group=as.factor(REAL_LACUNA_NUMBER)))+geom_point()+geom_path()
+

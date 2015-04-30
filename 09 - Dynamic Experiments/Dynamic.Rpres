@@ -512,9 +512,8 @@ $$ \vec{v}(\vec{x})=\langle 0,0,0.05 \rangle+||0.01||\measuredangle b $$
 ```{r basic_flow}
 # Generate a simple synthetic dataset
 in.frames<-generate.frames(base.rand=0.01,crop.size=c(-10,10),n.objects=20,n.frames=10,flow.rate=0.05,force.2d=T) 
+
 all.tracks<-track.frames(in.frames,offset=c(0,0,0.1),run.offset=T,run.adaptive=T,maxVolPenalty=NA)
-
-
 ```
 
 ```{r, fig.height=7}
@@ -737,10 +736,12 @@ Extending Nearest Neighbor
 ===
 
 ### Bijective Requirement
-$$ \vec{P}_f=\textrm{argmin}(||\vec{P}_0-\vec{y} || \forall \vec{y}\in I_1) $$
-$$ \vec{P}_i=\textrm{argmin}(||\vec{P}_f-\vec{y} || \forall \vec{y}\in I_0) $$
-
-$$ \vec{P}_i \stackrel{?}{=} \vec{P}_0 $$
+- We define $\vec{P}_f$ as the result of performing the nearest neigbhor tracking on $\vec{P}_0$
+- $$ \vec{P}_f=\textrm{argmin}(||\vec{P}_0-\vec{y} || \forall \vec{y}\in I_1) $$
+- We define $\vec{P}_i$ as the result of performing the nearest neigbhor tracking on $\vec{P}_f$
+- $$ \vec{P}_i=\textrm{argmin}(||\vec{P}_f-\vec{y} || \forall \vec{y}\in I_0) $$
+- We say the tracking is bijective if these two points are the same
+- $$ \vec{P}_i \stackrel{?}{=} \vec{P}_0 $$
 
 ***
 
@@ -1300,6 +1301,7 @@ ggplot(sq.eles,aes(x,y))+
 
 ***
 A given strain can then be applied and we can quantify the effects by examining the change in the small element. 
+
 ```{r, fig.height=6}
 s.grid<-expand.grid(x=c(0:3),y=c(0:3))
 rh.eles<-ddply(cbind(s.grid,id=1:nrow(s.grid)),.(x,y),function(in.pt) {
@@ -1360,18 +1362,9 @@ ggplot(rh.eles,aes(x,y))+
 ```
 
 
-
-Thickness - Lung Tissue
-===
-
-__Data provided by Goran Lovric and Rajmund Mokso__
-
-Since the changes in these tissues are difficult to track and measure, it is easier to quantify the changes in global metrics like thickness than trying to track small branches and other aspects.
-![Lung Tissue](ext-figures/LungImages.png)
-
-
 Two Point Correlation - Volcanic Rock
 ===
+
 __Data provided by Mattia Pistone and Julie Fife__
 The air phase changes from small very anisotropic bubbles to one large connected pore network. The same tools cannot be used to quantify those systems. Furthermore there are motion artifacts which are difficult to correct.
 

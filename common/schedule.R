@@ -9,7 +9,7 @@ schedule.str<-"- 19th February - Introduction and Workflows
 - 23rd April -  Statistics and Reproducibility
 - 30th April - Dynamic Experiments
 - 7th May - Scaling Up / Big Data
-- 21th May - Guest Lecture, Applications in Material Science and Wood (? and A. Patera)
+- 21th May - Guest Lecture, Applications in High-content Screening and Wood
 - 28th May - Project Presentations"
 course.desc<-
   data.frame(Lecture=substring(gsub("\\s+"," ",strsplit(schedule.str,"\n")[[1]]),3),
