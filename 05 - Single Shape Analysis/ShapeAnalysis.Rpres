@@ -12,7 +12,6 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
-
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
@@ -69,7 +68,7 @@ A Machine Learning Approach to Image Processing
 Segmentation and all the steps leading up to it are really a specialized type of learning problem.
 
 ```{r makeringimage}
-lout<-20
+lout<-21
 b.grid<-expand.grid(x=seq(-10,10,length.out=lout),y=seq(-10,10,length.out=lout))
 ring.image<-mutate(
   b.grid,
@@ -99,10 +98,22 @@ ring.im<-df.to.im(mutate(
   ))
 
 ring.img<-im.to.df(ring.im,out.col="Intensity")
-blur.img<-im.to.df(imgBlur(ring.im),out.col="Intensity")
-med.img<-im.to.df(imgBlockMedianFilter(ring.im),out.col="Intensity")
+blur.img<-im.to.df(gblur(ring.im,0.5),out.col="Intensity")
+med.img<-im.to.df(medianFilter(ring.im/255,3)*255.0,out.col="Intensity")
 ```
-Returning to the ring image we had before, we want to identify the ring from the image
+
+Returning to the ring image we had before, we start with our knowledge or ground-truth of the ring
+
+```{r, fig.height=5}
+ggplot(ring.image.seg,aes(x,y,fill=Segmented))+
+  geom_raster(color="black")+
+  coord_equal()+
+  theme_bw(15)
+```
+
+***
+
+Which we want to identify the from the following image by using image processing tools
 
 ```{r, fig.height=5}
 simple.image<-ggplot(ring.img,aes(x,y,fill=Intensity))+
@@ -112,17 +123,56 @@ simple.image<-ggplot(ring.img,aes(x,y,fill=Intensity))+
 simple.image
 ```
 
-***
-
 What does identify mean?
 - Classify the pixels in the ring as _Foreground_
 - Classify the pixels outside of the ring as _Background_
 
 How do we quantify this?
+===
+
 - __True Positive__ values in the ring that are classified as _Foreground_
 - __True Negative__ values outside the ring that are classified as _Background_
 - __False Positive__ values outside the ring that are classified as _Foreground_
 - __False Negative__ values in the ring that are classified as _Background_
+
+```{r}
+tr.seg.img<-
+  mutate(ring.img,Segmented=ifelse(Intensity>170,"Foreground","Background"))[,
+   c("x","y","Segmented")]
+gr.truth.img<-ring.image.seg[,c("x","y","Segmented")]
+ggplot(tr.seg.img,
+       aes(x,y,fill=Segmented))+
+  geom_tile(color="black")+
+  coord_equal()+
+  labs(fill="Threshold\nSegmentation")+
+  theme_bw(15)
+```
+
+***
+
+We can then apply a threshold to the image to determine the number of points in each category
+
+```{r, fig.height=8}
+score.img<-mutate(
+    merge(tr.seg.img,gr.truth.img,by=c("x","y"),suffixes=c("C","GT")),
+  Match=(SegmentedC==SegmentedGT),
+  Category=
+    ifelse(Match,
+           ifelse(SegmentedC=="Foreground","True Positive","True Negative"),
+           ifelse(SegmentedC=="Foreground","False Positive","False Negative")
+      )
+  )
+
+ggplot(score.img,
+       aes(x,y,fill=SegmentedC,color=SegmentedGT))+
+  geom_tile(size=1)+
+  facet_wrap(~Category)+
+  coord_equal()+
+  scale_colour_manual(values=c("green","black"))+
+  scale_fill_manual(values=c("red","blue"))+
+  labs(fill="Threshold\nSegmentation",color="Ground\nTruth")+
+  theme_bw(20)
+```
 
 Ring Threshold Example
 ===
@@ -150,7 +200,6 @@ ggplot(mk.th.img(ring.img,9),aes(x,y,fill=Segmented))+
 
 ***
 
-
 ```{r, results='asis'}
 mk.stat.table<-function(in.img,steps,smin=0.3,smax=0.7) 
   ddply(mk.th.img(in.img,steps,smin,smax),.(Thresh),function(c.img) {
@@ -160,8 +209,8 @@ mk.stat.table<-function(in.img,steps,smin=0.3,smax=0.7)
   in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
   data.frame(TP=nrow(subset(in.df,SegmentedGT=="Foreground" & Match)),
              TN=nrow(subset(in.df,SegmentedGT=="Background" & Match)),
-             FP=nrow(subset(in.df,SegmentedGT=="Foreground" & !Match)),
-             FN=nrow(subset(in.df,SegmentedGT=="Background" & !Match))
+             FP=nrow(subset(in.df,SegmentedC=="Foreground" & !Match)),
+             FN=nrow(subset(in.df,SegmentedC=="Background" & !Match))
              )
 })
 tp.table<-mk.stat.table(ring.img,6,smin=0,smax=1)
@@ -190,6 +239,7 @@ prec.table<-mutate(mk.stat.table(ring.img,6),
                    Recall=TP/(TP+FP)
                    )
 kable(prec.table)
+
 ```
 
 ***
@@ -200,6 +250,7 @@ prec.table<-mutate(mk.stat.table(ring.img,100),
                    Precision=TP/(TP+FN),
                    Recall=TP/(TP+FP)
                    )
+
 ggplot(prec.table,aes(x=Recall,y=Precision))+
   geom_point(aes(color=Thresh,shape="Image"),size=5)+
   geom_point(data=data.frame(Recall=1,Precision=1),
@@ -217,11 +268,13 @@ Comparing Different Filters
 We can then use this ROC curve to compare different filters (or even entire workflows), if the area is higher the approach is better.
 
 ```{r, fig.height=10}
+
 all.img<-rbind(
   cbind(mk.th.img(ring.img,3), name="Normal"),
   cbind(mk.th.img(blur.img,3), name="Gaussian"),
   cbind(mk.th.img(med.img,3), name="Median")
   )
+
 simple.image<-ggplot(all.img,aes(x,y,fill=Segmented))+
   geom_tile(color="black")+
   coord_equal()+
@@ -237,6 +290,7 @@ simple.image
 Different approaches can be compared by area under the curve
 
 ```{r}
+
 stab<-function(img) mk.stat.table(img,100,smin=0.05,smax=0.95)
 all.table<-rbind(
   cbind(stab(ring.img), name="Normal"),
@@ -255,6 +309,7 @@ ggplot(prec.table,aes(x=Recall,y=Precision,color=name))+
   geom_path()+
   #coord_equal()+
   labs(shape="",color="Filter")+
+  xlim(0.5,1)+ylim(0.5,1)+
   theme_bw(20)
 ```
 
@@ -269,6 +324,7 @@ Another way of showing the ROC curve (more common for machine learning rather th
 
 These show very similar information with the major difference being the goal is to be in the upper left-hand corner. Additionally random guesses can be shown as the slope 1 line. Therefore for a system to be useful it must lie above the random line.
 ```{r}
+
 tp.table<-mutate(all.table,
                    TPRate=TP/(TP+FN),
                    FPRate=FP/(FP+TN)
