@@ -340,6 +340,269 @@ ggplot(tp.table,aes(x=FPRate,y=TPRate,color=name))+
   theme_bw(20)
 ```
 
+Practical Example: Calcifications in Breast Tissue
+===
+While finding a ring might be didactic, it is not really a relevant problem and these terms are much more meaningful when applied to medical images where every False Positives and False Negative can be mean life-threatening surgery or the lack thereof. (Data courtesy of Zhentian Wang)
+
+```{r import-breast-data}
+# image data
+breast.abs<-im.to.df(readPNG(qbi.data("breastabs_0.png")))
+breast.dci<-im.to.df(readPNG(qbi.data("breastdci_0.png")))
+breast.img<-cbind(breast.abs[,c("x","y")],
+                  abs=breast.abs[,c("val")],
+                  dci=breast.dci[,c("val")])
+# ground truth
+breast.cal<-
+  mutate(
+    im.to.df(readPNG(qbi.data("breastcal_0.png"))),
+    Segmented=ifelse(val>0.25,"Calcification","Tissue")
+    )
+```
+
+```{r}
+scale.f<-3
+ggplot(rbind(cbind(breast.abs,type="Absorption"),
+             cbind(mutate(breast.dci,
+                          sval=scale.f*val,
+                          val=ifelse(sval>1,1,sval))[,c("x","y","val")],
+                   type="Scattering")),
+       aes(x,y,fill=val))+
+  geom_raster()+
+  coord_equal()+
+  facet_grid(type~.)+
+  scale_fill_gradientn(colours=rainbow(8))+
+  guides(fill=F)+
+  theme_bw(20)
+```
+
+***
+
+From these images, an expert labeled the calcifications by hand, so we have ground truth data on where they are:
+
+```{r}
+ggplot(breast.cal,aes(x,y,fill=Segmented,alpha=val))+
+  geom_raster()+
+  coord_equal()+
+  guides(alpha=F)+
+  theme_bw(20)
+```
+
+
+Applying a threshold
+===
+
+We can perform the same analysis on an image like this one, again using a simple threshold to evalulate how accurately we identify the calcifications
+
+```{r}
+tr.breast<-mutate(breast.abs,
+                 Segmented=ifelse(val>0.6,"Calcification","Tissue")
+                 )
+ggplot(tr.breast,aes(x,y,fill=Segmented,alpha=val))+
+  geom_raster()+
+  coord_equal()+
+  guides(alpha=F)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=8}
+score.img<-mutate(
+    merge(tr.breast[,c("x","y","Segmented")]
+          ,
+          breast.cal[,c("x","y","Segmented")],
+          by=c("x","y"),suffixes=c("C","GT")),
+  Match=(SegmentedC==SegmentedGT),
+  Category=
+    ifelse(Match,
+           ifelse(SegmentedC=="Calcification","True Positive","True Negative"),
+           ifelse(SegmentedC=="Calcification","False Positive","False Negative")
+      )
+  )
+
+ggplot(score.img,
+       aes(x,y,fill=SegmentedGT))+
+  geom_tile()+
+  facet_wrap(~Category)+
+  coord_equal()+
+  scale_colour_manual(values=c("green","black"))+
+  scale_fill_manual(values=c("red","blue"))+
+  labs(fill="Ground\nTruth")+
+  theme_bw(20)
+```
+
+Examining the ROC Curve
+===
+
+```{r breast-roc}
+
+mk.th.img<-function(in.img,stepseq) ldply(stepseq,function(c.thresh) {
+  mutate(in.img,
+         Segmented = ifelse(
+                         val>c.thresh,
+                         "Calcification","Tissue"),
+         Thresh = c.thresh
+        )
+})
+
+mk.stat.table<-function(in.img,stepseq) 
+  ddply(mk.th.img(in.img,stepseq),.(Thresh),function(c.img) {
+  in.df<-merge(c.img[,c("x","y","Segmented")],
+               breast.cal[,c("x","y","Segmented")],
+               by=c("x","y"),suffixes=c("C","GT"))
+  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
+  data.frame(TP=nrow(subset(in.df,SegmentedGT=="Calcification" & Match)),
+             TN=nrow(subset(in.df,SegmentedGT=="Tissue" & Match)),
+             FP=nrow(subset(in.df,SegmentedC=="Calcification" & !Match)),
+             FN=nrow(subset(in.df,SegmentedC=="Tissue" & !Match))
+             )
+})
+step.fcn<-function(vals,n) quantile(vals,seq(0,1,length.out=n+2)[-c(1,n+2)])
+abs.steps<-step.fcn(breast.abs$val,6)
+tp.table<-mk.stat.table(breast.abs,abs.steps)
+```
+
+```{r, results='asis'}
+prec.table<-mutate(tp.table,
+                   Thresh=round(100*Thresh),
+                   Precision=round(100*TP/(TP+FN)),
+                   Recall=round(100*TP/(TP+FP))
+                   )
+kable(prec.table)
+```
+
+```{r, fig.height=5}
+ggplot(melt(tp.table,id.vars=c("Thresh")),
+       aes(x=Thresh*100,y=value,color=variable))+
+  geom_point()+
+  geom_path()+
+  labs(color="",y="Pixel Count",x="Threshold Value (%)")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r}
+abs.steps<-step.fcn(breast.abs$val,12)
+tp.table<-mk.stat.table(breast.abs,abs.steps)
+prec.table<-mutate(tp.table,
+                   Precision=TP/(TP+FN),
+                   Recall=TP/(TP+FP)
+                   )
+
+ggplot(prec.table,aes(x=Recall,y=Precision))+
+  geom_point(aes(color=Thresh,shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  #coord_equal()+
+  scale_color_gradientn(colours=rainbow(6))+
+  scale_x_sqrt()+
+  labs(shape="")+
+  theme_bw(20)
+```
+
+Comparing Absorption and Scattering Channels
+===
+
+Since our image has two channels we can examine both of them (Recall is not on a linear scale so the differences can more easily be seen). It is clear that scattering provides more useful information than absorption except for very high precision and meaninglessly low recall.
+
+```{r}
+# flip the contrast since the dark values are calcifications
+breast.dci.flip<-mutate(breast.dci,val=-1*val)
+
+dci.steps<-step.fcn(breast.dci.flip$val,12)
+dci.table<-mk.stat.table(breast.dci.flip,dci.steps)
+prec.dci.table<-mutate(dci.table,
+                   Precision=TP/(TP+FN),
+                   Recall=TP/(TP+FP)
+                   )
+```
+
+```{r, fig.width=12}
+ggplot(rbind(cbind(prec.table,Channel="Absorption"),
+             cbind(prec.dci.table,Channel="Scattering")),
+             aes(x=Recall,y=Precision))+
+  geom_point(aes(shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path(aes(group=Channel,color=Channel))+
+  scale_x_sqrt()+
+  labs(shape="")+
+  
+  theme_bw(20)
+```
+
+Combining both channels
+===
+
+```{r both-values}
+abs.steps<-step.fcn(breast.img$abs,12)
+dci.steps<-step.fcn(breast.img$dci,12)
+abs.dci.scan<-ldply(
+  abs.steps,function(abs.thresh)
+    ldply(dci.steps,function(dci.thresh) {
+      mutate(breast.img,
+         Segmented = ifelse(
+                         (abs>abs.thresh) & (dci<dci.thresh),
+                         "Calcification","Tissue"),
+         abs.thresh=abs.thresh,
+         dci.thresh=dci.thresh
+        )
+    })
+)
+abs.dci.stats<-ddply(abs.dci.scan,.(abs.thresh,dci.thresh),
+                     function(c.img) {
+                  in.df<-merge(c.img[,c("x","y","Segmented")],
+                  breast.cal[,c("x","y","Segmented")],
+               by=c("x","y"),suffixes=c("C","GT"))
+  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
+  data.frame(TP=nrow(subset(in.df,SegmentedGT=="Calcification" & Match)),
+             TN=nrow(subset(in.df,SegmentedGT=="Tissue" & Match)),
+             FP=nrow(subset(in.df,SegmentedC=="Calcification" & !Match)),
+             FN=nrow(subset(in.df,SegmentedC=="Tissue" & !Match))
+             )
+})
+```
+
+We can get even better results by using a combination of both absorption and scattering to find the calcifications
+
+```{r, fig.height=7}
+abs.dci.prec<-mutate(abs.dci.stats,
+                   Precision=TP/(TP+FN),
+                   Recall=TP/(TP+FP)
+                   )
+ggplot(melt(abs.dci.prec,measure.vars=c("Recall","Precision")),
+             aes(x=abs.thresh,y=dci.thresh,fill=100*value))+
+  geom_tile()+
+  scale_fill_gradientn(colours=topo.colors(5))+
+  facet_grid(variable~.)+
+  labs(x="Absorption Threshold",y="Scattering Threshold",fill="(%) Score")+
+  theme_bw(20)
+```
+
+***
+
+This can then be represented as a pseudo-ROC curve by showing all of the points and finding the maximum value.
+
+```{r, fig.height=8}
+nice.fit<-ddply.cutcols(abs.dci.prec,.(cut_interval(Recall,10)),function(in.df) 
+    data.frame(Precision=max(in.df$Precision))
+  )
+ggplot(abs.dci.prec,
+             aes(x=Recall,y=Precision))+
+  geom_point(aes(shape="Image",color=dci.thresh,size=abs.thresh))+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path(data=nice.fit)+
+  scale_color_gradientn(colours=topo.colors(5))+
+  labs(color="Scattering Threshold",size="Absorption Threshold",
+       fill="(%) Score",shape="")+
+  theme_bw(20)
+```
+
+
 Learning Objectives
 ========================================================
 
