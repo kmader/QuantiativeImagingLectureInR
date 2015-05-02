@@ -235,11 +235,10 @@ Apply Precision and Recall
 
 ```{r, results='asis'}
 prec.table<-mutate(mk.stat.table(ring.img,6),
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                  Recall=round(100*TP/(TP+FN)),
+                  Precision=round(100*TP/(TP+FP))
                    )
 kable(prec.table)
-
 ```
 
 ***
@@ -247,8 +246,8 @@ kable(prec.table)
 Reciever Operating Characteristic (first developed for WW2 soldiers detecting objects in battlefields using radar). The ideal is the top-right (identify everything and miss nothing)
 ```{r}
 prec.table<-mutate(mk.stat.table(ring.img,100),
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                   Recall=TP/(TP+FN),
+                   Precision=TP/(TP+FP)
                    )
 
 ggplot(prec.table,aes(x=Recall,y=Precision))+
@@ -299,8 +298,8 @@ all.table<-rbind(
   )
 
 prec.table<-mutate(all.table,
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
                    )
 ggplot(prec.table,aes(x=Recall,y=Precision,color=name))+
   geom_point(aes(shape="Image"),size=5)+
@@ -465,8 +464,8 @@ tp.table<-mk.stat.table(breast.abs,abs.steps)
 ```{r, results='asis'}
 prec.table<-mutate(tp.table,
                    Thresh=round(100*Thresh),
-                   Precision=round(100*TP/(TP+FN)),
-                   Recall=round(100*TP/(TP+FP))
+                   Recall=round(100*TP/(TP+FN)),
+                   Precision=round(100*TP/(TP+FP))
                    )
 kable(prec.table)
 ```
@@ -487,8 +486,8 @@ ggplot(melt(tp.table,id.vars=c("Thresh")),
 abs.steps<-step.fcn(breast.abs$val,12)
 tp.table<-mk.stat.table(breast.abs,abs.steps)
 prec.table<-mutate(tp.table,
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
                    )
 
 ggplot(prec.table,aes(x=Recall,y=Precision))+
@@ -506,7 +505,7 @@ ggplot(prec.table,aes(x=Recall,y=Precision))+
 Comparing Absorption and Scattering Channels
 ===
 
-Since our image has two channels we can examine both of them (Recall is not on a linear scale so the differences can more easily be seen). It is clear that scattering provides more useful information than absorption except for very high precision and meaninglessly low recall.
+Since our image has two channels we can examine both of them (Recall is not on a linear scale so the differences can more easily be seen). It is clear that scattering provides more useful information than absorption except for very high recall and meaninglessly low precision.
 
 ```{r}
 # flip the contrast since the dark values are calcifications
@@ -515,12 +514,13 @@ breast.dci.flip<-mutate(breast.dci,val=-1*val)
 dci.steps<-step.fcn(breast.dci.flip$val,12)
 dci.table<-mk.stat.table(breast.dci.flip,dci.steps)
 prec.dci.table<-mutate(dci.table,
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
                    )
 ```
 
 ```{r, fig.width=12}
+
 ggplot(rbind(cbind(prec.table,Channel="Absorption"),
              cbind(prec.dci.table,Channel="Scattering")),
              aes(x=Recall,y=Precision))+
@@ -570,8 +570,8 @@ We can get even better results by using a combination of both absorption and sca
 
 ```{r, fig.height=7}
 abs.dci.prec<-mutate(abs.dci.stats,
-                   Precision=TP/(TP+FN),
-                   Recall=TP/(TP+FP)
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
                    )
 ggplot(melt(abs.dci.prec,measure.vars=c("Recall","Precision")),
              aes(x=abs.thresh,y=dci.thresh,fill=100*value))+
@@ -590,6 +590,7 @@ This can then be represented as a pseudo-ROC curve by showing all of the points 
 nice.fit<-ddply.cutcols(abs.dci.prec,.(cut_interval(Recall,10)),function(in.df) 
     data.frame(Precision=max(in.df$Precision))
   )
+
 ggplot(abs.dci.prec,
              aes(x=Recall,y=Precision))+
   geom_point(aes(shape="Image",color=dci.thresh,size=abs.thresh))+
