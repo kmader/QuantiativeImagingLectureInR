@@ -10,10 +10,10 @@ mdFile = $(mainFile).md
 all: printable
 
 clean:
-	/bin/rm printable.html 
+	/bin/rm 11-handout.html 
     
 printable:  $(presFile)
-	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('BigData.Rpres',output='printable.html',chooser=c('boot','code'))"
+	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('BigData.Rpres',output='11-handout.html',chooser=c('boot','code'))"
 
 rocco:  $presFile
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('BigData.Rpres','rocco.html')"

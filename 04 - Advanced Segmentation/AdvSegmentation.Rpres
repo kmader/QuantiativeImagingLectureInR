@@ -600,8 +600,8 @@ The distance while illustrative is not a commonly used features, more common var
 - Entroy (information on variability in vicinity)
 ```{r makefeaturevecimage}
 ring.array<-df.to.im(ring.image,val.col="Intensity")
-sobel.image<-im.to.df(imgSobel(ring.array*255)/255,out.col="Sobel")
-gauss.image<-im.to.df(imgStdBlur(ring.array*255,10)/220,out.col="Gaussian")
+sobel.image<-im.to.df(imgSobel(ring.array),out.col="Sobel")
+gauss.image<-im.to.df(gblur(ring.array,0.5),out.col="Gaussian")
 merged.ring.image<-merge(
   merge(
         mutate(ring.image.seg,x=x+11,y=y+11,Distance=Distance/10),

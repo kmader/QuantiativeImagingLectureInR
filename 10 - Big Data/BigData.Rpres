@@ -2,15 +2,21 @@
 source("../common/slide_setup.R")
 ```
 
-```{r script_setup,results='hide',cache=FALSE}
+
+```{r script_setup, cache=F}
 ## The basic files and libraries needed for most presentations
-source("../common/utility_functions.R")
+# creates the libraries and common-functions sections
+read_chunk("../common/utility_functions.R")
+```
+```{r libraries}
+```
+```{r common-functions}
 ```
 
 Quantitative Big Imaging
 ========================================================
 author: Kevin Mader 
-date: 8 May 2014
+date: 7 May 2015
 width: 1440
 height: 900
 transition: rotate
@@ -18,20 +24,12 @@ css: ../template.css
 ## Scaling Up / Big Data
 
  
- Course Outline
+Course Outline
 ========================================================
-- 20th February - Introductory Lecture
-- 27th February - Filtering and Image Enhancement (A. Kaestner)
-- 6th March - Basic Segmentation, Discrete Binary Structures
-- 13th March - Advanced Segmentation
-- 20th March - Analyzing Single Objects
-- 27th March -  Analyzing Complex Objects
-- 3rd April -  Spatial Distribution
-- 10th April -  Statistics and Reproducibility
-- 17th April - Dynamic Experiments
-- 8th May - **Scaling Up / Big Data**
-- 15th May - Guest Lecture - Dynamic Imaging of Battery Systems (V. Wood)
-- 22th May - Project Presentations
+
+```{r, results='asis'}
+source('../common/schedule.R')
+```
 
 Literature / Useful References
 ========================================================
@@ -84,6 +82,7 @@ Outline
 
 Motivation
 ===
+
 There are three different types of problems that we will run into.
 ### Really big data sets
 - Several copies of the dataset need to be in memory for processing
@@ -100,6 +99,7 @@ There are three different types of problems that we will run into.
 - For genome-scale studies 1000s of samples need to be analyzed identically
 - Dynamic experiments can have hundreds of measurements 
 - Animal phenotyping can have many huge data-sets (1000s of 328GB datasets)
+- Radiologist in Switzerland alone make 1 Petabyte of scans per year
 
 ### Exploratory Studies
 - Not sure what we are looking for
@@ -143,7 +143,7 @@ Normally when problems are approached they are solved for a single task as quick
 - then count how many voxels are in each component
 - save it to a file
 
-```{matlab}
+```
 im_in=imread('test.jpg');
 im_filter=medfilt2(im_in,[5,5]);
 cl_img=bwlabel(im_filter>10);
@@ -431,6 +431,7 @@ kable(data.frame(
 ***
 Relational-databases can store relationships between different tables so the relationship between _Animal_ in table **Cells** and _id_ in table **Animals** can be preserved.
 ```{r, fig.height=9}
+
 library(igraph)
 node.names<-c("Cells","Animals","Type","Anisotropy","Volume","Animal","id","Weight")
 c.mat<-matrix(0,length(node.names),length(node.names))
@@ -504,7 +505,7 @@ SELECT Volume FROM Cells WHERE Animal IN
 
 - Get weight and average cell volume for all mice
 
-```{sql}
+```
 SELECT ATable.Weight,CTable.Volume FROM Animals as ATable 
   INNER JOIN Cells as CTable on (ATable.id=CTable.Animal)
 ```
@@ -551,7 +552,7 @@ kable(data.frame(
 ```
 
 Now to calculate how many connections each cell has
-```{sql}
+```
 SELECT id,COUNT(*) AS connection_count FROM Cells 
   INNER JOIN Network ON (id=id1 OR id=id2)
 ```
@@ -563,7 +564,7 @@ Beyond SQL: NoSQL
 Basic networks can be entered and queries using SQL but relatively simple sounding requests can get complicated very quickly
 
 How many cells are within two connections of each cell
-```{sql}
+```
 SELECT id,COUNT(*) AS connection_count FROM Cells as CellsA
   INNER JOIN Network as NetA ON Where (id=NetA.id1)
   INNER JOIN Network as NetB ON Where (NetA.id2=NetB.id1)
@@ -598,7 +599,7 @@ A brief oversimplified story
 
 Google ran into 'big data' and its associated problems years ago: Peta- and exabytes of websites to collect and make sense of. Google uses an algorithm called PageRank(tm) for evaluating the quality of websites. They could have probably used existing tools if page rank were some magic program that could read and determine the quality of a site
 
-```{java}
+```
 for every_site_on_internet
   current_site.rank=secret_pagerank_function(current_site)
 end
@@ -609,7 +610,8 @@ Just divide all the websites into a bunch of groups and have each computer run a
 PageRank
 ===
 While the actual internals of PageRank are not public, the general idea is that sites are ranked based on how many sites link to them
-```{Java}
+
+```
 for current_site in every_site_on_internet
   current_pagerank = new SecretPageRankObj(current_site);
   for other_site in every_site_on_internet
@@ -620,6 +622,7 @@ for current_site in every_site_on_internet
   current_site.rank=current_pagerank.rank();
 end
 ```
+
 How do you divide this task? 
 - Maybe try and divide the sites up: english_sites, chinese_sites, ...
  - Run pagerank and run them separately.
@@ -782,7 +785,7 @@ Near Future Imaging Goals
 ***
 
 ```{r, load_results}
-map.data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/MapReduce3D/ext-data"
+map.data.dir<-"/Users/mader/Dropbox/Papers/MapReduce3D/ext-data"
 pmd<-function(...,sep="") paste(map.data.dir,...,sep="/")
  read.fcn<-function(filename) {
   in.table<-read.csv(filename,header=F)
@@ -857,7 +860,7 @@ Post-processing: Statistical Analysis
 
 If we do that, we miss a lot!
 ```{r load_data}
-data.dir<-"/Users/mader/Dropbox/WorkRelated/Papers/iwbbio2014"
+data.dir<-"/Users/mader/Dropbox/Papers/iwbbio2014"
 pd<-function(...,sep="") paste(data.dir,...,sep="/")
 # read and correct the coordinate system
 # Routine for Connecting to the Database

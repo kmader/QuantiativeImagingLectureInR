@@ -20,3 +20,5 @@ opts_chunk$set(dpi=dpi,cache=cache,
                cache.path=cache.path,results='hide',
                warning=F,fig.align='center',echo=echo.val,
                fig.height=fig.height,fig.path=fig.path,message=F) #dev="CairoPNG"
+
+knit_engines$set(sql=knit_engines$get("scala"))

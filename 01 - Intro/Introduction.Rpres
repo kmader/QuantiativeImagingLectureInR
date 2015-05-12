@@ -6,6 +6,7 @@ source("../common/slide_setup.R")
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
+
 ```
 ```{r libraries}
 ```

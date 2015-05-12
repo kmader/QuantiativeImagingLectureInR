@@ -59,6 +59,14 @@ ddply.cutcols<-function(...,cols=1) {
   cur.table
 }
 
+# since biOps isn't available use a EBImage based version
+imgSobel<-function(img) {
+  kern<-makeBrush(3)*(-1)
+  kern[2,2]<-8
+  filter2(img,kern)
+}
+
+
 show.pngs.as.grid<-function(file.list,title.fun,zoom=1) {
   preparePng<-function(x) rasterGrob(readPNG(x,native=T,info=T),width=unit(zoom,"npc"),interp=F)
   labelPng<-function(x,title="junk") (qplot(1:300, 1:300, geom="blank",xlab=NULL,ylab=NULL,asp=1)+
