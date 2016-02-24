@@ -16,7 +16,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 19 February 2015
+date: 25 February 2016
 width: 1440
 height: 900
 css: ../common/template.css
@@ -49,19 +49,19 @@ Overview
 Who are we?
 ===
 - Kevin Mader (mader@biomed.ee.ethz.ch)
+ - CTO at __4Quant__ for Big Image Analytics (ETH Spin-off)
  - __Lecturer__ at ETH Zurich 
  - __Postdoc__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
- - Spin-off __4Quant__ for Big Data with Images
- 
-![Kevin Mader](../common/figures/kevin-mader.jpg)
+
+
+- ![Kevin Mader](../common/figures/kevin-mader.jpg)
  
 ***
 
-- Marco Stampanoni (marco.stampanoni@psi.ch)
- - __Professor__ at ETH Zurich
- - __Group Leader__ for the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
+- Ioannis Vogiatzis (ioannis.vogiatzis@psi.ch)
+ - Exercise assistance
+ - __PhD Student__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
  
-![Marco Stampanoni](../common/figures/marco.png)
 
 Who are we (continued)?
 ===
@@ -71,14 +71,6 @@ Who are we (continued)?
 
 ![Anders Kaestner](../common/figures/anders.png)
 
-Who are we (continued)?
-===
-- Filippo Arcadu (filippo.arcadu@psi.ch)
- - Exercise assistance
- - __PhD Student__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
- 
-![Filippo Arcadu](../common/figures/filippo.png)
- 
 ***
 
 - Christian Dietz (christian.dietz@uni-konstanz.de)
