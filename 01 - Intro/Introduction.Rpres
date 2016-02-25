@@ -610,17 +610,16 @@ ksable<-function(in.df,...) {
   rownames(in.df)<-1:nrow(in.df)
   kable(in.df,...)
 }
-
 ```
 ```{r, results='asis'}
-kable(course.desc[c(1:3),])
+ksable(course.desc[c(1:3),])
 
 ```
 
 Overview: Segmentation
 ===
 ```{r, results='asis'}
-ksable(course.desc[c(3:5),])
+ksable(course.desc[c(4:5),])
 ```
 
 Overview: Analysis
@@ -638,7 +637,7 @@ ksable(course.desc[c(9:11),])
 Overview: Wrapping Up
 ===
 ```{r, results='asis'}
-ksable(course.desc[c(12:13),])
+ksable(course.desc[c(12:14),])
 ```
 
 What is an image?
@@ -812,7 +811,7 @@ At each point in the image (black dot), instead of having just a single value, t
 
 ```{r load_hypermap}
 hyper.path<-qbi.data
-map.img<-t(readJpeg(hyper.path("raw.jpg"))[,,3]+readJpeg(hyper.path("raw.jpg"))[,,1])#,1,rev)
+map.img<-t(jpeg::readJPEG(hyper.path("raw.jpg"))[,,3]+jpeg::readJPEG(hyper.path("raw.jpg"))[,,1])#,1,rev)
 map.df<-im.to.df(map.img)
 impos<-read.table(hyper.path("impos.csv"),sep=",")
 names(impos)<-c("x","y")
@@ -977,6 +976,66 @@ Your browser does not support the video tag.
 
 ![Suface Topography](../common/figures/surface-plot.png)
 
+
+Image Analysis
+===
+
+![Approaches](../common/figures/approaches.png)
+
+***
+
+- An image is a bucket of pixels.
+- How you choose to turn it into useful information is strongly dependent on your background
+
+Image Analysis: Experimentalist
+===
+
+![Approaches](../common/figures/approaches.png)
+
+***
+
+-Problem-driven
+ - Top-down
+ - _Reality_ Model-based
+
+### Examples 
+
+- cell counting
+- porosity
+
+Image Analysis: Computer Vision Approaches
+===
+
+![Approaches](../common/figures/approaches.png)
+
+***
+
+- Method-driven
+ - Feature-based
+ - _Image_ Model-based
+- Engineer features for solving problems
+
+### Examples 
+
+- edge detection
+- face detection
+
+
+Image Analysis: Deep Learning Approach
+===
+
+![Approaches](../common/figures/approaches.png)
+
+***
+
+- Results-driven
+- Biology ‘inspired’
+- Build both image processing and analysis from scratch
+
+### Examples 
+
+- Captioning images
+- Identifying unusual events
 
 On Science
 ===
