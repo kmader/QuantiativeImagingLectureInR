@@ -46,6 +46,13 @@ Literature / Useful References
  - http://www.cs.utah.edu/~gk/papers/vissym04/
  - Doube, M.,et al. (2010). BoneJ: Free and extensible bone image analysis in ImageJ. Bone, 47, 1076–9. doi:10.1016/j.bone.2010.08.023
  - Mader, K. , et al. (2013). A quantitative framework for the 3D characterization of the osteocyte lacunar system. Bone, 57(1), 142–154. doi:10.1016/j.bone.2013.06.026
+ 
+*** 
+
+### Models / ROC Curves
+
+- [Julia Evans - Recalling with Precision](https://www.youtube.com/watch?v=ryZL4XNUmwo)
+- [Stripe's Next Top Model](https://github.com/stripe/topmodel)
 
 Previously on QBI ...
 ========================================================
@@ -338,6 +345,12 @@ ggplot(tp.table,aes(x=FPRate,y=TPRate,color=name))+
   labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
   theme_bw(20)
 ```
+
+Evaluating Models
+===
+
+- https://github.com/jvns/talks/blob/master/pydatanyc2014/slides.md
+- http://mathbabe.org/2012/03/06/the-value-added-teacher-model-sucks/
 
 Practical Example: Calcifications in Breast Tissue
 ===

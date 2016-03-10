@@ -2,11 +2,13 @@
 require(ggplot2) #for plots
 require(lattice) # nicer scatter plots
 require(plyr) # for processing data.frames
+library(dplyr)
 require(grid) # contains the arrow function
-
+require(jpeg)
 require(doMC) # for parallel code
 require(png) # for reading png images
 require(gridExtra)
+
 require(reshape2) # for the melt function
 #if (!require("biOps")) {
 #  # for basic image processing

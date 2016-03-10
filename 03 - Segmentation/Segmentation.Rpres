@@ -15,7 +15,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 5 March 2015
+date: 10 March 2016
 width: 1440
 height: 900
 css: ../common/template.css
@@ -62,6 +62,13 @@ Literature / Useful References
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
+ 
+*** 
+
+### Models / ROC Curves
+
+- [Julia Evans - Recalling with Precision](https://www.youtube.com/watch?v=ryZL4XNUmwo)
+- [Stripe's Next Top Model](https://github.com/stripe/topmodel)
 
 Motivation:  Why do we do imaging experiments?
 ========================================================
@@ -154,6 +161,29 @@ ggplot(cellImage,aes(x=y,y=400-x,fill=val))+
  - Trace the outline of the object (or sub-structures)
  - Can calculate the area by using equal-weight-paper 
  - Employing the "[cut-and-weigh](http://ion.chem.usu.edu/~sbialkow/Classes/361/GC/GC.html)" method
+
+
+Segmentation Approaches
+===
+
+They match up well to the world view / perspective 
+
+![Approaches](../common/figures/approaches.png)
+
+***
+
+### Model-Based
+
+- $\rightarrow$ Experimentalist 
+- Problem-driven
+ - Top-down
+ - _Reality_ Model-based
+
+
+### Machine Learning Approach 
+
+- $\rightarrow$ Computer Vision / Deep Learning
+- Results-driven
 
 
 Model-based Analysis
@@ -286,7 +316,7 @@ ggplot(grad.im,aes(x=col,y=bl.fun(col)))+
   geom_segment(data=data.frame(
     x=c(0.5,1.5),y=c(0.25),
     xend=c(0.5,1.5),yend=c(1.25)
-    ),aes(x=x,y=y,xend=xend,yend=yend),fill="red",size=3,alpha=0.5)+
+    ),aes(x=x,y=y,xend=xend,yend=yend),size=3,alpha=0.5)+
   labs(x=expression(alpha(x,y)),y=expression(paste("I"[sample],"(x,y)")),title="Probability Density Function",fill="Groups")+theme_bw(20)
 ```
 
@@ -296,7 +326,8 @@ ggplot(grad.im,aes(x=col))+
   geom_segment(data=data.frame(
     x=c(0.5,1.5),y=c(0),
     xend=c(0.5,1.5),yend=c(6)
-    ),aes(x=x,y=y,xend=xend,yend=yend),fill="red",size=3,alpha=0.5)+
+    ),aes(x=x,y=y,xend=xend,yend=yend),
+    size=3,alpha=0.5)+
   labs(x=expression(alpha(x,y)),y="Frequency",title="Probability Density Function",fill="Groups")+theme_bw(20)
 ```
 
@@ -529,6 +560,7 @@ ggplot(g.cmp.thresh,
   labs(color="In Threshold")+guides(fill=FALSE)+
   theme_bw(20)
 ```
+
 Looking at Orientations
 ========================================================
 We can tune the angular acceptance by using the fact $$\vec{x}\cdot\vec{y}=|\vec{x}| |\vec{y}| \cos(\theta_{x\rightarrow y}) $$
@@ -537,7 +569,9 @@ $$ I(x,y) =
 1, & \cos^{-1}(\vec{f}(x,y)\cdot \vec{i}) \leq \theta^{\circ} \\
 0, & \text{otherwise}
 \end{cases}$$
+
 ***
+
 ```{r, fig.cap="",results='hide'}
 i.vec<-c(1,0)
 j.vec<-c(0,1)
@@ -556,11 +590,553 @@ ggplot(ldply(ang.vals,ang.accept),
   theme_bw(20)
 ```
 
+A Machine Learning Approach to Image Processing
+===
+
+Segmentation and all the steps leading up to it are really a specialized type of learning problem.
+
+```{r makeringimage}
+lout<-21
+b.grid<-expand.grid(x=seq(-10,10,length.out=lout),y=seq(-10,10,length.out=lout))
+ring.image<-mutate(
+  b.grid,
+  Intensity = abs(cos(sqrt(x^2+y^2)/15*6.28))
+  )
+
+ring.image.dist<-ddply(ring.image,.(x,y),function(in.pts) {
+  in.pts$Distance<-with(in.pts,sqrt(
+      min(
+        x^2+y^2
+      )
+    ))
+  in.pts
+})
+
+ring.image.seg<-mutate(ring.image.dist,
+                       Segmented = ifelse(
+                         Intensity>0.5 & Distance>5 & Distance<10,
+                         "Foreground","Background")
+                       )
+ring.image.seg<-mutate(ring.image.seg,
+                       x=round(x+11),
+                       y=round(y+11))
+ring.im<-df.to.im(mutate(
+  b.grid,
+  val = 127*(abs(cos(sqrt(x^2+y^2)/15*6.28))+runif(nrow(b.grid)))
+  ))
+
+ring.img<-im.to.df(ring.im,out.col="Intensity")
+blur.img<-im.to.df(gblur(ring.im,0.5),out.col="Intensity")
+med.img<-im.to.df(medianFilter(ring.im/255,3)*255.0,out.col="Intensity")
+```
+
+Returning to the ring image we had before, we start with our knowledge or ground-truth of the ring
+
+```{r, fig.height=5}
+
+ggplot(ring.image.seg,aes(x,y,fill=Segmented))+
+  geom_raster()+
+  coord_equal()+
+  theme_bw(15)
+```
+
+***
+
+Which we want to identify the from the following image by using image processing tools
+
+```{r, fig.height=5}
+simple.image<-ggplot(ring.img,aes(x,y,fill=Intensity))+
+  geom_tile()+
+  coord_equal()+
+  theme_bw(15)
+simple.image
+```
+
+What does identify mean?
+- Classify the pixels in the ring as _Foreground_
+- Classify the pixels outside of the ring as _Background_
+
+How do we quantify this?
+===
+
+- __True Positive__ values in the ring that are classified as _Foreground_
+- __True Negative__ values outside the ring that are classified as _Background_
+- __False Positive__ values outside the ring that are classified as _Foreground_
+- __False Negative__ values in the ring that are classified as _Background_
+
+```{r}
+tr.seg.img<-
+  mutate(ring.img,Segmented=ifelse(Intensity>170,"Foreground","Background"))[,
+   c("x","y","Segmented")]
+gr.truth.img<-ring.image.seg[,c("x","y","Segmented")]
+ggplot(tr.seg.img,
+       aes(x,y,fill=Segmented))+
+  geom_tile(color="black")+
+  coord_equal()+
+  labs(fill="Threshold\nSegmentation")+
+  theme_bw(15)
+```
+
+***
+
+We can then apply a threshold to the image to determine the number of points in each category
+
+```{r, fig.height=8}
+score.img<-mutate(
+    merge(tr.seg.img,gr.truth.img,by=c("x","y"),suffixes=c("C","GT")),
+  Match=(SegmentedC==SegmentedGT),
+  Category=
+    ifelse(Match,
+           ifelse(SegmentedC=="Foreground","True Positive","True Negative"),
+           ifelse(SegmentedC=="Foreground","False Positive","False Negative")
+      )
+  )
+
+ggplot(score.img,
+       aes(x,y,fill=SegmentedC,color=SegmentedGT))+
+  geom_tile(size=1)+
+  facet_wrap(~Category)+
+  coord_equal()+
+  scale_colour_manual(values=c("green","black"))+
+  scale_fill_manual(values=c("red","blue"))+
+  labs(fill="Threshold\nSegmentation",color="Ground\nTruth")+
+  theme_bw(20)
+```
+
+Ring Threshold Example
+===
+
+Try a number of different threshold values on the image and compare them to the original classification
+
+```{r}
+mk.th.img<-function(in.img,steps,smin=0.3,smax=0.7) ldply(seq(smin,smax,length.out=steps),function(c.thresh) {
+  mutate(in.img,
+         Segmented = ifelse(
+                         Intensity>c.thresh*255,
+                         "Foreground","Background"),
+         Thresh = c.thresh
+        )
+})
+```
+
+```{r}
+ggplot(mk.th.img(ring.img,9),aes(x,y,fill=Segmented))+
+  geom_tile(color="black")+
+  coord_equal()+
+  facet_wrap(~Thresh)+
+  theme_bw(15)
+```
+
+***
+
+```{r, results='asis'}
+mk.stat.table<-function(in.img,steps,smin=0.3,smax=0.7) 
+  ddply(mk.th.img(in.img,steps,smin,smax),.(Thresh),function(c.img) {
+  in.df<-merge(c.img[,c("x","y","Segmented")],
+               ring.image.seg[,c("x","y","Segmented")],
+               by=c("x","y"),suffixes=c("C","GT"))
+  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
+  data.frame(TP=nrow(subset(in.df,SegmentedGT=="Foreground" & Match)),
+             TN=nrow(subset(in.df,SegmentedGT=="Background" & Match)),
+             FP=nrow(subset(in.df,SegmentedC=="Foreground" & !Match)),
+             FN=nrow(subset(in.df,SegmentedC=="Background" & !Match))
+             )
+})
+tp.table<-mk.stat.table(ring.img,6,smin=0,smax=1)
+kable(tp.table)
+```
+
+```{r, fig.height=5}
+ggplot(melt(tp.table,id.vars=c("Thresh")),
+       aes(x=Thresh*100,y=100*value/200,color=variable))+
+  geom_point()+
+  geom_path()+
+  labs(color="",y="Percent (%)",x="Threshold Value (%)")+
+  theme_bw(20)
+```
+
+
+Apply Precision and Recall
+===
+
+- __Recall__ (sensitivity)= $TP/(TP+FN)$
+- __Precision__ = $TP/(TP+FP)$
+
+```{r, results='asis'}
+prec.table<-mutate(mk.stat.table(ring.img,6),
+                  Recall=round(100*TP/(TP+FN)),
+                  Precision=round(100*TP/(TP+FP))
+                   )
+kable(prec.table)
+```
+
+***
+### ROC Curve 
+Reciever Operating Characteristic (first developed for WW2 soldiers detecting objects in battlefields using radar). The ideal is the top-right (identify everything and miss nothing)
+
+```{r}
+prec.table<-mutate(mk.stat.table(ring.img,100),
+                   Recall=TP/(TP+FN),
+                   Precision=TP/(TP+FP)
+                   )
+
+ggplot(prec.table,aes(x=Recall,y=Precision))+
+  geom_point(aes(color=Thresh,shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  #coord_equal()+
+  scale_color_gradientn(colours=rainbow(6))+
+  labs(shape="")+
+  theme_bw(20)
+```
+
+
+Comparing Different Filters
+===
+We can then use this ROC curve to compare different filters (or even entire workflows), if the area is higher the approach is better.
+
+```{r, fig.height=10}
+
+all.img<-rbind(
+  cbind(mk.th.img(ring.img,3), name="Normal"),
+  cbind(mk.th.img(blur.img,3), name="Gaussian"),
+  cbind(mk.th.img(med.img,3), name="Median")
+  )
+
+simple.image<-ggplot(all.img,aes(x,y,fill=Segmented))+
+  geom_tile(color="black")+
+  coord_equal()+
+  facet_grid(name~Thresh)+
+  theme_bw(15)
+
+simple.image
+```
+
+
+***
+
+Different approaches can be compared by area under the curve
+
+```{r}
+
+stab<-function(img) mk.stat.table(img,100,smin=0.05,smax=0.95)
+all.table<-rbind(
+  cbind(stab(ring.img), name="Normal"),
+  cbind(stab(blur.img), name="Gaussian"),
+  cbind(stab(med.img), name="Median")
+  )
+
+prec.table<-mutate(all.table,
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
+                   )
+ggplot(prec.table,aes(x=Recall,y=Precision,color=name))+
+  geom_point(aes(shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  #coord_equal()+
+  labs(shape="",color="Filter")+
+  xlim(0.5,1)+ylim(0.5,1)+
+  theme_bw(20)
+```
+
+True Positive Rate and False Positive Rate
+===
+Another way of showing the ROC curve (more common for machine learning rather than medical diagnosis) is using the True positive rate and False positive rate
+
+- __True Positive Rate__ (recall)= $TP/(TP+FN)$
+- __False Positive Rate__ = $FP/(FP+TN)$
+
+***
+
+These show very similar information with the major difference being the goal is to be in the upper left-hand corner. Additionally random guesses can be shown as the slope 1 line. Therefore for a system to be useful it must lie above the random line.
+
+```{r}
+
+tp.table<-mutate(all.table,
+                   TPRate=TP/(TP+FN),
+                   FPRate=FP/(FP+TN)
+                   )
+ggplot(tp.table,aes(x=FPRate,y=TPRate,color=name))+
+  geom_point(aes(shape="Image"),size=2)+
+  geom_point(data=data.frame(TPRate=1,FPRate=0),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  geom_segment(x=0,xend=1,y=0,yend=1,aes(color="Random Guess"))+
+  xlim(0,1)+ylim(0,1)+coord_equal()+
+  labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
+  theme_bw(20)
+```
+
+Evaluating Models
+===
+
+- https://github.com/jvns/talks/blob/master/pydatanyc2014/slides.md
+- http://mathbabe.org/2012/03/06/the-value-added-teacher-model-sucks/
+
+Practical Example: Self-Driving Cars, Finding the Road
+===
+A more complicated example is finding the road in an image with cars and buildings
+
+```{r import-read-data}
+# image data
+road.rgb.arr<-readJPEG(qbi.data("road_image.jpg"))
+road.arr<-((road.rgb.arr[,,1]+road.rgb.arr[,,2]+road.rgb.arr[,,3])/3) %>% t %>% flip
+road.image<- road.arr %>% im.to.df
+# ground truth
+cal.image<-readJPEG(qbi.data("road_image_street_bw.jpg")) %>% t %>% flip %>% im.to.df %>% 
+  mutate(Segmented = ifelse(val,"Road","Background"))
+```
+
+![Tuk Tuk](../common/data/road_image.jpg)
+
+```{r, eval = F}
+ggplot(road.image,
+       aes(x,y,fill=val))+
+  geom_raster()+
+  coord_equal()+
+  scale_fill_gradientn(colours=c("black","white"))+
+  guides(fill=F)+
+  theme_bw(20)
+```
+
+***
+
+From these images, an expert labeled the calcifications by hand, so we have ground truth data on where they are:
+
+```{r}
+
+ggplot(cal.image,aes(x,y,fill=Segmented,alpha=Segmented))+
+  geom_raster()+
+  coord_equal()+
+  guides(alpha=F)+
+  theme_bw(20)
+```
+
+
+Applying a threshold
+===
+
+We can perform the same analysis on an image like this one, again using a simple threshold to evalulate how accurately we identify the stripes. Since they are white, we can selectively keep the white components.
+
+```{r}
+tr.road<-mutate(road.image,
+                 Segmented=ifelse(val>0.75,"Road","Background")
+                 )
+
+ggplot(tr.road,aes(x,y,fill=Segmented,alpha=val))+
+  geom_raster()+
+  coord_equal()+
+  guides(alpha=F)+
+  theme_bw(20)
+```
+
+***
+
+```{r, fig.height=12}
+score.img<-mutate(
+    merge(tr.road[,c("x","y","Segmented")],
+          cal.image[,c("x","y","Segmented")],
+          by=c("x","y"),suffixes=c("C","GT")),
+  Match=(SegmentedC==SegmentedGT),
+  Category=
+    ifelse(Match,
+           ifelse(SegmentedC=="Road","True Positive","True Negative"),
+           ifelse(SegmentedC=="Road","False Positive","False Negative")
+      )
+  )
+
+ggplot(score.img,
+       aes(x,y,fill=SegmentedGT))+
+  geom_tile()+
+  facet_grid(Category~.)+
+  coord_equal()+
+  scale_colour_manual(values=c("green","black"))+
+  scale_fill_manual(values=c("red","blue"))+
+  labs(fill="Ground\nTruth")+
+  theme_bw(20)
+```
+
+Examining the ROC Curve
+===
+
+```{r tuktuk-roc}
+mk.th.img<-function(in.img,stepseq) ldply(stepseq,function(c.thresh) {
+  mutate(in.img,
+         Segmented = ifelse(
+                         val>c.thresh,
+                         "Road","Background"),
+         Thresh = c.thresh
+        )
+})
+
+mk.stat.table<-function(in.img,stepseq) 
+  ddply(mk.th.img(in.img,stepseq),.(Thresh),function(c.img) {
+  in.df<-merge(c.img[,c("x","y","Segmented")],
+               cal.image[,c("x","y","Segmented")],
+               by=c("x","y"),suffixes=c("C","GT"))
+  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
+  data.frame(TP=nrow(subset(in.df,SegmentedGT=="Road" & Match)),
+             TN=nrow(subset(in.df,SegmentedGT=="Background" & Match)),
+             FP=nrow(subset(in.df,SegmentedC=="Road" & !Match)),
+             FN=nrow(subset(in.df,SegmentedC=="Background" & !Match))
+             )
+})
+
+step.fcn<-function(vals,n) quantile(vals,seq(0,1,length.out=n+2)[-c(1,n+2)])
+abs.steps<-step.fcn(road.image$val,6)
+tp.table<-mk.stat.table(road.image,abs.steps)
+```
+
+```{r, results='asis'}
+
+prec.table<-mutate(tp.table,
+                   Thresh=round(100*Thresh),
+                   Recall=round(100*TP/(TP+FN)),
+                   Precision=round(100*TP/(TP+FP))
+                   )
+kable(prec.table)
+```
+
+```{r, fig.height=5}
+
+abs.steps<-step.fcn(road.image$val,15)
+tp.table<-mk.stat.table(road.image,abs.steps)
+ggplot(melt(tp.table,id.vars=c("Thresh")),
+       aes(x=Thresh*100,y=value,color=variable))+
+  geom_point()+
+  geom_path()+
+  labs(color="",y="Pixel Count",x="Threshold Value (%)")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r}
+
+prec.table<-mutate(tp.table,
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
+                   )
+
+ggplot(prec.table,aes(x=Recall,y=Precision))+
+  geom_point(aes(color=Thresh,shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  scale_color_gradientn(colours=rainbow(6))+
+  scale_x_sqrt()+
+  labs(shape="")+
+  theme_bw(20)
+```
+
+ROC: True Positive Rate vs False Positive
+===
+
+```{r}
+
+tpr.table<-mutate(tp.table,
+                   TPRate=TP/(TP+FN),
+                   FPRate=FP/(FP+TN)
+                   )
+ggplot(tpr.table,aes(x=FPRate,y=TPRate))+
+  geom_point(aes(shape="Image"),size=2)+
+  geom_point(data=data.frame(TPRate=1,FPRate=0),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  geom_segment(x=0,xend=1,y=0,yend=1,aes(color="Random Guess"))+
+  xlim(0,1)+ylim(0,1)+coord_equal()+
+  labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
+  theme_bw(20)
+```
+
+Using other pieces of information
+===
+
+Since we know the stripes are on the road, we can add another criteria (just the lower half), we can improve the ROC curve substantially.
+
+```{r}
+# subtract blur
+#road.blur <- (road.arr - gblur(road.arr,2)) %>% im.to.df
+roi.road.image<-road.image %>% 
+  mutate(val = 
+           ifelse(x>200,ifelse(y<200,val,0),0)
+         )
+dci.steps<-step.fcn(roi.road.image$val,12)
+dci.table<-mk.stat.table(roi.road.image,dci.steps)
+prec.dci.table<-mutate(dci.table,
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
+                   )
+```
+
+```{r}
+ggplot(roi.road.image,
+       aes(x,y,fill=val))+
+  geom_tile()+
+  coord_equal()+
+  scale_fill_gradientn(colours=c("black","white"))+
+  guides(fill=F)+
+  theme_bw(20)
+
+```
+
+***
+
+```{r}
+
+# subtract blur
+# road.blur <- (road.arr - gblur(road.arr,2)) %>% im.to.df
+roi.blur.image<-gblur(road.arr,2) %>% im.to.df %>% 
+  mutate(val = 
+           ifelse(x>200,ifelse(y<200,val,0),0)
+         )
+blur.steps<-step.fcn(roi.blur.image$val,12)
+blur.table<-mk.stat.table(roi.blur.image,blur.steps)
+prec.blur.table<-mutate(blur.table,
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
+                   )
+
+```
+
+```{r}
+ggplot(roi.blur.image,
+       aes(x,y,fill=val))+
+  geom_tile()+
+  coord_equal()+
+  scale_fill_gradientn(colours=c("black","white"))+
+  guides(fill=F)+
+  theme_bw(20)
+```
+
+The resulting ROC curves
+===
+
+```{r, fig.width=12}
+ggplot(rbind(cbind(prec.table,Channel="Standard"),
+             cbind(prec.dci.table,Channel="Region"),
+             cbind(prec.blur.table,Channel="Region Blur")
+             ),
+             aes(x=Recall,y=Precision))+
+  geom_point(aes(shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path(aes(group=Channel,color=Channel))+
+  scale_y_sqrt()+
+  labs(shape="")+
+  theme_bw(20)
+```
+
 
 Other Image Types
 ========================================================
 Going beyond vector the possibilities for images are limitless. The following shows a tensor plot with the tensor represented as an ellipse. 
 $$ I(x,y) = \hat{f}(x,y) $$
+
 ```{r, fig.cap="",fig.height=3}
 nx<-4
 ny<-4
@@ -962,13 +1538,15 @@ cross.im$thresh<-cross.im$col>1.75
 
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
+
 ggplot(cross.df,aes(x=x,y=y))+
   geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
   labs(fill="Type")+
   theme_bw(20)
 ```
+
 ```{r, fig.cap="Dilation Example",fig.height=3}
-cross.dil.mat<-imgStdBinaryDilation(cross.mat)
+cross.dil.mat<-erode(cross.mat,makeBrush(3,shape = 'box'))
 cross.dil.df<-im.to.df(cross.dil.mat)
 
 ggplot(cross.df,aes(x=x,y=y))+
@@ -983,6 +1561,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 ### Erosion
 Taking an image of the cross at a too-low threshold, we show how erosion can be used to remove some of the extra pixels
 ```{r, fig.cap="Erosion Example",fig.height=3}
+
 cross.im$thresh<-cross.im$col>0.4
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
@@ -993,7 +1572,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 ```
 ```{r, fig.cap="Erosion Example",fig.height=3}
 
-cross.ero.mat<-imgStdBinaryErosion(cross.mat)
+cross.ero.mat<-dilate(cross.mat,makeBrush(3,shape = 'box'))
 cross.ero.df<-im.to.df(cross.ero.mat)
 ggplot(cross.df,aes(x=x,y=y))+
   geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
@@ -1031,7 +1610,8 @@ Applied Opening and Closing
 
 ### Opening
 Taking an image of the cross at a too-low threshold, we show how opening can be used to remove some of the extra pixels
-```{r, fig.cap="Erosion Example",fig.height=3}
+
+```{r, fig.cap="Opening Example",fig.height=3}
 cross.im$thresh<-cross.im$col>0.4
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
@@ -1040,9 +1620,8 @@ ggplot(cross.df,aes(x=x,y=y))+
   labs(fill="Type")+
   theme_bw(20)
 ```
-```{r, fig.cap="Erosion Example",fig.height=3}
-
-cross.ero.mat<-imgStdBinaryOpening(cross.mat)
+```{r, fig.cap="Opening Example",fig.height=3}
+cross.ero.mat<-closing(cross.mat,makeBrush(3,'box'))
 cross.ero.df<-im.to.df(cross.ero.mat)
 ggplot(cross.df,aes(x=x,y=y))+
   geom_tile(data=subset(cross.df,val==0),aes(fill="original"),color="black",alpha=0.7)+
@@ -1056,7 +1635,7 @@ ggplot(cross.df,aes(x=x,y=y))+
 ### Closing
 Taking an image of the cross at a too-high threshold, we show how closing can be used to recover some of the missing pixels
 ```{r, fig.cap="Dilation Example",fig.height=3}
-cross.im$thresh<-cross.im$col>1.75
+cross.im$thresh<-cross.im$col>1.6
 
 cross.mat<-df.to.im(cross.im,"thresh",inv=T)
 cross.df<-im.to.df(cross.mat)
@@ -1066,7 +1645,7 @@ ggplot(cross.df,aes(x=x,y=y))+
   theme_bw(20)
 ```
 ```{r, fig.cap="Dilation Example",fig.height=3}
-cross.dil.mat<-imgStdBinaryClosing(cross.mat)
+cross.dil.mat<-opening(cross.mat,makeBrush(3,'box'))
 cross.dil.df<-im.to.df(cross.dil.mat)
 
 ggplot(cross.df,aes(x=x,y=y))+
@@ -1096,10 +1675,10 @@ Filling Holes / Creating Masks
 ========================================================
 
 ```{r, fig.cap="Cortical Segment closing",fig.height=7}
-cortbone.im<-imagedata(t(png::readPNG("ext-figures/bone.png")),"grey")
+cortbone.im<-png::readPNG("ext-figures/bone.png") %>% t
 cortbone.df<-im.to.df(cortbone.im)
 #cortbone.df$val<-255*(cortbone.df$val>0.5)
-cortbone.close.im<-imgStdBinaryClosing(cortbone.im)
+cortbone.close.im<-opening(cortbone.im,makeBrush(3,'box'))
 ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
   geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
               aes(fill="closing 3x3"),alpha=0.8)+
@@ -1112,7 +1691,7 @@ ggplot(subset(cortbone.df,val<1),aes(x=x,y=518-y))+
 ***
 
 ```{r, fig.cap="Cortical Segment closing 7",fig.height=7}
-cortbone.close.im<-imgStdBinaryClosing(cortbone.im,dim=7)
+cortbone.close.im<-opening(cortbone.im,makeBrush(7,'box'))
 ggplot(subset(cortbone.df,val<1),aes(x=x,y=600-y))+
   geom_raster(data=subset(im.to.df(cortbone.close.im),val<1),
               aes(fill="closing 7x7"),alpha=0.8)+

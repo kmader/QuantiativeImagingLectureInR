@@ -1,22 +1,20 @@
 schedule.str<-"- 25th February - Introduction and Workflows
 - 3rd March - Image Enhancement (A. Kaestner)
-- 10th March - Ground Truth and Visualization
-- 17th March - Basic Segmentation, Discrete Binary Structures
-- 24th March - Advanced Segmentation
-- 7th April - Analyzing Single Objects
-- 14th April - Analyzing Complex Objects
-- 21th April - Spatial Distribution
-- 28th April -  Statistics and Reproducibility
-- 30th April - Dynamic Experiments
+- 10th March - Basic Segmentation, Discrete Binary Structures
+- 17th March - Advanced Segmentation
+- 24th March - Analyzing Single Objects
+- 7th April - Analyzing Complex Objects
+- 14th April - Spatial Distribution
+- 21st April -  Statistics and Reproducibility
+- 28th April - Dynamic Experiments
 - 12th May - Scaling Up / Big Data
-- 19th May - Guest Lecture - Applying Image Processing
+- 19th May - Guest Lecture - High Content Screening
 - 26th May - Guest Lecture - Machine Learning / Deep Learning and More Advanced Approaches
 - 2nd June - Project Presentations"
 course.desc<-
   data.frame(Lecture=substring(gsub("\\s+"," ",strsplit(schedule.str,"\n")[[1]]),3),
              Description=c("Basic overview of the course, introduction to the basics of images and their acquisition, the importance of reproducibility and why workflows make sense for image processing",
                            "Overview of what techniques are available for assessing and improving the quality of images, specifically various filters, when to apply them, their side-effects, and how to apply them correctly",
-                           "Learning about ground-truth, validation, simulation and the visualization as they are related to image analysis",
                            "How to convert images into structures, starting with very basic techniques like threshold and exploring several automated techniques",
                            "More advanced techniques for extracting structures including basic clustering and classification approaches, and component labeling",
                            "The analysis and characterization of single structures/objects after they have been segmented, including shape and orientation",
@@ -42,7 +40,6 @@ course.desc<-
                "Turning a video of foam flow into metrics like speed, average deformation, and reorganization",
                "Performing large scale analyses using ETHs clusters and Amazons Cloud Resources, how to do anything with a terabytes of data",
                "Training an algorithm to automatically identify cells",
-               "",
                ""
                )
   )

@@ -1,6 +1,6 @@
 # For Linux or any machines with gcc compiler
 pandoc = /usr/local/bin/pandoc
-Rscript = /usr/bin/Rscript
+Rscript = /usr/local/bin/Rscript
 
 mainFile = Segmentation 
 presFile = $mainFile.Rpres
@@ -13,7 +13,7 @@ clean:
 	/bin/rm printable.html 
     
 printable:  Segmentation.Rpres
-	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Segmentation.Rpres',output='printable.html',chooser=c('boot','code'))"
+	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Segmentation.Rpres',output='printable.html')"
 
 rocco:  Segmentation.Rpres
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('Segmentation.Rpres','rocco.html')"

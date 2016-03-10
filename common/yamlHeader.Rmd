@@ -1,0 +1,9 @@
+---
+output:
+  knitrBootstrap::bootstrap_document:
+    title: "Test file"
+    theme: amelia
+    highlight: sunburst
+    theme.chooser: TRUE
+    highlight.chooser: TRUE
+---

@@ -4,16 +4,23 @@ Rscript = /usr/local/bin/Rscript
 
 mainFile = Introduction
 presFile = $(wildcard *.Rpres)
+tempRmd = temp.Rmd
 mdFile = $(mainFile).md
+mdHeader = ../common/yamlHeader.Rmd
 
 # make the updated script
 all: printable
 
 clean:
-	/bin/rm printable.html 
-    
-printable:  $(presFile)
-	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Introduction.Rpres',output='01-Handout.html')"
+	/bin/rm $(tempRmd)
+	/bin/rm printable.html
+
+yaml: $(presFile)
+	/bin/cat $(mdHeader) > $(tempRmd)
+	/bin/cat $(presFile) >> $(tempRmd)
+   
+printable:  $(tempRmd)
+	$(Rscript) --vanilla -e "library(rmarkdown);printed<-T;render('temp.Rmd','knitrBootstrap::bootstrap_document',output_file='01-Handout.html')"
 
 rocco:  $presFile
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('Introduction.Rpres','rocco.html')"
