@@ -15,7 +15,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 12 March 2015
+date: 17 March 2016
 width: 1440
 height: 900
 css: ../common/template.css
@@ -66,6 +66,9 @@ Lesson Outline
 - Thresholding
  - Automated Methods
  - Hysteresis Method
+
+*** 
+
 - Feature Vectors
  - K-Means Clustering
  - Superpixels
@@ -83,6 +86,10 @@ Previously on QBI
 - Image acquisition and representations
 - Enhancement and noise reduction
 - Understanding models and interpreting histograms
+- Ground Truth and ROC Curves
+
+***
+
 - Choosing a threshold
  - Examining more complicated, multivariate data sets
 - Improving segementation with morphological operations
@@ -496,6 +503,19 @@ ring.image<-mutate(
   expand.grid(x=c(-10:10),y=c(-10:10)),
   Intensity = abs(cos(sqrt(x^2+y^2)/15*6.28))
   )
+ring.image.dist<-ddply(ring.image,.(x,y),function(in.pts) {
+  in.pts$Distance<-with(in.pts,sqrt(
+      min(
+        x^2+y^2
+      )
+    ))
+  in.pts
+})
+ring.image.gt<-mutate(ring.image.dist,
+                       Segmented = ifelse(
+                         Intensity>0.5 & Distance>5 & Distance<10,
+                         1,0)
+                       )
 ```
 
 ```{r, fig.height=5}
@@ -524,16 +544,6 @@ Adding a new feature
 ===
 
 In this case we add a very simple feature to the image, the distance from the center of the image (distance).
-```{r ringadddist}
-ring.image.dist<-ddply(ring.image,.(x,y),function(in.pts) {
-  in.pts$Distance<-with(in.pts,sqrt(
-      min(
-        x^2+y^2
-      )
-    ))
-  in.pts
-})
-```
 
 ```{r, fig.height=5}
 ggplot(ring.image.dist,aes(x,y,fill=Distance))+
@@ -566,7 +576,7 @@ Applying two criteria
 
 Now instead of trying to find the intensity for the ring, we can combine density and distance to identify it 
 
-$$ iff (5<\textrm{Distance}<10 \\ \& 0.5<\textrm{Intensity}>1.0) $$
+$$ iff (5<\textrm{Distance}<10 \\ \& 0.3<\textrm{Intensity}>1.0) $$
 
 ```{r}
 ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
@@ -580,17 +590,139 @@ ggplot(ring.image.dist,aes(y=Distance,x=Intensity))+
 ***
 
 
-```{r, fig.height=5}
+```{r}
 ring.image.seg<-mutate(ring.image.dist,
-                       Segmented = Intensity>0.5 & Distance>5 & Distance<10)
-ggplot(ring.image,aes(x,y,fill=Intensity))+
-  geom_tile(color="black")+
-  geom_tile(data=subset(ring.image.seg,Segmented),
-            aes(color="Threshold"),fill="red",alpha=0.5)+
+                       Segmented = Intensity>0.35 & Distance>5 & Distance<10)
+
+ggplot(ring.image.seg,aes(x,y,fill=Segmented,alpha=Intensity))+
+  geom_raster()+
   coord_equal()+
-  labs(color="")+
-  theme_bw(15)
+  guides(alpha=F)+
+  theme_bw(20)
 ```
+
+Back to Ground Truth / ROC Curves
+===
+
+```{r, fig.height=12}
+score.img<-mutate(
+    merge(ring.image.seg[,c("x","y","Segmented")],
+          ring.image.gt[,c("x","y","Segmented")],
+          by=c("x","y"),suffixes=c("C","GT")),
+  Match=(SegmentedC==SegmentedGT),
+  Category=
+    ifelse(Match,
+           ifelse(SegmentedC==1,"True Positive","True Negative"),
+           ifelse(SegmentedC==1,"False Positive","False Negative")
+      )
+  )
+
+ggplot(score.img,
+       aes(x,y,fill=as.factor(SegmentedGT)))+
+  geom_tile()+
+  facet_grid(Category~.)+
+  coord_equal()+
+  scale_colour_manual(values=c("green","black"))+
+  scale_fill_manual(values=c("red","blue"))+
+  labs(fill="Ground\nTruth")+
+  theme_bw(20)
+```
+
+Examining the ROC Curve
+===
+
+```{r ring-roc}
+mk.th.img<-function(in.img,stepseq) ldply(stepseq,function(c.thresh) {
+  mutate(in.img,
+         Segmented = ifelse(
+                         Intensity>c.thresh,
+                         1,0),
+         Thresh = c.thresh
+        )
+})
+
+mk.stat.table<-function(in.img,stepseq) 
+  ddply(mk.th.img(in.img,stepseq),.(Thresh),function(c.img) {
+  in.df<-merge(c.img[,c("x","y","Segmented")],
+               ring.image.gt[,c("x","y","Segmented")],
+               by=c("x","y"),suffixes=c("C","GT"))
+  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
+  data.frame(TP=nrow(subset(in.df,(SegmentedGT==1) & Match)),
+             TN=nrow(subset(in.df,(SegmentedGT==0) & Match)),
+             FP=nrow(subset(in.df,SegmentedC & !Match)),
+             FN=nrow(subset(in.df,(SegmentedC==0) & !Match))
+             )
+})
+
+step.fcn<-function(vals,n) quantile(vals,seq(0,1,length.out=n+2)[-c(1,n+2)])
+abs.steps<-step.fcn(ring.image.dist$Intensity,6)
+tp.table<-mk.stat.table(ring.image.dist,abs.steps)
+```
+
+```{r, results='asis'}
+prec.table<-mutate(tp.table,
+                   Thresh=round(100*Thresh),
+                   Recall=round(100*TP/(TP+FN)),
+                   Precision=round(100*TP/(TP+FP))
+                   )
+kable(prec.table)
+```
+
+
+```{r, fig.height=5}
+
+abs.steps<-step.fcn(ring.image.dist$Intensity,15)
+tp.table<-mk.stat.table(ring.image.dist,abs.steps)
+ggplot(melt(tp.table,id.vars=c("Thresh")),
+       aes(x=Thresh*100,y=value,color=variable))+
+  geom_point()+
+  geom_path()+
+  labs(color="",y="Pixel Count",x="Threshold Value (%)")+
+  scale_y_sqrt()+
+  theme_bw(20)
+```
+
+***
+
+```{r}
+
+prec.table<-mutate(tp.table,
+                   Recall=TP/(TP+FN),
+                  Precision=TP/(TP+FP)
+                   )
+
+ggplot(prec.table,aes(x=Recall,y=Precision))+
+  geom_point(aes(color=Thresh,shape="Image"),size=5)+
+  geom_point(data=data.frame(Recall=1,Precision=1),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  scale_color_gradientn(colours=rainbow(6))+
+  scale_x_sqrt()+
+  labs(shape="")+
+  theme_bw(20)
+```
+
+ROC: True Positive Rate vs False Positive
+===
+
+```{r}
+
+tpr.table<-mutate(tp.table,
+                   TPRate=TP/(TP+FN),
+                   FPRate=FP/(FP+TN)
+                   )
+ggplot(tpr.table,aes(x=FPRate,y=TPRate))+
+  geom_point(aes(shape="Image"),size=2)+
+  geom_point(data=data.frame(TPRate=1,FPRate=0),
+             aes(shape="Ideal"),size=5,color="red")+
+  geom_path()+
+  geom_segment(x=0,xend=1,y=0,yend=1,aes(color="Random Guess"))+
+  xlim(0,1)+ylim(0,1)+coord_equal()+
+  labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
+  theme_bw(20)
+```
+
+
 
 Common Features
 ===
@@ -813,8 +945,10 @@ Super-pixels
 An approach for simplifying images by performing a clustering and forming super-pixels from groups of similar pixels.
 
 ```{r}
-shale.array<-readTiff(qbi.file("shale-slice.tiff"))
-shale.image<-im.to.df(shale.array[,,1],out.col="Intensity")
+shale.array<-tiff::readTIFF(qbi.file("shale-slice.tiff"))
+shale.image<-im.to.df(shale.array,out.col="Intensity") %>%
+  mutate(Intensity = Intensity * 255)
+
 ggplot(shale.image,aes(x,y,fill=Intensity))+
   geom_tile()+
   coord_equal()+
@@ -826,6 +960,7 @@ ggplot(shale.image,aes(x,y,fill=Intensity))+
 ***
 
 ```{r}
+
 pos.scale<-5
 shale.kmeans.data<-mutate(
   shale.image[,c("x","y","Intensity")],
@@ -842,6 +977,7 @@ shale.kmeans<-kmeans(shale.kmeans.data,
                                centers=shale.superpixels.centers,
                                iter.max=50
   )
+
 shale.image$km.cluster<-shale.kmeans$cluster
 ```
 
@@ -890,10 +1026,9 @@ ggplot(shale.centers,
 Segment the superpixels and apply them to the whole image (only a fraction of the data and much smaller datasets)
 
 ```{r}
-
 shale.centers<-mutate(shale.centers,
                       cluster=1:nrow(shale.centers),
-                      group=as.factor(ifelse(Intensity<130,"Dark",
+                      group=as.factor(ifelse(Intensity<130.0,"Dark",
                                    ifelse(Intensity<180,"Medium","Light")))
                       )
 grp.image<-merge(shale.image,shale.centers[,c("cluster","group")],by.x="km.cluster",by.y="cluster")
@@ -1026,7 +1161,7 @@ Convex Hull Example
 The convex hull very closely matches the area we would define as 'bone' without requiring any parameter adjustment, resolution specific adjustments, or extensive image-processing, for such a sample a convex hull is usually sufficient.
 
 ```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
-cortbone.im<-imagedata(t(png::readPNG(qbi.file("bone-section.png"))[,,1]),"grey")
+cortbone.im<-t(png::readPNG(qbi.file("bone-section.png"))[,,1])
 cortbone.df<-im.to.df(cortbone.im)
 # calculate convex hull
 cortbone.chull<-chull(subset(cortbone.df,val>0.5)[,c("x","y")])
@@ -1046,7 +1181,7 @@ ggplot(subset(cortbone.df,val>0.5),aes(x=x,y=518-y))+
 Here is an example of the convex hull applied to a region of a cortical bone sample. The green shows the bone and the red shows the convex hull. Compared to a visual inspection, the convex hull overestimates the bone area as we probably would not associate the region where the bone curves to the right with 'bone area'
 
 ```{r, fig.cap="Cortical Segment Convex Hull",fig.height=7}
-cortbone.im<-imagedata(t(png::readPNG(qbi.file("bone.png"))),"grey")
+cortbone.im<-t(png::readPNG(qbi.file("bone.png")))
 cortbone.df<-im.to.df(cortbone.im)
 # calculate convex hull
 cortbone.chull<-chull(subset(cortbone.df,val<1)[,c("x","y")])
