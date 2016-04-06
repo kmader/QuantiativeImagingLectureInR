@@ -69,122 +69,18 @@ Previously on QBI ...
  - Contouring 
 - Machine Learning
 
-A Machine Learning Approach to Image Processing
+Review of ROC
 ===
 
-Segmentation and all the steps leading up to it are really a specialized type of learning problem.
-
-```{r makeringimage}
-lout<-21
-b.grid<-expand.grid(x=seq(-10,10,length.out=lout),y=seq(-10,10,length.out=lout))
-ring.image<-mutate(
-  b.grid,
-  Intensity = abs(cos(sqrt(x^2+y^2)/15*6.28))
-  )
-
-ring.image.dist<-ddply(ring.image,.(x,y),function(in.pts) {
-  in.pts$Distance<-with(in.pts,sqrt(
-      min(
-        x^2+y^2
-      )
-    ))
-  in.pts
-})
-
-ring.image.seg<-mutate(ring.image.dist,
-                       Segmented = ifelse(
-                         Intensity>0.5 & Distance>5 & Distance<10,
-                         "Foreground","Background")
-                       )
-ring.image.seg<-mutate(ring.image.seg,
-                       x=round(x+11),
-                       y=round(y+11))
-ring.im<-df.to.im(mutate(
-  b.grid,
-  val = 127*(abs(cos(sqrt(x^2+y^2)/15*6.28))+runif(nrow(b.grid)))
-  ))
-
-ring.img<-im.to.df(ring.im,out.col="Intensity")
-blur.img<-im.to.df(gblur(ring.im,0.5),out.col="Intensity")
-med.img<-im.to.df(medianFilter(ring.im/255,3)*255.0,out.col="Intensity")
-```
-
-Returning to the ring image we had before, we start with our knowledge or ground-truth of the ring
-
-```{r, fig.height=5}
-ggplot(ring.image.seg,aes(x,y,fill=Segmented))+
-  geom_raster(color="black")+
-  coord_equal()+
-  theme_bw(15)
-```
-
-***
-
-Which we want to identify the from the following image by using image processing tools
-
-```{r, fig.height=5}
-simple.image<-ggplot(ring.img,aes(x,y,fill=Intensity))+
-  geom_tile(color="black")+
-  coord_equal()+
-  theme_bw(15)
-simple.image
-```
-
-What does identify mean?
-- Classify the pixels in the ring as _Foreground_
-- Classify the pixels outside of the ring as _Background_
-
-How do we quantify this?
-===
 
 - __True Positive__ values in the ring that are classified as _Foreground_
 - __True Negative__ values outside the ring that are classified as _Background_
 - __False Positive__ values outside the ring that are classified as _Foreground_
 - __False Negative__ values in the ring that are classified as _Background_
 
-```{r}
-tr.seg.img<-
-  mutate(ring.img,Segmented=ifelse(Intensity>170,"Foreground","Background"))[,
-   c("x","y","Segmented")]
-gr.truth.img<-ring.image.seg[,c("x","y","Segmented")]
-ggplot(tr.seg.img,
-       aes(x,y,fill=Segmented))+
-  geom_tile(color="black")+
-  coord_equal()+
-  labs(fill="Threshold\nSegmentation")+
-  theme_bw(15)
-```
-
 ***
 
-We can then apply a threshold to the image to determine the number of points in each category
-
-```{r, fig.height=8}
-score.img<-mutate(
-    merge(tr.seg.img,gr.truth.img,by=c("x","y"),suffixes=c("C","GT")),
-  Match=(SegmentedC==SegmentedGT),
-  Category=
-    ifelse(Match,
-           ifelse(SegmentedC=="Foreground","True Positive","True Negative"),
-           ifelse(SegmentedC=="Foreground","False Positive","False Negative")
-      )
-  )
-
-ggplot(score.img,
-       aes(x,y,fill=SegmentedC,color=SegmentedGT))+
-  geom_tile(size=1)+
-  facet_wrap(~Category)+
-  coord_equal()+
-  scale_colour_manual(values=c("green","black"))+
-  scale_fill_manual(values=c("red","blue"))+
-  labs(fill="Threshold\nSegmentation",color="Ground\nTruth")+
-  theme_bw(20)
-```
-
-Ring Threshold Example
-===
-
-Try a number of different threshold values on the image and compare them to the original classification
+### ROC Curve 
 
 ```{r}
 mk.th.img<-function(in.img,steps,smin=0.3,smax=0.7) ldply(seq(smin,smax,length.out=steps),function(c.thresh) {
@@ -197,154 +93,11 @@ mk.th.img<-function(in.img,steps,smin=0.3,smax=0.7) ldply(seq(smin,smax,length.o
 })
 ```
 
-```{r}
-ggplot(mk.th.img(ring.img,9),aes(x,y,fill=Segmented))+
-  geom_tile(color="black")+
-  coord_equal()+
-  facet_wrap(~Thresh)+
-  theme_bw(15)
-```
-
-***
-
-```{r, results='asis'}
-mk.stat.table<-function(in.img,steps,smin=0.3,smax=0.7) 
-  ddply(mk.th.img(in.img,steps,smin,smax),.(Thresh),function(c.img) {
-  in.df<-merge(c.img[,c("x","y","Segmented")],
-               ring.image.seg[,c("x","y","Segmented")],
-               by=c("x","y"),suffixes=c("C","GT"))
-  in.df<-mutate(in.df,Match=(SegmentedC==SegmentedGT))
-  data.frame(TP=nrow(subset(in.df,SegmentedGT=="Foreground" & Match)),
-             TN=nrow(subset(in.df,SegmentedGT=="Background" & Match)),
-             FP=nrow(subset(in.df,SegmentedC=="Foreground" & !Match)),
-             FN=nrow(subset(in.df,SegmentedC=="Background" & !Match))
-             )
-})
-tp.table<-mk.stat.table(ring.img,6,smin=0,smax=1)
-kable(tp.table)
-```
-
-```{r, fig.height=5}
-ggplot(melt(tp.table,id.vars=c("Thresh")),
-       aes(x=Thresh*100,y=100*value/200,color=variable))+
-  geom_point()+
-  geom_path()+
-  labs(color="",y="Percent (%)",x="Threshold Value (%)")+
-  theme_bw(20)
-```
-
-
-Apply Precision and Recall
-===
-
 - __Recall__ (sensitivity)= $TP/(TP+FN)$
 - __Precision__ = $TP/(TP+FP)$
 
-```{r, results='asis'}
-prec.table<-mutate(mk.stat.table(ring.img,6),
-                  Recall=round(100*TP/(TP+FN)),
-                  Precision=round(100*TP/(TP+FP))
-                   )
-kable(prec.table)
-```
 
-***
-### ROC Curve 
 Reciever Operating Characteristic (first developed for WW2 soldiers detecting objects in battlefields using radar). The ideal is the top-right (identify everything and miss nothing)
-```{r}
-prec.table<-mutate(mk.stat.table(ring.img,100),
-                   Recall=TP/(TP+FN),
-                   Precision=TP/(TP+FP)
-                   )
-
-ggplot(prec.table,aes(x=Recall,y=Precision))+
-  geom_point(aes(color=Thresh,shape="Image"),size=5)+
-  geom_point(data=data.frame(Recall=1,Precision=1),
-             aes(shape="Ideal"),size=5,color="red")+
-  geom_path()+
-  #coord_equal()+
-  scale_color_gradientn(colours=rainbow(6))+
-  labs(shape="")+
-  theme_bw(20)
-```
-
-
-Comparing Different Filters
-===
-We can then use this ROC curve to compare different filters (or even entire workflows), if the area is higher the approach is better.
-
-```{r, fig.height=10}
-
-all.img<-rbind(
-  cbind(mk.th.img(ring.img,3), name="Normal"),
-  cbind(mk.th.img(blur.img,3), name="Gaussian"),
-  cbind(mk.th.img(med.img,3), name="Median")
-  )
-
-simple.image<-ggplot(all.img,aes(x,y,fill=Segmented))+
-  geom_tile(color="black")+
-  coord_equal()+
-  facet_grid(name~Thresh)+
-  theme_bw(15)
-
-simple.image
-```
-
-
-***
-
-Different approaches can be compared by area under the curve
-
-```{r}
-
-stab<-function(img) mk.stat.table(img,100,smin=0.05,smax=0.95)
-all.table<-rbind(
-  cbind(stab(ring.img), name="Normal"),
-  cbind(stab(blur.img), name="Gaussian"),
-  cbind(stab(med.img), name="Median")
-  )
-
-prec.table<-mutate(all.table,
-                   Recall=TP/(TP+FN),
-                  Precision=TP/(TP+FP)
-                   )
-ggplot(prec.table,aes(x=Recall,y=Precision,color=name))+
-  geom_point(aes(shape="Image"),size=5)+
-  geom_point(data=data.frame(Recall=1,Precision=1),
-             aes(shape="Ideal"),size=5,color="red")+
-  geom_path()+
-  #coord_equal()+
-  labs(shape="",color="Filter")+
-  xlim(0.5,1)+ylim(0.5,1)+
-  theme_bw(20)
-```
-
-True Positive Rate and False Positive Rate
-===
-Another way of showing the ROC curve (more common for machine learning rather than medical diagnosis) is using the True positive rate and False positive rate
-
-- __True Positive Rate__ (recall)= $TP/(TP+FN)$
-- __False Positive Rate__ = $FP/(FP+TN)$
-
-***
-
-These show very similar information with the major difference being the goal is to be in the upper left-hand corner. Additionally random guesses can be shown as the slope 1 line. Therefore for a system to be useful it must lie above the random line.
-```{r}
-
-tp.table<-mutate(all.table,
-                   TPRate=TP/(TP+FN),
-                   FPRate=FP/(FP+TN)
-                   )
-ggplot(tp.table,aes(x=FPRate,y=TPRate,color=name))+
-  geom_point(aes(shape="Image"),size=2)+
-  geom_point(data=data.frame(TPRate=1,FPRate=0),
-             aes(shape="Ideal"),size=5,color="red")+
-  geom_path()+
-  geom_segment(x=0,xend=1,y=0,yend=1,aes(color="Random Guess"))+
-  xlim(0,1)+ylim(0,1)+coord_equal()+
-  labs(shape="",x="False Positive Rate",y="True Positive Rate",linetype="")+
-  theme_bw(20)
-```
 
 Evaluating Models
 ===
@@ -845,7 +598,8 @@ cross.im$id<-with(cross.im,id.fn(x,y))
 cross.im<-subset(cross.im,x!=0 & y!=0)
 ggplot(cross.im,aes(x=x,y=y,xend=x+xv,yend=y+yv))+
   geom_point(aes(color=as.factor(id)),size=5)+geom_segment()+
-  theme_bw(20)+labs(color="Goal")
+  guides(color = "none")+
+  theme_bw(20)
 ```
 
 
@@ -936,10 +690,10 @@ Component Labeling: Beyond
 
 
 Now all the voxels which are connected have the same label. We can then perform simple metrics like
+
 - counting the number of voxels in each label to estimate volume.
 - looking at the change in volume during erosion or dilation to estimate surface area
 
-Next week we will cover how more detailed analysis can be performed on these data.
 
 
 From the labels
@@ -1416,20 +1170,26 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
-```{r, fig.height=4}
+```{r test}
 x1<-cell.pca[1,"x"]
 y1<-cell.pca[1,"y"]
 vx1<-cell.pca[1,"vx"]
 vy1<-cell.pca[1,"vy"]
 vx2<-cell.pca[2,"vx"]
 vy2<-cell.pca[2,"vy"]
-ggplot(mutate(
+# these functions are evidently not the same
+n.cell.df<-plyr::mutate(
   cur.cell.df,
   xd = vx1*(x-x1)+vy1*(y-y1)+x1,
   yd = vx2*(x-x1)+vy2*(y-y1)+y1,
-  ),
+  )
+cur.cell.df %>% kable
+```
+
+```{r, fig.height=4}
+ggplot(n.cell.df,
        aes(x=xd,y=yd))+
-  geom_tile(color="black",fill="grey",width=1,height=1)+
+  geom_tile(aes(width=1,height=1),color="black",fill="grey")+
   geom_segment(data=mutate(cell.pca,vx=c(1,0),vy=c(0,1)),
                aes(x=x,y=y,xend=x+vx*vw,yend=y+vy*vw,
                                  color=as.factor(round(vw*10)/10)),

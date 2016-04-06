@@ -6,6 +6,7 @@ source("../common/slide_setup.R")
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
+
 ```
 ```{r libraries}
 ```
@@ -16,7 +17,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 02 April 2015
+date: 07 April 2016
 width: 1440
 height: 900
 css: ../template.css
@@ -246,6 +247,13 @@ ggplot(fill.img.fn(dist.map(test.img,fg.ph=1,bg.ph=0,dist.fn=man.dist),dist=0),a
   theme_bw(20)+coord_equal()
 ```
 
+Distance Maps: Step by Step
+===
+
+<center>
+![Growing](ext-figures/growing.gif)
+</center>
+
 Distance Maps: Precaution
 ===
 
@@ -409,7 +417,8 @@ ggplot(test.mesh.dist,aes(x=x,y=y,fill=dist))+
   theme_bw(20)+coord_equal()
 ```
 
-***
+Skeletonization: Ridges
+===
 
 By using the laplacian filter as an approximate for the derivative operator which finds the values which high local gradients.
 
