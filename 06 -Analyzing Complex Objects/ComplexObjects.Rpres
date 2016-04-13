@@ -988,7 +988,12 @@ ggplot(subset(ws.manysteps,count>0),aes(x=orig.x,y=orig.y))+
   theme_bw(20)+coord_equal()
 ```
 
+Watershed
+===
 
+More complicated shapes
+
+![More Complicated Pattern](ext-figures/DistanceMapToWatershed.png)
 
 Curvature
 ===
