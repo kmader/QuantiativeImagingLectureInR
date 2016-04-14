@@ -4,7 +4,7 @@ schedule.str<-"- 25th February - Introduction and Workflows
 - 17th March - Advanced Segmentation
 - 24th March - Analyzing Single Objects
 - 7th April - Analyzing Complex Objects
-- 14th April - Spatial Distribution
+- 14th April - Many Objects and Distributions
 - 21st April -  Statistics and Reproducibility
 - 28th April - Dynamic Experiments
 - 12th May - Scaling Up / Big Data
