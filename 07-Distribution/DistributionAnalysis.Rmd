@@ -1,3 +1,10 @@
+---
+title: "Quantitative Big Imaging"
+author: "Many Objects and Distributions"
+date: 'ETHZ: 227-0966-00L'
+output: slidy_presentation
+---
+
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 source("../common/slide_setup.R")
 ```
@@ -7,33 +14,21 @@ source("../common/slide_setup.R")
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
 ```
-```{r libraries}
+```{r libraries, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 ```
-```{r common-functions}
+```{r common-functions, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 ```
 
 
-Quantitative Big Imaging 
-========================================================
-author: Kevin Mader
-date: 16 April 2015
-width: 1440
-height: 900
-css: ../common/template.css
-transition: rotate
-
-ETHZ: 227-0966-00L
-# Groups of Objects and Distributions
-
-Course Outline
-========================================================
+Course Outline {.columns-2}
+===
 
 ```{r, results='asis'}
 source('../common/schedule.R')
 ```
 
-Literature / Useful References
-========================================================
+## Literature / Useful References
+
 ### Books
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
@@ -43,9 +38,10 @@ Literature / Useful References
 - J. Weickert, Visualization and Processing of Tensor Fields
  - [Online](http://books.google.ch/books?id=ScLxPORMob4C&lpg=PA220&ots=mYIeQbaVXP&dq=&pg=PA220#v=onepage&q&f=false)
 
-*** 
-### Papers / Sites
+Literature (Continued)
+===
 
+### Papers / Sites
 - Voronoi Tesselations
  - Ghosh, S. (1997). Tessellation-based computational methods for the characterization and analysis of heterogeneous microstructures. Composites Science and Technology, 57(9-10), 1187–1210
  - [Wolfram Explanation](http://mathworld.wolfram.com/VoronoiDiagram.html)
@@ -63,7 +59,7 @@ Literature / Useful References
 
 
 Previously on QBI ...
-========================================================
+===
 
 - Image Enhancment 
  - Highlighting the contrast of interest in images
@@ -74,25 +70,25 @@ Previously on QBI ...
 - Single Shape Analysis
 - Complicated Shapes
 
-Outline
-========================================================
+Outline {.columns-2}
+===
 
-- Motivation (Why and How?)
+### Motivation (Why and How?)
 - Local Environment
  - Neighbors
  - Voronoi Tesselation
  - Distribution Tensor
  
 
-***
 
-- Global Enviroment
+### Global Enviroment
  - Alignment
  - Self-Avoidance
  - Two Point Correlation Function
 
-Metrics
+Metrics {.columns-2}
 ===
+
 We examine a number of different metrics in this lecture and additionally to classifying them as Local and Global we can define them as point and voxel-based operations. 
 
 ### Point Operations
@@ -106,7 +102,7 @@ We examine a number of different metrics in this lecture and additionally to cla
 kable(data.frame(x=round(4*runif(4)),y=round(4*runif(4)), z=round(4*runif(4))))
 ```
 
-***
+
 
 ### Voxel Operation
 - Voronoi Tesselation
@@ -127,6 +123,7 @@ ggplot(xymesh,aes(x,y,fill=color))+
  
 What do we start with?
 ===
+
 Going back to our original cell image
 
 1. We have been able to get rid of the noise in the image and find all the cells (lecture 2-4)
@@ -159,7 +156,6 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
   theme_bw(20)+coord_equal()+guides(fill=F)
 ```
 
-***
 
 1. We want to know how many cells are alive
  - Maybe small cells are dead and larger cells are alive $\rightarrow$ examine the volume distribution
@@ -184,9 +180,6 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 ```
 
 
-***
-
-
 1. We want to know how the cells are communicating
  - Maybe physically connected cells (touching) are communicating $\rightarrow$ watershed
  - Maybe cells oriented the same direction are communicating $\rightarrow$ _average?_ orientation
@@ -207,7 +200,7 @@ ggplot(cur.cell.df,aes(x=x,y=y))+
 ```
 
 
-***
+
 
 1. We want to know how the cells are nourished
  - Maybe closely packed cells are better nourished $\rightarrow$ count cells in a box__?__
@@ -223,7 +216,7 @@ So what do we still need
 1. A way for quantifying and comparing orientations
 
  
-***
+
 
 ### What would be really great? 
 
@@ -240,7 +233,7 @@ With most imaging techniques and sample types, the task of measurement itself im
 - Even when such measurements are possible
  - Registration can be a difficult task and introduce artifacts
 
-***
+
 
 ### Why is this important?
 
@@ -269,7 +262,7 @@ kable(head(cell.pca[,c("x","y","vx","vy")]),align='c',digits=2)
 ```
 
 $$ \cdots $$
-***
+
 
 So if we want to know the the mean or standard deviations of the position or orientations we can analyze them easily. 
 
@@ -288,12 +281,11 @@ kable(t(s.table),align='c',digits=2)
 Simple Statistics
 ===
 When given a group of data, it is common to take a mean value since this is easy. The mean bone thickness is 0.3mm. This is particularly relevant for groups with many samples because the mean is much smaller than all of the individual points.
+
 ### but means can lie
  - the mean of 0$^\circ$ and 180$^\circ$ = 90$^\circ$
  - the distance between -180$^\circ$ and 179$^\circ$ is 359$^\circ$
  - since we have not defined a tip or head, 0$^\circ$ and 180$^\circ$ are actually the same
- 
-***
 
 ### some means are not very useful
 
@@ -326,7 +318,7 @@ ggplot(ldply(c(10,100,1000),pt.maker),aes(x,y))+
 
 ```
 
-***
+
 It doesn't tell us much, many very different systems with the _same_ density and what if we want the density of a single point? Does that even make sense?
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
 dist.funs<-c(function(pts) runif(pts,min=0,max=1),
@@ -377,7 +369,7 @@ Given a set of objects with centroids at
 $$ \textbf{P}=\begin{bmatrix} \vec{x}_0,\vec{x}_1,\cdots,\vec{x}_i \end{bmatrix} $$
 
 
-***
+
 
 We can define the nearest neighbor as the position of the object in our set which is closest
 
@@ -399,7 +391,7 @@ So examining a simple starting system like a grid, we already start running into
 
 We thus add an additional clause (only relevant for simulated data) where if there are multiple equidistant neighbors, a _nearest_ is chosen randomly
 
-***
+
 
 This ensures when we examine the orientation distribution (NN$\theta$) of the neighbors it is evenly distributed
 
@@ -430,7 +422,7 @@ For the rest of these sections we will repeatedly use several simple in-silico s
  
  $$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \alpha \begin{bmatrix} x \\ y \end{bmatrix} $$
  
- ***
+ 
  
 - Shearing
  - Slightly more complicated system where objects are shifted based on their location using a slope of $\alpha$
@@ -448,7 +440,7 @@ In-Silico Systems (Continued)
  
 $$ \begin{bmatrix} x^\prime \\ y^\prime \end{bmatrix} = \begin{bmatrix} \textrm{sign}(x) \left(\frac{|x|}{m}\right)^\alpha m \\ \textrm{sign}(y) \left(\frac{|y|}{m}\right)^\alpha m \end{bmatrix} $$
 
-***
+
 
 - Swirl
  - A transformation where the points are rotated more based on how far away they are from the center and the slope of the swirl ($\alpha$), 
@@ -483,7 +475,7 @@ ggplot(test.systems.comp,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 
@@ -510,7 +502,7 @@ ggplot(dist.plots.comp,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.comp,      
@@ -545,7 +537,7 @@ ggplot(test.systems.shear,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.shear,
@@ -571,7 +563,7 @@ ggplot(dist.plots.shear,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.shear,      
@@ -609,7 +601,7 @@ ggplot(test.systems,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 
@@ -637,7 +629,7 @@ ggplot(dist.plots,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots,      
@@ -676,7 +668,7 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
   theme_bw(20)+guides(color=F)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.swirl,
@@ -703,7 +695,7 @@ ggplot(dist.plots.swirl,
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="NN Orientation",fig.height=9}
 
@@ -744,7 +736,7 @@ cur.grid<-data.frame(x=runif(81,min=-4,max=4),y=runif(81,min=-4,max=4))
 cur.grid$val<-1:nrow(cur.grid)
 ```
 
-***
+
 
 ```{r, fig.cap="Maximum Stretch",fig.height=7,fig.width=9}
 ggplot(cur.grid,aes(x=x,y=y))+
@@ -779,7 +771,7 @@ ggplot(test.systems.comp,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.comp,
@@ -805,7 +797,7 @@ ggplot(dist.plots.comp,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.comp,      
@@ -839,7 +831,7 @@ ggplot(test.systems.shear,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 
@@ -865,7 +857,7 @@ ggplot(dist.plots.shear,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.shear,      
@@ -902,7 +894,7 @@ ggplot(test.systems,aes(x=x,y=y))+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 
@@ -929,7 +921,7 @@ ggplot(dist.plots,
   theme_bw(20)
 ```
 
-***
+
  
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots,      
@@ -967,7 +959,7 @@ ggplot(test.systems.swirl,aes(x=x,y=y))+
   theme_bw(20)+guides(fill=F)
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=9}
 ggplot(dist.plots.swirl,
@@ -993,7 +985,7 @@ ggplot(dist.plots.swirl,
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="NN Orientation",fig.height=9}
 ggplot(dist.plots.swirl,      
@@ -1028,7 +1020,7 @@ Voronoi tesselation is a method for partitioning a space based on points. The ba
 plot(deldir(std.grid),wlines=c('tess'),showrect=T)
 ```
 
-***
+
 
 We call the area of a region ($\textbf{R}$) around point $\vec{p}$ its territory.
 
@@ -1072,7 +1064,7 @@ ggplot(ddply(rand.pnts,.(fun.ind),function(in.pts) deldir(in.pts)$summary),
 
 ```
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=8}
 ggplot(cbind(ddply(rand.pnts,.(fun.ind),function(c.block) deldir(c.block,rw=c(0,1,0,1))$summary),mn.pos=500),                 
@@ -1095,7 +1087,7 @@ A parallel or _dual_ [idea](http://mathworld.wolfram.com/DelaunayTriangulation.h
 plot(deldir(std.grid),wlines=c('triang'))
 ```
 
-***
+
 We define the number of connections each point $\vec{p}$ has the Neighbor Count or Delaunay Neighbor Count.
 
 The triangulation on a random system has a much higher diversity in neighbor count
@@ -1116,7 +1108,7 @@ v.comp<-quantile(test.systems.comp$glab,0.2)
 plot(deldir(subset(test.systems.comp,glab==v.comp)),wlines=c('tess'),showrect=T)
 ```
 
-***
+
 
 ### Tension
 
@@ -1136,7 +1128,7 @@ v.shear<-min(test.systems.shear$glab)
 plot(deldir(subset(test.systems.shear,glab==v.shear)),wlines=c('tess'),showrect=T)
 ```
 
-***
+
 
 ### High Shear
 
@@ -1157,7 +1149,7 @@ v.stretch<-min(test.systems$glab)
 plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('tess'),showrect=T)
 ```
 
-***
+
 
 ### Highly Stretched System
 
@@ -1179,7 +1171,7 @@ plot(deldir(subset(test.systems.swirl,glab==v.swirl)),wlines=c('tess'),showrect=
 ```
 
 
-***
+
 
 ### High Swirl System
 
@@ -1207,7 +1199,7 @@ plot(deldir(subset(test.systems,glab==v.stretch)),wlines=c('triang'),showrect=T)
 ```
 
 
-***
+
   
 ### Shear
 
@@ -1308,7 +1300,7 @@ We have introduced a number of metrics to characterize our images
 - Delaunay Neighbor count
 - Territory Area (Volume)
 
-***
+
 
 A single random systems is useful 
 - but in order to have a reasonable understanding of the behavior of a system we need to sample many of them. 
@@ -1359,7 +1351,7 @@ With this simulation-based approach
 We can then take this knowledge and use it to interpret observed data as transformations on an initially random system. We try and find the __rules__ used to produce the sample
 
 
-***
+
 
 
 ### Examples
@@ -1506,7 +1498,7 @@ The metric is the ratio of
 - the expected mean nearest neighbor distance ($r_0$) for a random point distribution (Poisson Point Process) with the same number of points (N.Obj) per volume (Total.Volume). 
 $$r_0=\sqrt[3]{\frac{\textrm{Total.Volume}}{2\pi \textrm{ N.Obj}}}$$
 
-*** 
+ 
 
 Using the territory we defined earlier (Region area/volume) we can simplify the definition to 
 
@@ -1527,7 +1519,7 @@ So the information we have is 3D why are we taking single metrics (distance, ang
  - it connects two neighboring bubbles together
  
 
-***
+
 
 - We can calculate distribution for a single bubble by taking all edges that touch the object or from a region by finding all edges inside that region
 
@@ -1571,7 +1563,7 @@ Visual example
 
 ![Distribution Tensor](ext-figures/DistributionTensor.png)
 
-***
+
 
 From this tensor we can define an anisotropy in the same manner as we defined for shapes. The anisotropy defined as before 
 $$ Aiso = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Longest Side}} $$
@@ -1589,7 +1581,7 @@ Distribution Oblateness
 
 ![Distribution Tensor](ext-figures/DistributionTensor.png)
 
-***
+
 
 From this tensor we can also define oblateness in the same manner as we defined for shapes. The oblateness is also defined as before as a _type_ of anisotropy
 
@@ -1608,7 +1600,7 @@ Orientation
 
 The shape tensor provides for each object 3 possible orientations (each of the eigenvectors). For simplicity we will take the primary direction (but the others can be taken as well, and particularly in oblate or pancake shaped objects the first is probably not the best choice!)
 
-***
+
 
 ```{r, fig.cap="Grid Nearest Neighbor",fig.height=7}
 opt.maker<-function(n.pts,rn.fun=function(pts) runif(pts,min=0,max=1),th.amp=0,...) {
@@ -1650,7 +1642,7 @@ ggplot(or.data,
   theme_bw(20)
 ```
 
-***
+
 
 This means calculating the average and standard deviation are very poor desciptors of the actual dataset. The average for all samples below is around 90 (vertical) even though almost no samples are vertical and the first sample shows a very high (90) standard deviation even though all the samples in reality have the same orientation.
 
@@ -1679,7 +1671,7 @@ $$ COV = \frac{1}{N} \sum_{\forall \textrm{COM}(i) \in \mathcal{V}} \begin{bmatr
 \vec{v}_z\vec{v}_x & \vec{v}_z\vec{v}_y & \vec{v}_z\vec{v}_z
 \end{bmatrix} $$
 
-***
+
 
 ![Alignemnt Tensor](ext-figures/AlignmentTensor1.png)
 
@@ -1700,7 +1692,7 @@ ggplot(or.data,
 
 ```
 
-***
+
 
 ### Show some tensor stuff here
 
@@ -1739,7 +1731,7 @@ Anisotropy for alignment can be summarized as degree of alignment since very ani
 
 $$ Aiso = \frac{\text{Longest Side}-\text{Shortest Side}}{\text{Longest Side}} $$
 
-***
+
 
 ![Alignemnt Tensor](ext-figures/AlignmentTensor.png)
 
@@ -1760,7 +1752,7 @@ ggplot(alignment.results,
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.cap="Alignment Histograms",fig.height=5}
 ggplot(alignment.results,
@@ -1797,7 +1789,7 @@ ggplot(alignment.results,
   theme_bw(10)
 ```
 
-***
+
 Angle Accuracy
 
 ```{r, fig.cap="Alignment Correlation",fig.height=4}
@@ -1830,7 +1822,7 @@ Other Approaches
 
 K-Means can also be used to classify the point-space itself after shape analysis. It is even better suited than for images because while most images are only 2 or 3D the shape vector space can be 50-60 dimensional and is inherently much more difficult to visualize.
 
-***
+
 
 ### 2 Point Correlation Functions
 
