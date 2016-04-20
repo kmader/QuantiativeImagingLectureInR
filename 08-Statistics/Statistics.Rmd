@@ -12,6 +12,10 @@ source("../common/slide_setup.R")
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
+library(igraph)
+library(ICC)
+library(grid)
+
 ```
 
 ```{r libraries}
@@ -310,7 +314,7 @@ library("ICC")
 test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
   data.frame(name=class.name,values=runif(40))
 })
-icVal<-ICCbare(name,values,data=test.data)$ICC
+icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_point()+
   labs(x="Groups",y="Value",title=paste("Low Group Similarity\n ICC:",icVal))+
@@ -323,7 +327,7 @@ ggplot(test.data,aes(x=name,y=values))+
 test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
   data.frame(name=class.name,values=nchar(class.name)+runif(40))
 })
-icVal<-ICCbare(name,values,data=test.data)$ICC
+icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_point()+
   labs(x="Groups",y="Value",title=paste("High Group Similarity\n ICC:",icVal))+
@@ -339,7 +343,7 @@ name.list<-c("Coin A","Coin B")
 test.data<-ldply(c(1:length(name.list)),function(class.id) {
   data.frame(name=name.list[class.id],values=runif(100,max=1+2*(class.id-1))>0.5)
 })
-icVal<-ICCbare(name,values,data=test.data)$ICC
+icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_jitter()+
   labs(x="Groups",y="Value",title=paste("100 flips\n ICC:",icVal))+
@@ -353,7 +357,7 @@ name.list<-c("Coin A","Coin B")
 test.data<-ldply(c(1:length(name.list)),function(class.id) {
   data.frame(name=name.list[class.id],values=runif(20000,max=1+2*(class.id-1))>0.5)
 })
-icVal<-ICCbare(name,values,data=test.data)$ICC
+icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_jitter()+
   labs(x="Groups",y="Value",title=paste("20,000 flips\n ICC:",icVal))+
@@ -567,6 +571,7 @@ ggplot(sim.data.psig,aes(x=sample.count,y=100*prob.sig))+
 Parameters
 ===
 ```{r, show_chain_block}
+library(igraph)
 make.im.proc.chain<-function(root.node="Raw\nImages",filters=c(),filter.parms=c(),
                              segmentation=c(),segmentation.parms=c(),
                              analysis=c(),analysis.parms=c()) {
@@ -703,8 +708,8 @@ The way we do this is usually a parameter sweep which means taking one (or more)
 ***
 
 ```{r, load-metrics}
-source('~/Dropbox/tipl_maven/snippets/R/shapeAnalysisProcess.R')
-source('~/Dropbox/tipl_maven/snippets/R/commonReportFunctions.R')
+source('../common/shapeAnalysisProcess.R')
+source('../common/commonReportFunctions.R')
 # read and correct the coordinate system
 thresh.fun<-function(x) {
   pth<-rev(strsplit(x,"/")[[1]])[2]
