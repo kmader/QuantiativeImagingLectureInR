@@ -1,3 +1,9 @@
+---
+title: "Quantitative Big Imaging"
+author: "Statistics and Reproducibility"
+date: 'ETHZ: 227-0966-00L'
+output: slidy_presentation
+---
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 source("../common/slide_setup.R")
 ```
@@ -7,23 +13,13 @@ source("../common/slide_setup.R")
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
 ```
+
 ```{r libraries}
 ```
+
 ```{r common-functions}
 ```
 
-
-Quantitative Big Imaging 
-========================================================
-author: Kevin Mader
-date: 23 April 2015
-width: 1440
-height: 900
-css: ../common/template.css
-transition: rotate
-
-ETHZ: 227-0966-00L
-# Statistics and Reproducibility
 
 Course Outline
 ========================================================
@@ -45,7 +41,6 @@ Literature / Useful References
 - Grammar of Graphics: Leland and Wilkinson - http://www.springer.com/gp/book/9780387245447
 
 
-*** 
 ### Papers / Sites
 - Google/Stanford Statistics Intro
  - https://www.youtube.com/watch?v=YFC2KUmEebc
@@ -256,7 +251,7 @@ Reproducible Analysis
 ===
 
 The basis for reproducible scripts and analysis are scripts and macros. Since we will need to perform the same analysis many times to understand how reproducible it is.
-```{bash}
+```bash
 IMAGEFILE=$1
 THRESHOLD=130
 matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
