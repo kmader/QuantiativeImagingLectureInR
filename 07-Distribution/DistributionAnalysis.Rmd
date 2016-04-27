@@ -9,7 +9,7 @@ output: slidy_presentation
 source("../common/slide_setup.R")
 ```
 
-```{r script_setup, cache=F}
+```{r script_setup, cache=F, results='hide'}
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")

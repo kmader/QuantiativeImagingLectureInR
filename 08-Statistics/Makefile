@@ -13,7 +13,7 @@ clean:
 	/bin/rm 07-handout.html 
     
 printable:  $(presFile)
-	$(Rscript) --vanilla -e "library(knitrBootstrap);knit_bootstrap('DistributionAnalysis.Rpres',output='07a-handout.html')"
+	$(Rscript) --vanilla -e "library(knitrBootstrap);printed<-T;knit_bootstrap('Statistics.Rmd',output='08-handout.html')"
 
 rocco:  $presFile
 	$(Rscript) --vanilla -e "library(knitr);printed<-T;rocco('AdvSegmentation.Rpres','rocco.html')"

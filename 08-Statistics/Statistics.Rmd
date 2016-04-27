@@ -2,28 +2,29 @@
 title: "Quantitative Big Imaging"
 author: "Statistics and Reproducibility"
 date: 'ETHZ: 227-0966-00L'
-output: slidy_presentation
+output: 
+  slidy_presentation:
+    footer: "Quantitative Big Imaging 2016"
 ---
-```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+
+```{r global_setup, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 source("../common/slide_setup.R")
 ```
 
-```{r script_setup, cache=F}
+```{r script_setup, cache=F, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
 library(igraph)
 library(ICC)
 library(grid)
-
 ```
 
-```{r libraries}
+```{r libraries, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 ```
 
-```{r common-functions}
+```{r common-functions, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 ```
-
 
 Course Outline
 ========================================================
@@ -59,6 +60,13 @@ Literature / Useful References
 - [NIMRod Parameter Studies](http://www.messagelab.monash.edu.au/nimrod)
 
 - M.E. Wolak, D.J. Fairbairn, Y.R. Paulsen (2012) Guidelines for Estimating Repeatability. Methods in Ecology and Evolution 3(1):129-137.
+- David J.C. MacKay, Bayesian Interpolartion (1991) [http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.27.9072]
+
+### Model Evaluation
+
+- [Julia Evans - Recalling with Precision](https://www.youtube.com/watch?v=ryZL4XNUmwo)
+- [Stripe's Next Top Model](https://github.com/stripe/topmodel)
+
 
  
 Previously on QBI ...
@@ -80,21 +88,27 @@ Quantitative "Big" Imaging
 The course has covered imaging enough and there have been a few quantitative metrics, but "big" has not really entered.
 
 What does __big__ mean?
+
 - Not just / even large
 - it means being ready for _big data_
 - volume, velocity, variety (3 V's)
 - scalable, fast, easy to customize
 
-***
 
 So what is "big" imaging
-- doing analyses in a disciplined manner
+
+#### doing analyses in a disciplined manner
+
  - fixed steps
  - easy to regenerate results
  - no _magic_
-- having everything automated
+ 
+#### having everything automated
+
  - 100 samples is as easy as 1 sample
-- being able to adapt and reuse analyses
+ 
+#### being able to adapt and reuse analyses
+
  - one really well working script and modify parameters
  - different types of cells
  - different regions
@@ -124,6 +138,7 @@ Outline
  - Parameter sweep
  - Sensitivity analysis
 - Unit Testing
+- Validation
 - Visualization
 
 What do we start with?
@@ -156,6 +171,7 @@ Controlled and Observational
 There are two broad classes of data and scientific studies. 
 
 ### Observational
+
  - Exploring large datasets looking for trends
  - Population is random
  - Not always hypothesis driven
@@ -165,9 +181,8 @@ We examined 100 people and the ones with blue eyes were on average 10cm taller
 
 In 100 cake samples, we found a 0.9 correlation between cooking time and bubble size
 
-***
-
 ### Controlled
+
  - Most scientific studies fall into this category
  - Specifics of the groups are controlled
  - Can lead to causation
@@ -176,7 +191,6 @@ We examined 50 mice with gene XYZ off and 50 gene XYZ on and as the foot size in
 
 We increased the temperature and the number of pores in the metal increased by 10%
  
-
 
 
 Simple Model: Magic / Weighted Coin
@@ -796,8 +810,6 @@ splot+geom_line(aes(y=Count))+geom_point(aes(y=Count))+scale_y_log10()+
   theme_bw(24)+labs(y="Object Count",x="Threshold",color="Phase")
 ```
 
-***
-
 Comparing Different Variables we see that the best (lowest) value for the count sensitivity is the highest for the volume and anisotropy. 
 
 ```{r , fig.height=5}
@@ -817,8 +829,6 @@ ggplot(sens.summary,aes(x=thresh))+
 ```
 
 ### Which metric is more important?
-
-
 
 Unit Testing
 ===
@@ -902,10 +912,217 @@ Test Driven programming is a style or approach to programming where the tests ar
 1. shapeAnalysis must run on a 1000x1000 image in 30 seconds
 
 
+Machine Learning
+===
+
+![Validation Graphic](http://1.bp.blogspot.com/-ME24ePzpzIM/UQLWTwurfXI/AAAAAAAAANw/W3EETIroA80/s1600/drop_shadows_background.png)
+- Borrowed from http://peekaboo-vision.blogspot.ch/2013/01/machine-learning-cheat-sheet-for-scikit.html
+
+### Main Categories
+
+- Classification
+- Regression
+- Clustering
+- Dimensionality Reduction
+
+Overview
+===
+
+Basically all of these are ultimately functions which map inputs to outputs. 
+
+The input could be 
+
+- an image
+- a point
+- a feature vector
+- or a multidimensional tensor
+
+The output is
+
+- a value (regression)
+- a classification (classification)
+- a group (clustering)
+- a vector / matrix / tensor with _fewer_ degrees of input / less noise as the original data (dimensionality reduction)
+
+### Overfitting
+
+The most serious problem with machine learning and such approachs is overfitting your model to your data. Particularly as models get increasingly complex (random forest, neural networks, deep learning, ...), it becomes more and more difficult to apply common sense or even understand exactly what a model is doing and why a given answer is produced. 
+
+```python
+magic_classifier = {}
+# training
+magic_classifier['Dog'] = 'Animal'
+magic_classifier['Bob'] = 'Person'
+magic_classifier['Fish'] = 'Animal'
+```
+
+Now use this classifier, on the training data it works really well
+
+```python
+magic_classifier['Dog'] == 'Animal' # true, 1/1 so far!
+magic_classifier['Bob'] == 'Person' # true, 2/2 still perfect!
+magic_classifier['Fish'] == 'Animal' # true, 3/3, wow!
+```
+
+On new data it doesn't work at all, it doesn't even execute.
+
+```python
+magic_classifier['Octopus'] == 'Animal' # exception?! but it was working so well
+magic_classifier['Dan'] == 'Person' # exception?! 
+```
+
+The above example appeared to be a perfect trainer for mapping names to animals or people, but it just memorized the inputs and reproduced them at the output and so didn't actually learn anything, it just copied.
+
+Validation
+===
+
+Relevant for each of the categories, but applied in a slightly different way depending on the group. The idea is two divide the dataset into groups called training and validation or ideally training, validation, and testing. The analysis is then 
+
+- developed on __training__
+- iteratively validated on __validation__
+- ultimately tested on __testing__
+
+
+Concrete Example: Classification
+===
+
+Taking a list of points (feature vectors) where each has an $x1$ and a $y1$ coordinate and a classification (_Happy_ or _Sad_), we can show the data as a table
+
+```{r, results = 'asis'}
+spiral.pts <- expand.grid(x = -50:50, y = -50:50) %>% 
+  subset((x==0) | (y==0)) %>%
+  mutate(
+    r = sqrt(x^2+y^2),
+    th = r/60*2*pi,
+    x1 = cos(th)*x-sin(th)*y,
+    y1 = sin(th)*x+cos(th)*y,
+    class = ifelse(x==0,"Happy","Sad")
+  ) %>% 
+  select(x1,y1,class)
+kable(spiral.pts  %>% sample_n(5))
+```
+
+Or graphically
+
+```{r}
+ggplot(spiral.pts,aes(x1,y1,color=class))+
+  geom_point()+
+  theme_bw(20)
+```
+
+You can play around with neural networks and this data set at [TensorFlow Playground](playground.tensorflow.org)
+
+Dividing the data
+===
+We first decide on a split, in this case 60%, 30%, 10% for training, validation, and testing and randomly divide up the data.
+
+```{r, echo=T, results='asis'}
+div.spiral.pts<-spiral.pts %>%
+  mutate(
+    # generate a random number uniformally between 0 and 1
+    rand_value = runif(nrow(spiral.pts)),
+    # divide the data based on how high this number is into different groups
+    data_div = ifelse(rand_value<0.6,"Training",
+                      ifelse(rand_value<0.9,"Validation",
+                             "Testing")
+                      )
+  ) %>% select(-rand_value) # we don't need this anymore
+div.spiral.pts %>% sample_n(4) %>% kable
+```
+
+```{r}
+ggplot(div.spiral.pts,aes(x1,y1))+
+  geom_point(aes(shape=data_div,color=class),size=3)+
+  labs(shape="Type")+
+  theme_bw(20)
+```
+
+Using a simple decision tree
+===
+Making a decision tree can be done by providing the output (```class```) as a function of the input, in this case just a combination of _x1_ and _y1_ (```~x1+y1```). From this a 
+```{r, echo=T}
+library(rpart)
+training.data <- div.spiral.pts %>% subset(data_div == "Training")
+dec.tree<-rpart(class~x1+y1,data=training.data)
+```
+
+A tree can be visualized graphically as a trunk (the top most node) dividing progressively into smaller subnodes
+
+```{r}
+plot(dec.tree)
+text(dec.tree)
+```
+
+or as a list of rules to apply
+```{r, results='markdown'}
+print(dec.tree)
+```
+
+Overlaying with the prediction data looks good
+
+```{r}
+pred.map<-expand.grid(x1 = -50:50, y1 = -50:50) 
+pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
+
+training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+It struggles more with the validation data since it has never seen it before and it's not quite the same as the training
+
+```{r}
+valid.data<-div.spiral.pts %>% subset(data_div == "Validation")
+valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+The test data (__normally we would not look at it at all right now and wait until the very end__) looks even worse and an even smaller fraction is correctly matched.
+
+```{r}
+valid.data<-div.spiral.pts %>% subset(data_div == "Testing")
+valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+We can choose to make more complicated trees by changing the function to something more detailed like
+
+$$ class = x1+y1+x1^2+y1^2+\sin(x1/5)+\sin(y1/5) $$
+
+```{r, echo=T}
+dec.tree<-rpart(class~x1+y1+x1^2+y1^2+sin(x1/5)+sin(y1/5),data=training.data)
+plot(dec.tree)
+text(dec.tree)
+```
+
+```{r}
+pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
+
+training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+
 Visualization
 ===
 
 One of the biggest problems with _big_ sciences is trying to visualize a lot of heterogeneous data. 
+
 - Tables are difficult to interpret
 - 3D Visualizations are very difficult to compare visually 
 - Contradictory necessity of simple single value results and all of the data to look for trends and find problems
@@ -915,15 +1132,17 @@ One of the biggest problems with _big_ sciences is trying to visualize a lot of 
 Bad Graphs
 === 
 There are too many graphs which say
+
 - ‘my data is very complicated’
 - ‘I know how to use __ toolbox in Matlab/R/Mathematica’
 
 ![3d Plots](ext-figures/badImage1.png)
 ![Spectroscopy](ext-figures/badPlot4.png)
 
-***
+
 - Most programs by default make poor plots
- - Good visualizations takes time
+- Good visualizations takes time
+
 ![Linkage](ext-figures/badImage3.png)
 
 ![Linkage 2](ext-figures/badImage2.png)
@@ -942,6 +1161,7 @@ Key Ideas
 ***
 
 ### Simple Rules
+
 1. Never use 3D graphics when it can be avoided (unless you want to be deliberately misleading), our visual system is not well suited for comparing heights of different 
 ![Dumb 3d](ext-figures/3dplot.png)
 1. Pie charts can also be hard to interpret
@@ -959,7 +1179,6 @@ test.data<-data.frame(x=xd,y=xd+runif(80),z=runif(80))
 plot(test.data)
 ```
 
-***
 
 - Focus on a single, simple message
  - X is a little bit correlated with Y
@@ -984,8 +1203,6 @@ ggplot(test.data,aes(x,y))+
   coord_equal()+
   theme_bw(20)
 ```
-
-***
 
 - Filter and reduce information until it is extremely simple
 
@@ -1012,14 +1229,13 @@ ggplot(test.data,aes(x,y))+
 
 Grammar of Graphics
 ===
+
 - What is a grammar?
  - Set of rules for constructing and validating a sentence
  - Specifies the relationship and order between the words constituting the sentence
 - How does this apply to graphics?
  - If we develop a consistent way of expressing graphics (sentences) in terms of elements (words) we can compose and decompose graphics easily
 
-
-***
 
 - The most important modern work in graphical grammars is “The Grammar of Graphics” by Wilkinson, Anand, and Grossman (2005). This work built on earlier work by Bertin (1983) and proposed a grammar that can be used to describe and construct a wide range of statistical graphics.
 
@@ -1055,12 +1271,12 @@ Construct graphics by focusing on each portion independently.
 
 Wrapping up
 ===
+
 - I am not a statistician
 - This is not a statistics course
 - If you have questions or concerns, Both ETHZ and Uni Zurich offer __free__ consultation with real statisticians
  - They are rarely bearers of good news
  
-***
 
 - Simulations (even simple ones) are very helpful (see [StatisticalSignificanceHunter
 ](knime://LOCAL/Exercise%209%20StatsRepro/StatisticalSignificanceHunter
