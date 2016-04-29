@@ -1,3 +1,12 @@
+---
+title: "Quantitative Big Imaging"
+author: "Dynamic Experiments"
+date: 'ETHZ: 227-0966-00L'
+output: 
+  slidy_presentation:
+    footer: "Quantitative Big Imaging 2016"
+---
+
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 source("../common/slide_setup.R")
 ```
@@ -12,18 +21,6 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
-Quantitative Big Imaging 
-========================================================
-author: Kevin Mader
-date: 30 April 2015
-width: 1440
-height: 900
-css: ../common/template.css
-transition: rotate
-
-ETHZ: 227-0966-00L
-# Dynamic Experiments
-
 Course Outline
 ========================================================
 
@@ -33,6 +30,7 @@ source('../common/schedule.R')
 
 Literature / Useful References
 ========================================================
+
 ### Books
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
@@ -40,7 +38,7 @@ Literature / Useful References
 - John C. Russ, “The Image Processing Handbook”,(Boca Raton, CRC Press)
  - Available [online](http://dx.doi.org/10.1201/9780203881095) within domain ethz.ch (or proxy.ethz.ch / public VPN) 
 
-*** 
+ 
 
 ### Papers / Sites
 
@@ -74,14 +72,15 @@ Quantitative "Big" Imaging
 The course has covered imaging enough and there have been a few quantitative metrics, but "big" has not really entered.
 
 What does __big__ mean?
+
 - Not just / even large
 - it means being ready for _big data_
 - volume, velocity, variety (3 V's)
 - scalable, fast, easy to customize
 
-***
 
 So what is "big" imaging
+
 - doing analyses in a disciplined manner
  - fixed steps
  - easy to regenerate results
@@ -96,11 +95,14 @@ So what is "big" imaging
  
 Objectives
 ===
+
 1. What sort of dynamic experiments do we have?
 1. How can we design good dynamic experiments?
 1. How can we track objects between points?
- - How can we track shape?
- - How can we track distribution?
+
+How can we track shape?
+How can we track distribution?
+
 1. How can we track topology?
 1. How can we track voxels?
 1. How can we assess deformation and strain?
@@ -111,20 +113,23 @@ Outline
 
 - Motivation (Why and How?)
 - Scientific Goals
-- Experiments
- - Simulations
- - Experiment Design
-- Object Tracking
-- Distribution
-- Topology
 
-***
+### Experiments
 
-- Voxel-based Methods
+- Simulations
+- Experiment Design
+ 
+### Object Tracking
+### Distribution
+### Topology
+
+
+### Voxel-based Methods
  - Cross Correlation
  - DIC
  - DIC + Physics
-- General Problems
+ 
+### General Problems
  - Thickness - Lung Tissue
  - Curvature - Metal Systems
  - Two Point Correlation - Volcanic Rock
@@ -140,7 +145,7 @@ Motivation
 Your browser does not support the video tag.
 </video>
 
-***
+
 
 - 2D movies (3D) can also be challenging
 
@@ -169,7 +174,6 @@ Understanding the flow of liquids and mixtures is important for many processes
 - air through dough when cooking bread
 - magma and gas in a volcano
 
-***
 
 ### Deformation
 
@@ -185,24 +189,28 @@ Experiments
 ===
 
 The first step of any of these analyses is proper experimental design. Since there is always
+
 - a limited field of view
 - a voxel size
 - a maximum rate of measurements
 - a non-zero cost for each measurement
 
-*** 
 
 There are always trade-offs to be made between getting the best possible high-resolution nanoscale dynamics and capturing the system level behavior. 
-- If we measure too fast
+
+#### If we measure too fast
  - sample damage
  - miss out on long term changes
  - have noisy data
-- Too slow
+ 
+#### Too slow
  - miss small, rapid changes
  - blurring and other motion artifacts
-- Too high resolution
+ 
+#### Too high resolution
  - not enough unique structures in field of view to track
-- Too low resolution
+ 
+#### Too low resolution
  - not sensitive to small changes
 
 Simulation
@@ -273,7 +281,6 @@ ggplot(subset(make.spheres(test.grid),phase),aes(x,y,fill=phase))+
   theme_bw(20)
 ```
 
-***
 
 ### Analysis
 
@@ -296,7 +303,7 @@ ggplot(subset(make.spheres(test.grid),phase),aes(x,y))+
   theme_bw(20)
 ```
 
-***
+
 
 $$ \vec{v}(\vec{x})=0.3\frac{\vec{x}}{||\vec{x}||}\times \langle 0,0,1 \rangle $$
 
@@ -332,7 +339,7 @@ ggplot(subset(many.frames,phase),aes(x,y))+
   theme_bw(20)
 ```
 
-***
+
 
 $$ \vec{v}(\vec{x})=0.3\frac{\vec{x}}{||\vec{x}||}\times \langle 0,0,1 \rangle $$
 
@@ -368,7 +375,7 @@ Under perfect imaging and experimental conditions objects should not appear and 
 
 It is common for objects to appear and vanish regularly in an experiment.
 
-***
+
 
 ```{r, fig.height=9}
 many.frames<-ldply(seq(0,1.,length.out=9),function(in.offset) {
@@ -440,7 +447,7 @@ ggplot(subset(many.frames,phase),aes(x,y))+
   theme_bw(20)
 ```
 
-***
+
 
 The simulation can be represented in a more clear fashion by using single lines to represent each spheroid 
 ```{r, fig.height=9}
@@ -464,7 +471,7 @@ We see that visually tracking samples can be difficult and there are a number of
 - particle uniqueness
 
 
-***
+
 
 We thus try to quantify the limits of these parameters for different tracking methods in order to design experiments better. 
 
@@ -499,7 +506,7 @@ There are a number of more sensitive scoring metrics which can be used, by findi
 
 
 ```{r track_code}
-source('~/Dropbox/tipl_maven/snippets/R/trackingCode.R')
+source('../common/trackingCode.R')
 source('../common/data/simFlow.R')
 ```
 
@@ -524,7 +531,7 @@ ggplot(do.call(rbind,in.frames),
   theme_bw(20)
 ```
 
-***
+
 
 Nearest Neighbor Tracking
 
@@ -559,7 +566,7 @@ ggplot(do.call(rbind,in.frames),
   theme_bw(20)
 ```
 
-***
+
 
 Nearest Neighbor Tracking
 
@@ -601,15 +608,16 @@ ggplot(do.call(rbind,in.frames),
 
 ```
 
-***
+
 ### Counting Misses
+
 ```{r, fig.height=4}
 c.tracks<-subset(all.tracks,Matching=="No Offset")
 c.tracks<-all.tracks
 c.subtrack<-subset(c.tracks,abs(D_REAL_LACUNA_NUMBER)>0)
 ggplot(do.call(rbind,in.frames),
        aes(x=POS_X,y=POS_Z))+
-  stat_binhex(data=c.subtrack,bins=5,drop=F,alpha=1)+
+  stat_binhex(data=c.subtrack,bins=5,alpha=1)+
   scale_fill_gradient2(low="white",high="red")+
   facet_wrap(~Matching)+
   labs(x="X Position",y="Z Position",color="Object ID",title="Tracking Results",fill="Misses")+
@@ -700,7 +708,7 @@ jd.summary<-ddply(jd.full,.(jitter,mean_obj_spacing,Matching),function(c.subset)
   theme_bw(24)+labs(x="Position Jitter (% of Velocity)",y="% of Obj Matched",color="Obj.Spacing\n(% of Velocity)")
 ```
 
-***
+
 
 ```{r, fig.height=9,fig.width=7}
 ggplot(jd.summary,aes(x=100*jitter,y=100*mean_obj_spacing,fill=Matched))+
@@ -719,9 +727,8 @@ Designing Experiments
 - flow per frame (image velocity) can usually be adjusted by changing pressure or acquisition time
 - jitter can be estimated from images
 
-***
-
 ### How much is enough?
+
 - difficult to create one number for every experiment
 - 5% error in bubble position 
  - $\rightarrow$ <5% in flow field
@@ -736,6 +743,7 @@ Extending Nearest Neighbor
 ===
 
 ### Bijective Requirement
+
 - We define $\vec{P}_f$ as the result of performing the nearest neigbhor tracking on $\vec{P}_0$
 - $$ \vec{P}_f=\textrm{argmin}(||\vec{P}_0-\vec{y} || \forall \vec{y}\in I_1) $$
 - We define $\vec{P}_i$ as the result of performing the nearest neigbhor tracking on $\vec{P}_f$
@@ -743,7 +751,7 @@ Extending Nearest Neighbor
 - We say the tracking is bijective if these two points are the same
 - $$ \vec{P}_i \stackrel{?}{=} \vec{P}_0 $$
 
-***
+
 
 ### Maximum Displacement
 
@@ -759,7 +767,7 @@ Extending Nearest Neighbor (Continued)
 
 $$ \vec{P}_1=\textrm{argmin}(||\vec{P}_0+\vec{v}_{offset}-\vec{y} || \forall \vec{y}\in I_1) $$
 
-***
+
 
 ### Adaptive Movement
 Can then be calculated in an iterative fashion where the offset is the average from all of the $\vec{P}_1-\vec{P}_0$ vectors. It can also be performed 
@@ -770,14 +778,16 @@ Beyond Nearest Neighbor
 ===
 
 While nearest neighbor provides a useful starting tool it is not sufficient for truly complicated flows and datasets.
+
 ### Better Approaches
 
 1. Multiple Hypothesis Testing
 Nearest neighbor just compares the points between two frames and there is much more information available in most time-resolved datasets. This approach allows for multiple possible paths to be explored at the same time and the best chosen only after all frames have been examined
 
-***
+
 
 ### Shortcomings
+
 1. Merging and Splitting Particles
 The simplicity of the nearest neighbor model does really allow for particles to merge and split (relaxing the bijective requirement allows such behavior, but the method is still not suited for such tracking). For such systems a more specific, physically-based is required to encapsulate this behavior.
 
@@ -792,7 +802,7 @@ Given images $I_0(\vec{x})$ and $I_1(\vec{x})$ at time $t_0$ and $t_1$ respectiv
 
 $$ C_{I_0,I_1}(\vec{r})=\langle I_0(\vec{x}) I_1(\vec{x}+\vec{r}) \rangle $$
 
-***
+
 
 ```{r, fig.height=5}
 # so everything is on an integer lattice (interpolation makes everything messier)
@@ -901,7 +911,7 @@ ggplot()+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.height=9}
 
@@ -933,7 +943,7 @@ s\sin\theta & s\cos\theta
 \end{bmatrix}
 \vec{x}+\vec{r}) \rangle  $$
 
-***
+
 
 ```{r, fig.height=5}
 
@@ -992,7 +1002,7 @@ ggplot()+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.height=9}
 cc.points<-expand.grid(vx=seq(-6,6,1),vy=seq(-6,6,1))
@@ -1049,7 +1059,7 @@ ggplot(subset(comb.img.blocks,phase),aes(x,y,fill=as.factor(time)))+
   theme_bw(10)
 ```
 
-***
+
 
 ```{r block.corr}
 #' Calculate the cross correlation 
@@ -1115,7 +1125,7 @@ ggplot()+
   theme_bw(10)
 ```
 
-***
+
 ```{r, fig.height=7}
 corr.img.blocks<-blockify.img(final.img,2,2,block.fn=w.bcf(start.img),.parallel=T)
 ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
@@ -1156,7 +1166,7 @@ ggplot()+
   theme_bw(10)
 ```
 
-***
+
 ```{r, fig.height=7}
 corr.img.blocks<-blockify.img(final.img,8,8,block.fn=w.bcf(start.img,4),.parallel=T)
 ggplot(corr.img.blocks,aes(vx,vy,fill=e.val))+
@@ -1200,7 +1210,7 @@ ggplot()+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.height=9,fig.width=14}
 corr.img.blocks<-blockify.img(final.img,5,5,block.fn=w.bcf(start.img,4,2),.parallel=T)
@@ -1234,7 +1244,7 @@ ggplot()+
   theme_bw(20)
 ```
 
-***
+
 
 ```{r, fig.height=9,fig.width=14}
 corr.img.blocks<-blockify.img(final.img,10,10,block.fn=w.bcf(start.img,4),.parallel=T)
@@ -1260,7 +1270,7 @@ DIC or DVC by themselves include no _sanity check_ for realistic offsets in the 
 - maximum deformation / force
 - material properties
 
-***
+
 
 $$ C_{\textrm{cost}} = \underbrace{C_{I_0,I_1}(\vec{r})}_{\textrm{Correlation Term}} + \underbrace{\lambda ||\vec{r}||}_{\textrm{deformation term}} $$
 
@@ -1299,7 +1309,7 @@ ggplot(sq.eles,aes(x,y))+
   theme_bw(25)
 ```
 
-***
+
 A given strain can then be applied and we can quantify the effects by examining the change in the small element. 
 
 ```{r, fig.height=6}
@@ -1341,7 +1351,7 @@ The isotropic change in size or scale of the object.
 
 The change in the proportions of the object (similar to anisotropy) independent of the final scale
 
-***
+
 
 ```{r, fig.height=4}
 ggplot(rh.eles,aes(x,y))+
@@ -1369,16 +1379,16 @@ __Data provided by Mattia Pistone and Julie Fife__
 The air phase changes from small very anisotropic bubbles to one large connected pore network. The same tools cannot be used to quantify those systems. Furthermore there are motion artifacts which are difficult to correct.
 
 <video controls>
-  <source src="ext-figures/roicurv.avi" type="video/avi">
+  <source src="ext-figures/roicurv.m4v" type="video/m4v">
 Your browser does not support the video tag.
 </video>
 
-***
+
 
 We can utilize the two point correlation function of the material to characterize the shape generically for each time step and then compare.
 
 <video controls>
-  <source src="ext-figures/roirdf.avi" type="video/avi">
+  <source src="ext-figures/rdfanim.m4v" type="video/m4v">
 Your browser does not support the video tag.
 </video>
 
