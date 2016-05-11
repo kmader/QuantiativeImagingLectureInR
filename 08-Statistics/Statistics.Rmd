@@ -45,14 +45,16 @@ Literature / Useful References
 - [Hypothesis Testing Chapter](http://www.sagepub.com/upm-data/40007_Chapter8.pdf)
 - Grammar of Graphics: Leland and Wilkinson - http://www.springer.com/gp/book/9780387245447
 
-
-### Papers / Sites
+### Videos / Podcasts
 - Google/Stanford Statistics Intro
  - https://www.youtube.com/watch?v=YFC2KUmEebc
 - MCB 140 P-value lecture at UC Berkeley (Audio)
  - https://itunes.apple.com/us/itunes-u/mcb-140-fall-2007-general/id461120088?mt=10
 - Correlation and Causation (Video)
  - https://www.youtube.com/watch?v=YFC2KUmEebc
+- Last Week Tonight: Scientific Studies (https://www.youtube.com/watch?v=0Rnq1NpHdmw)
+
+### Papers / Sites
 - [Matlab Unit Testing Documentation](http://www.mathworks.ch/ch/help/matlab/matlab-unit-test-framework.html
 )
 - [Databases Introduction](http://swcarpentry.github.io/sql-novice-survey/)
@@ -838,8 +840,6 @@ Unit Testing
 - Unit testing is possible with every language
 - Most (Java, C++, Matlab, R, Python) have built in support for automated testing and reporting
 
-Unit Testing Continued
-===
 The first requirement for unit testing to work well is to have you tools divided up into small independent parts (functions)
 - Each part can then be tested independently (unit testing)
  - If the tests are well done, units can be changed and tested independently
@@ -848,7 +848,6 @@ The first requirement for unit testing to work well is to have you tools divided
  - Catches mistakes in integration or _glue_
 
 
-***
 
 Ideally with realistic but simulated test data
 - The utility of the testing is only as good as the tests you make
@@ -856,20 +855,26 @@ Ideally with realistic but simulated test data
 ### Example
 
 - Given the following function
+
 ```function vxCnt=countVoxs(inImage)```
+
 - We can right the following tests
  - testEmpty2d
  
 ```assert countVoxs(zeros(3,3)) == 0```
+
  - testEmpty3d
  
 ```assert countVoxs(zeros(3,3,3)) == 0```
+
  - testDiag3d
  
 ```assert countVoxs(eye(3)) == 3```
 
+
 Unit Testing: Examples
 ===
+
 - Given the following function
 ```function shapeTable=shapeAnalysis(inImage)```
 We should decompose the task into sub-components

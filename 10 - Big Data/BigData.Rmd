@@ -1,3 +1,12 @@
+---
+title: "Quantitative Big Imaging"
+author: "Scaling up / Big Data"
+date: 'ETHZ: 227-0966-00L'
+output: 
+  slidy_presentation:
+    footer: "Quantitative Big Imaging 2016"
+---
+
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
 source("../common/slide_setup.R")
 ```
@@ -13,15 +22,6 @@ read_chunk("../common/utility_functions.R")
 ```{r common-functions}
 ```
 
-Quantitative Big Imaging
-========================================================
-author: Kevin Mader 
-date: 7 May 2015
-width: 1440
-height: 900
-transition: rotate
-css: ../template.css
-## Scaling Up / Big Data
 
  
 Course Outline
@@ -35,6 +35,7 @@ Literature / Useful References
 ========================================================
 
 ### Big Data
+
 - [Google's Presentation on Distributed Computing](http://www.youtube.com/watch?v=yjPBkvYh-ss&feature=youtu.be)
  - [Slides](http://www.slideshare.net/tugrulh/google-cluster-computing-and-mapreduce-introduction-to-distributed-system-design)
  - [MapReduce Paper](http://citeseerx.ist.psu.edu/viewdoc/summary;jsessionid=110C01079B22F1138DBDB74A20F65AF4?doi=10.1.1.135.4448): Jeffrey Dean, et al. (n.d.). MapReduce: Simplified Data Processing on Large Clusters.
@@ -42,17 +43,19 @@ Literature / Useful References
 - [Tutorial in Hadoop](http://www.youtube.com/watch?v=KwW7bQRykHI)
 - [Intro to Data Science @UCB](http://amplab.github.io/datascience-sp14/)
 
-***
 ### Cluster Computing
+
 - Altintas, I. (2013). Workflow-driven programming paradigms for distributed analysis of biological big data. In 2013 IEEE 3rd International Conference on Computational Advances in Bio and medical Sciences (ICCABS) (pp. 1–1). IEEE. doi:10.1109/ICCABS.2013.6629243
 - [Condor High-throughput Computing](http://www.cs.wisc.edu/condor/)
 - [Condor Setup at ITET](https://computing.ee.ethz.ch/Services/Condor)
 - [Sun (now Oracle) Grid Engine](http://gridscheduler.sourceforge.net/htmlman/manuals.html) or [here](http://wiki.gridengine.info/wiki/index.php/Main_Page)
 
 ### Databases
+
 - Ollion, J., Cochennec, J., Loll, F., Escudé, C., & Boudier, T. (2013). [TANGO](http://www.pubmedcentral.nih.gov/articlerender.fcgi?artid=3702251&tool=pmcentrez&rendertype=abstract): a generic tool for high-throughput 3D image analysis for studying nuclear organization. Bioinformatics (Oxford, England), 29(14), 1840–1. doi:10.1093/bioinformatics/btt276
 
 ### Cloud Computing
+
 - Amazon S3
 - Sitaram, D., & Manjunath, G. (2012). Moving To The Cloud. null (Vol. null). Elsevier. doi:10.1016/B978-1-59749-725-1.00006-8
 - Duan, P., Wang, W., Zhang, W., Gong, F., Zhang, P., & Rao, Y. (2013). Food Image Recognition Using Pervasive Cloud Computing. In 2013 IEEE International Conference on Green Computing and Communications and IEEE Internet of Things and IEEE Cyber, Physical and Social Computing (pp. 1631–1637). IEEE. doi:10.1109/GreenCom-iThings-CPSCom.2013.296
@@ -70,7 +73,6 @@ Outline
  - Parameterization
  - Databases
  
-***
 
 - Big Data
  - MapReduce
@@ -84,6 +86,7 @@ Motivation
 ===
 
 There are three different types of problems that we will run into.
+
 ### Really big data sets
 - Several copies of the dataset need to be in memory for processing
 - Computers with more 256GB are expensive and difficult to find
@@ -92,8 +95,6 @@ There are three different types of problems that we will run into.
 - If it crashes you __lose__ everything
  - or you have to manually write a bunch of mess check-pointing code
 
-
-***
 
 ### Many datasets
 - For genome-scale studies 1000s of samples need to be analyzed identically
@@ -110,6 +111,7 @@ Example Projects
 ===
 
 ### Zebra fish Full Animal Phenotyping 
+
 __Full adult animal at cellular resolution__
 1000s of samples of full adult animals, imaged at 0.74 $\mu m$ resolution: Images
 11500 x 2800 x 628 $\longrightarrow$ 20-40GVx / sample
@@ -124,7 +126,7 @@ Your browser does not support the video tag.
 - Classification of cell type
 - Registration with histology
 
-***
+
 
 ### Brain Project
 __Whole brain with cellular resolution__
@@ -151,7 +153,7 @@ cl_count=hist(cl_img,1:100);
 dlmwrite(cl_count,'out.txt')
 ```
 
-***
+
 
 - What if you want to compare Gaussian and Median?
 - What if you want to look at 3D instead of 2D images?
@@ -166,7 +168,9 @@ dlmwrite(cl_count,'out.txt')
 
 Computer Science Principles
 ===
+
 ### Disclosure : There are entire courses / PhD thesis's / Companies about this, so this is just a quick introduction
+
 - Parallelism
 - Distributed Computing
 - Resource Contention
@@ -183,6 +187,7 @@ What is parallelism?
 ===
 
 Parallelism is when you can divide a task into separate pieces which can then be worked on at the same time. 
+
 ### For example 
 - if you have to walk 5 minutes and talk on the phone for 5 minutes
 - you can perform the tasks serially which then takes 10 minutes
@@ -205,7 +210,7 @@ Distributed Computing Examples
  - To find the capital of a single country you just yell the country and wait for someone to respond (+++)
  - To find who knows the most countries, each, in turn, yells out how many countries they know and you select the highest (++)
  
-***
+
 
 1. Each friend has some money with them
  - To find the total amount of money you tell each person to tell you how much money they have and you add it together (+)
@@ -219,7 +224,7 @@ The largest issue with parallel / distributed tasks is the need to access the sa
 - pieces of information
 - network resources
 
-***
+
 ### Dead-lock
 [Dining Philopher's Problem](http://en.wikipedia.org/wiki/Dining_philosophers_problem)
 - 6 philosophers at the table
@@ -266,7 +271,7 @@ Directly coordinating tasks on a computer.
 - Job and task scheduling is manual
 - Potential to tweak and optimize performance
 
-***
+
 
 ### Making a soup
 
@@ -287,7 +292,7 @@ Declarative
 - Data is automatically managed and copied
 - Scheduling is automatic but not always _efficient_
 
-***
+
 
 ### Making a soup
 - Buy vegetables at market $\rightarrow shop_{veggies}$ 
@@ -312,7 +317,7 @@ They look fairly similar, so what is the difference? The second is needlessly co
 1. _then_ Wait until boiling then add chopped vegetables
 1. _then_ Wait 5 minutes and add meat
 
-***
+
 
 How can many people make a declarative soup faster? Give everyone a different task (not completely efficient since some tasks have to wait on others)
 
@@ -334,7 +339,7 @@ Results
 - make many soups at the same time (independent)
  - This leads us to cluster-based computing
  
-***
+
 
 ### Declarative
 - run everything at once
@@ -369,7 +374,7 @@ Queue processing systems (like Sun Grid Engine, Oracle Grid Engine, Apple XGrid,
 - users
 Based on a set of rules for how to share the resources to the users to run tasks. 
 
-***
+
 
 ### Resources
 - a collection of processors (CPU and GPU)
@@ -428,7 +433,7 @@ kable(data.frame(
   ))
 ```
 
-***
+
 Relational-databases can store relationships between different tables so the relationship between _Animal_ in table **Cells** and _id_ in table **Animals** can be preserved.
 ```{r, fig.height=9}
 
@@ -478,7 +483,7 @@ SQL
 SQL (pronounced Sequel) stands for structured query language and is _nearly_ universal for both searching (called querying) and adding (called inserting) data into databases. SQL is used in various forms from Firefox storing its preferences locally (using SQLite) to Facebook storing some of its user information (MySQL and Hive). 
 So refering to the two tables we defined in the last entry, we can use SQL to get information about the tables independently of how they are stored (a single machine, a supercomputer, or in the cloud)
 
-***
+
 ### Basic queries
 
 - Get the volume of all cells
@@ -541,7 +546,7 @@ E(g)$color<-"black"
 plot(g,  layout=layout.kamada.kawai) #layout=layout.circle)#
 ```
 
-***
+
 ### Table Representation
 ```{r, results='asis'}
 kable(data.frame(
@@ -572,7 +577,7 @@ SELECT id,COUNT(*) AS connection_count FROM Cells as CellsA
 
 This is _still_ readable but becomes very cumbersome quickly and difficult to manage
 
-***
+
 
 ### NoSQL (Not Only SQL)
 
@@ -653,7 +658,7 @@ $$ \vec{L} = \begin{bmatrix} 1,2,3,4,5 \end{bmatrix} $$
 $$ f(x) = x^2 $$
 $$ map(f \rightarrow \vec{L}) = \begin{bmatrix} 1,4,9,16,25 \end{bmatrix} $$
 
-***
+
 
 ### Reduce
 
@@ -678,7 +683,7 @@ $$ \downarrow $$
 $$ \downarrow $$
 - Collect all of the results and write to disk
 
-***
+
 
 All of the steps in between can be written once in a robust, safe manner and then used for every task which can be described using this MapReduce paradigm. These tasks $\langle \vec{L}, f(x), g(a,b) \rangle$ is refered to as a job. 
 
@@ -697,7 +702,7 @@ Using MapReduce on a folder full of text-documents.
 - Grouping is then performed by keys (group all words together)
 - **Reduce** adds up the values for each word
 
-***
+
 
 ```
 L = ["cat dog car",
@@ -740,7 +745,7 @@ Spark / Resilient Distributed Datasets
 - In-memory caching
 
 <small>Zaharia, M., et. al (2012). Resilient distributed datasets: a fault-tolerant abstraction for in-memory cluster computing</small>
-***
+
 
 ### Practical Specification
 - Distributed, parallel computing without __logistics__, libraries, or compiling
@@ -760,7 +765,7 @@ Cloud Computing
 ![Cloud Computing](ext-figures/Efficiency.png)
 
 
-***
+
 
 ### Cloud Resources
 
@@ -782,7 +787,7 @@ Near Future Imaging Goals
 - Analyze scans as fast as we measure now (1 scan / minute)
 - Analyze scans as fast as we could measure with Gigafrost (10 scans / minute)
 
-***
+
 
 ```{r, load_results}
 map.data.dir<-"/Users/mader/Dropbox/Papers/MapReduce3D/ext-data"
@@ -856,7 +861,7 @@ Post-processing: Statistical Analysis
  - K-means clustering for different regions in bone / layers
  - Principal component analysis for phenotypes
  
-***
+
 
 If we do that, we miss a lot!
 ```{r load_data}
