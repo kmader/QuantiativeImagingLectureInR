@@ -1,16 +1,18 @@
-schedule.str<-"- 25th February - Introduction and Workflows
-- 3rd March - Image Enhancement (A. Kaestner)
-- 10th March - Basic Segmentation, Discrete Binary Structures
-- 17th March - Advanced Segmentation
-- 24th March - Analyzing Single Objects
-- 7th April - Analyzing Complex Objects
-- 14th April - Many Objects and Distributions
-- 21st April -  Statistics and Reproducibility
-- 28th April - Dynamic Experiments
-- 12th May - Scaling Up / Big Data
-- 19th May - Guest Lecture - High Content Screening
-- 26th May - Guest Lecture - Machine Learning / Deep Learning and More Advanced Approaches
-- 2nd June - Project Presentations"
+
+schedule.str<-"- 23th February - Introduction and Workflows
+- 2rd March - Image Enhancement (A. Kaestner)
+- 09th March - Basic Segmentation, Discrete Binary Structures
+- 16th March - Advanced Segmentation
+- 23th March - Analyzing Single Objects
+- 30th March - Analyzing Complex Objects
+- 6th April - Many Objects and Distributions
+- 13th April -  Statistics and Reproducibility
+- 27th April - Dynamic Experiments
+- 4th May - Scaling Up / Big Data
+- 11th May - Project Presentations
+- 18th May - Guest Lecture - High Content Screening
+- 1st June - Guest Lecture - Machine Learning / Deep Learning and More Advanced Approaches
+"
 course.desc<-
   data.frame(Lecture=substring(gsub("\\s+"," ",strsplit(schedule.str,"\n")[[1]]),3),
              Description=c("Basic overview of the course, introduction to the basics of images and their acquisition, the importance of reproducibility and why workflows make sense for image processing",
