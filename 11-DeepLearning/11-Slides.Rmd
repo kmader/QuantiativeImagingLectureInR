@@ -1,0 +1,80 @@
+---
+title: "Quantitative Big Imaging"
+author: "From Big Imaging to Deep Learning"
+date: 'ETHZ: 227-0966-00L'
+output: 
+  slidy_presentation:
+    footer: "Quantitative Big Imaging 2016"
+---
+
+```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
+source("../common/slide_setup.R")
+```
+
+
+```{r script_setup, cache=F}
+## The basic files and libraries needed for most presentations
+# creates the libraries and common-functions sections
+read_chunk("../common/utility_functions.R")
+```
+```{r libraries}
+```
+```{r common-functions}
+```
+
+
+ 
+Course Outline
+========================================================
+
+```{r, results='asis'}
+source('../common/schedule.R')
+```
+
+Literature / Useful References
+========================================================
+
+### Deep Learning Introductions
+
+### Image Databases
+
+### Model Zoo
+
+
+Outline
+========================================================
+
+- Motivation
+- Overlap between Standard and _New_ Approaches
+
+
+
+Motivation
+===
+
+There are three different types of problems that we will run into.
+
+### Really big data sets
+- Several copies of the dataset need to be in memory for processing
+- Computers with more 256GB are expensive and difficult to find
+- Even they have 16 cores so still 16GB per CPU
+- Drive speed / network file access becomes a limiting factor
+- If it crashes you __lose__ everything
+ - or you have to manually write a bunch of mess check-pointing code
+
+
+### Many datasets
+- For genome-scale studies 1000s of samples need to be analyzed identically
+- Dynamic experiments can have hundreds of measurements 
+- Animal phenotyping can have many huge data-sets (1000s of 328GB datasets)
+- Radiologist in Switzerland alone make 1 Petabyte of scans per year
+
+### Exploratory Studies
+- Not sure what we are looking for
+- Easy to develop new analyses
+- Quick to test hypotheses
+
+Reinforcement Learning / Deep - Q
+===
+
+http://people.ee.ethz.ch/~maderk/reinforcejs/javascript-breakout/
