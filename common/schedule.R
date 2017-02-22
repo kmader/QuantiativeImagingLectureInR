@@ -1,22 +1,23 @@
 
 schedule.str<-"- 23th February - Introduction and Workflows
 - 2rd March - Image Enhancement (A. Kaestner)
-- 09th March - Basic Segmentation, Discrete Binary Structures
-- 16th March - Advanced Segmentation
-- 23th March - Analyzing Single Objects
-- 30th March - Analyzing Complex Objects
-- 6th April - Many Objects and Distributions
-- 13th April -  Statistics and Reproducibility
-- 27th April - Dynamic Experiments
-- 4th May - Scaling Up / Big Data
-- 11th May - Project Presentations
-- 18th May - Guest Lecture - High Content Screening
-- 1st June - Guest Lecture - Machine Learning / Deep Learning and More Advanced Approaches
+- 9th March - Tutorial on Python and Jupyter (TBA)
+- 16th March - Basic Segmentation, Discrete Binary Structures
+- 23th March - Advanced Segmentation
+- 30th March - Analyzing Single Objects
+- 6th April - Analyzing Complex Objects
+- 13th April - Many Objects and Distributions
+- 27th April -  Statistics and Reproducibility
+- 4th May - Dynamic Experiments
+- 11th May - Scaling Up / Big Data
+- 18th May  - Guest Lecture - High Content Screening (M. Prummer) / Project Presentations
+- 1st June - Guest Lecture - Big Aerial Images with Deep Learning and More Advanced Approaches (J. Montoya)
 "
 course.desc<-
   data.frame(Lecture=substring(gsub("\\s+"," ",strsplit(schedule.str,"\n")[[1]]),3),
              Description=c("Basic overview of the course, introduction to the basics of images and their acquisition, the importance of reproducibility and why workflows make sense for image processing",
                            "Overview of what techniques are available for assessing and improving the quality of images, specifically various filters, when to apply them, their side-effects, and how to apply them correctly",
+                           "An introduction to the Python world of image analysis and the scikit projects",
                            "How to convert images into structures, starting with very basic techniques like threshold and exploring several automated techniques",
                            "More advanced techniques for extracting structures including basic clustering and classification approaches, and component labeling",
                            "The analysis and characterization of single structures/objects after they have been segmented, including shape and orientation",
@@ -26,12 +27,12 @@ course.desc<-
                            "Performing tracking and registration in dynamic, changing systems covering object and image based methods",
                            "Performing large scale analyses on clusters and cloud-based machines and an introduction of how to work with 'big data' frameworks",
                            "Application of the course material to an actual scientific project from material science where we reproduce the results of a publication",
-                           "Applying more advanced techniques from the field of Machine Learning to image processing segmentation and analysis like Support vector machines (SVM) and Markov Random Fields (MRF)",
-                           "The presentations of the student projects done in the class"
+                           "Applying more advanced techniques from the field of Machine Learning to image processing segmentation and analysis of aerial images specifically Support vector machines (SVM) and Markov Random Fields (MRF)"
                            ),
              Applications=c(
                "Calculating the intensity for a folder full of images",
                "Removing detector noise from neutron images to distinguish different materials",
+               "Getting familiar with Python and learning how to "
                "Measuring improvement in signal to noise, validating methods",
                "Identify cells from noise, background, and dust",
                "Identifying fat and ice crystals in ice cream images",
