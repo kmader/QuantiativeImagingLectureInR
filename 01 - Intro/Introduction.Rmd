@@ -1,3 +1,15 @@
+---
+title: "Introductions and Workflows"
+output: 
+  ioslides_presentation: 
+    logo: ../background.jpg
+    transition: slower
+    fig_caption: false
+    widescreen: true
+---
+
+- ETHZ: 227-0966-00L, Quantitative Big Imaging, February 23, 2017
+
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide', message=F}
 source("../common/slide_setup.R")
 ```
@@ -8,27 +20,16 @@ source("../common/slide_setup.R")
 read_chunk("../common/utility_functions.R")
 
 ```
+
 ```{r libraries}
 ```
+
 ```{r common-functions}
 ```
 
-Quantitative Big Imaging 
-========================================================
-author: Kevin Mader
-date: 25 February 2016
-width: 1440
-height: 900
-css: ../common/template.css
-transition: rotate
 
 
-
-ETHZ: 227-0966-00L
-# Introductions and Workflows
-
-Overview
-===
+## Overview
 
 - Who are we?
 - Who are you?
@@ -38,7 +39,7 @@ Overview
  - Changing computing (Parallel / Cloud)
  - Course outline
 
-***
+## Overivew
 
 - What is an image?
 - Where do images come from?
@@ -46,79 +47,94 @@ Overview
 - Workflows
 
 
-Who are we?
-===
-- Kevin Mader (mader@biomed.ee.ethz.ch)
+# Who are we?
+
+
+## Kevin Mader (mader@biomed.ee.ethz.ch)
  - CTO at __4Quant__ for Big Image Analytics (ETH Spin-off)
  - __Lecturer__ at ETH Zurich 
  - __Postdoc__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
 
 
 - ![Kevin Mader](../common/figures/kevin-mader.jpg)
- 
-***
 
-- Ioannis Vogiatzis (ioannis.vogiatzis@psi.ch)
+## Ioannis Vogiatzis (ioannis.vogiatzis@psi.ch)
  - Exercise assistance
  - __PhD Student__ in the X-Ray Microscopy Group at ETH Zurich and Swiss Light Source at Paul Scherrer Institute
- 
 
-Who are we (continued)?
-===
+- ![Yannis](http://www.anaweb.ch/users/vogiatzis/kopf.jpg)
 
-- Anders Kaestner (anders.kaestner@psi.ch) 
+# Guest Lecturers
+
+## Anders Kaestner, PhD (anders.kaestner@psi.ch) 
  - __Group Leader__ at the ICON Beamline at the SINQ (Neutron Source) at Paul Scherrer Institute
 
 ![Anders Kaestner](../common/figures/anders.png)
 
-***
+## Michael Prummer, PhD (prummer@nexus.ethz.ch) 
+<div class="columns-2">
+- Biostatistician at NEXUS Personalized Health Technol.
+- Previously Senior Scientist at F. Hoffmann-La Roche Ltd., Basel, Switzerland. 
+ - Pharma Research & Early Development (pRED), Discovery Technologies
+ - Phenotypic Drug Discovery & Target Identification.
+ - Topic: High Content Screening (HCS), Image analysis, Biostatistics, Image Management System.
 
-- Christian Dietz (christian.dietz@uni-konstanz.de)
- - KNIME Expert
- - __PhD Student__ Fachbereich Informatik und Informationswissenschaft
- - __KNIME Developer__ KNIME Image Processing, ImageJ2, imglib (https://github.com/dietzc)
+![Michael Prummer](http://www.nexus.ethz.ch/content/specialinterest/dual/nexus/en/people/person-detail.person_image.jpeg?persid=90104)
+</div>
 
-![Christian Dietz](../common/figures/christian-dietz.png)
+## Javier Montoya, PhD
 
-Who are you?
-===
+<div class="columns-2">
+### Research Scientist at ScopeM
+### Previously Research Assistant in Photogrammetric and Geodesics
+- Computer Vision
+- Machine Learning
+- Data analysis & modelling
+- Remote Sensing
+
+![Javier](https://www1.ethz.ch/igp/photogrammetry/people/mojavier/index.jpg/image)
+</div>
+
+## Who are you?
+
+
 ### A wide spectrum of backgrounds
 - Biomedical Engineers, Physicists, Chemists, Art History Researchers, Mechanical Engineers, and Computer Scientists
 
 ### A wide range of skills
 - I think I've heard of Matlab before $\rightarrow$ I write template C++ code and hand optimize it afterwards
 
-***
 
-### So how will this ever work?
-### Adaptive assignments
+# So how will this ever work?
 
-1. Conceptual, graphical assignments with practical examples
+## Adaptive assignments
+
+### Conceptual, graphical assignments with practical examples
   - Emphasis on chosing correct steps and understanding workflow
-2. Opportunities to create custom implementations, plugins, and perform more complicated analysis on larger datasets if interested
+  
+### Opportunities to create custom implementations, plugins, and perform more complicated analysis on larger datasets if interested
   - Emphasis on performance, customizing analysis, and scalability
 
-Course Expectations
-===
 
-### Exercises
+# Course Expectations
+
+## Exercises
  - Usually 1 set per lecture
  - Optional (but recommended!)
  - Easy - using GUIs (KNIME and ImageJ) and completing Matlab Scripts (just lecture 2)
  - Advanced - Writing Python, Java, Scala, ...
- 
-***
 
-### Science Project
+## Science Project
 - Optional (but strongly recommended)
 - Applying Techniques to answer scientific question!
  - Ideally use on a topic relevant for your current project, thesis, or personal activities
  - or choose from one of ours (will be online, soon)
 - Present approach, analysis, and results
 
-Literature / Useful References
-========================================================
-### General Material
+# Literature / Useful References
+
+
+## General Material
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
  - [Buy it](http://www.amazon.com/Morphometrics-R-Use-Julien-Claude/dp/038777789X)
@@ -127,9 +143,10 @@ Literature / Useful References
 - J. Weickert, Visualization and Processing of Tensor Fields
  - [Online](http://books.google.ch/books?id=ScLxPORMob4C&lpg=PA220&ots=mYIeQbaVXP&dq=&pg=PA220#v=onepage&q&f=false)
  
-***
 
-### Today
+## Today's Material
+
+
 - Imaging
  - [ImageJ and SciJava](http://www.slideshare.net/CurtisRueden/imagej-and-the-scijava-software-stack)
 - Cloud Computing
@@ -142,29 +159,24 @@ Literature / Useful References
  - [Reproducible Research Class](https://www.coursera.org/course/repdata) @ Johns Hopkins University
 
 
-Motivation
-===
+# Motivation
+
+----
 
 ![Crazy Workflow](../common/figures/crazyworkflow.png)
 - To understand what, why and how from the moment an image is produced until it is finished (published, used in a report, …)
 - To learn how to go from one analysis on one image to 10, 100, or 1000 images (without working 10, 100, or 1000X harder)
 
-Motivation (Why does this class exist?)
-===
+## Motivation | (Why does this class exist?) {.smaller}
+<div class="columns-2">
 - Detectors are getting bigger and faster constantly
 - Todays detectors are really fast
  - 2560 x 2160 images @ 1500+ times a second = 8GB/s
 - Matlab / Avizo / Python / … are saturated after 60 seconds
 - A single camera
- - More information per day than Facebook*
- - Three times as many images per second as  Instagram**
- 
-<small>
-- *http://news.cnet.com/8301-1023_3-57498531-93/facebook-processes-more-than-500-tb-of-data-daily/
-- **http://techcrunch.com/2013/01/17/instagram-reports-90m-monthly-active-users-40m-photos-per-day-and-8500-likes-per-second/
-</small>
+ - [More information per day than Facebook](http://news.cnet.com/8301-1023_3-57498531-93/facebook-processes-more-than-500-tb-of-data-daily/)
+ - [Three times as many images per second as Instagram](http://techcrunch.com/2013/01/17/instagram-reports-90m-monthly-active-users-40m-photos-per-day-and-8500-likes-per-second/)
 
-***
 
 ### X-Ray
  - SRXTM images at (>1000fps) → 8GB/s
@@ -179,9 +191,10 @@ Motivation (Why does this class exist?)
  - GoPro 4 Black - 60MB/s (3840 x 2160 x 30fps) for $600
  - [fps1000](https://www.kickstarter.com/projects/1623255426/fps1000-the-low-cost-high-frame-rate-camera) - 400MB/s (640 x 480 x 840 fps) for $400
 
+</div>
 
-Motivation (Is it getting better?)
-===
+## Motivation 
+
 
 1. __Experimental Design__ finding the right technique, picking the right dyes and samples has stayed relatively consistent, better techniques lead to more demanding scientits.
 
@@ -191,7 +204,7 @@ Motivation (Is it getting better?)
 
 4. __Post Processing__ this portion has is the most time-consuming and difficult and has seen minimal improvements over the last years 
 
-***
+----
 
 ```{r time-figure, fig.width=12, fig.height=8}
 library("ggthemes")
@@ -213,8 +226,8 @@ ggplot(mtd,aes(x=as.factor(year),y=norm.val,fill=variable))+
   theme_economist(20)
 ```
 
-Saturating Output
-===
+## Saturating Output
+
 
 ```{r scaling, fig.width=12}
 output.df<-data.frame(Year=time.data$year,
@@ -234,7 +247,8 @@ ggplot(mtd2,aes(x=as.factor(Year),y=value,fill=variable))+
 kable(output.df,digits=0)
 ```
 
-***
+----
+
 To put more real numbers on these scales rather than 'pseudo-publications', the time to measure a terabyte of data is shown in minutes.
 
 ```{r, results='asis'}
@@ -246,8 +260,8 @@ names(mmtb)[2]<-"Time to 1 TB in Minutes"
 kable(mmtb,digits=0)
 ```
 
-How much is a TB, really?
-===
+## How much is a TB, really?
+
 
 If __you__ looked at one 1000 x 1000 sized image
 ```{r}
@@ -264,7 +278,7 @@ cat("__",
 hours to browse through a terabyte of data.
 
 
-***
+----
 
 ```{r, results='asis'}
 names(mmtb)[2]<-"Time to 1 TB"
@@ -276,43 +290,40 @@ mmtb$"Salary Costs / Month"<-paste(round(mmtb$"Salary Costs / Month"/1000)," kCH
 kable(mmtb,digits=0)
 ```
 
-Overwhelmed
-===
+## Overwhelmed
+<div class="columns-2">
 - Count how many cells are in the bone slice
 - Ignore the ones that are ‘too big’ or shaped ‘strangely’
 - Are there more on the right side or left side?
 - Are the ones on the right or left bigger, top or bottom?
 
-***
 
 ![cells in bone tissue](../common/figures/bone-cells.png)
+</div>
 
-More overwhelmed
-===
+## More overwhelmed
 
+<div class="columns-2">
 - Do it all over again for 96 more samples, this time with 2000 slices instead of just one!
 
-***
 
 ![more samples](../common/figures/96-samples.png)
+</div>
 
-Bring on the pain
-===
-
+## Bring on the pain
+<div class="columns-2">
 - Now again with 1090 samples!
 
-***
 
 ![even more samples](../common/figures/1090-samples.png)
+</div>
 
-
-It gets better
-===
+## It gets better
+<div class="columns-2">
 
 - Those metrics were quantitative and could be easily visually extracted from the images
 - What happens if you have _softer_ metrics
 
-***
 
 ![alignment](../common/figures/alignment-figure.png)
 
@@ -320,16 +331,16 @@ It gets better
 - How aligned are these cells?
 - Is the group on the left more or less aligned than the right?
 - errr?
+</div>
 
-Dynamic Information
-===
-
+## Dynamic Information
+<div class="columns-2">
 <video controls>
   <source src="../common/movies/dk31-plat.avi" type="video/avi">
 Your browser does not support the video tag.
 </video>
 
-***
+
 
 - How many bubbles are here?
 - How fast are they moving?
@@ -338,11 +349,12 @@ Your browser does not support the video tag.
 - Do bubbles near the edge move slower?
 - Are they rearranging?
 
+</div>
 
-Computing has changed: Parallel
-===
+# Computing has changed: Parallel
 
-### Moores Law
+
+## Moores Law
 $$ \textrm{Transistors} \propto 2^{T/(\textrm{18 months})} $$
 
 ```{r invented, fig.cap="Based on trends from Wikipedia and Intel", fig.width=6, fig.align='center'}
@@ -393,7 +405,7 @@ ggplot(moores.table,aes(Year,value,color=variable))+
 ```
 <small>_Based on data from https://gist.github.com/humberto-ortiz/de4b3a621602b78bf90d_</small>
 
-***
+----
 
 There are now many more transistors inside a single computer but the processing speed hasn't increased. How can this be?
 
@@ -406,8 +418,8 @@ There are now many more transistors inside a single computer but the processing 
 
 ### Parallel Code is important
 
-Computing has changed: Cloud
-===
+## Computing has changed: Cloud
+
 ```{r cloud-code}
 cloudCostGen<-function(cloudPeakCost,cloudSpotCost) function(hours,peakRatio=1) 
   hours*peakRatio*cloudPeakCost+hours*(1-peakRatio)*cloudSpotCost
@@ -501,7 +513,7 @@ localCost<-function(hours)
 
 ![cloud services](../common/figures/cloud-services.png)
 
-***
+----
 
 - Traditionally the most important performance criteria was time, how fast can it be done
 - With Platform as a service servers can be rented instead of bought
@@ -512,8 +524,8 @@ localCost<-function(hours)
 
 
 
-Cloud Computing Costs
-===
+## Cloud Computing Costs
+
 
 The figure shows the range of cloud costs (determined by peak usage) compared to a local workstation with utilization shown as the average number of hours the computer is used each week.
 
@@ -537,7 +549,7 @@ ggplot(res.table,
   theme_bw(25)
 ```
 
-***
+----
 
 The figure shows the cost of a cloud based solution as a percentage of the cost of buying a single machine. The values below 1 show the percentage as a number. The panels distinguish the average time to replacement for the machines in months
 
@@ -577,12 +589,12 @@ ggplot(scen.table,aes(y=utility*100,x=peak*100,fill=cloudPremium))+
   theme_bw(10)
 ```
 
-Cloud: Equal Cost Point
-===
+## Cloud: Equal Cost Point
+<div class="columns-2">
 
 Here the equal cost point is shown where the cloud and local workstations have the same cost. The x-axis is the percentage of resources used at peak-time and the y shows the expected usable lifetime of the computer. The color indicates the utilization percentage and the text on the squares shows this as the numbers of hours used in a week.
 
-***
+
 ```{r}
 scen.table<-ddply.cutcols(scen.table.raw,.(cut_interval(utility,25),
                                            cut_interval(peak,5),
@@ -601,9 +613,11 @@ ggplot(scen.table.sub,aes(100*peak,months,fill=100*utility))+
   scale_fill_gradientn(colours=rainbow(2))+
   theme_bw(20)
 ```
+</div> 
 
-Course Overview
-===
+# Course Overview
+
+----
 ```{r, results='hide'}
 source('../common/schedule.R')
 ksable<-function(in.df,...) {
@@ -616,32 +630,33 @@ ksable(course.desc[c(1:3),])
 
 ```
 
-Overview: Segmentation
-===
+## Overview: Segmentation
+
 ```{r, results='asis'}
 ksable(course.desc[c(4:5),])
 ```
 
-Overview: Analysis
-===
+## Overview: Analysis
+
 ```{r, results='asis'}
 ksable(course.desc[c(6:8),])
 ```
 
-Overview: Big Imaging
-===
+## Overview: Big Imaging
+
 ```{r, results='asis'}
 ksable(course.desc[c(9:11),])
 ```
 
-Overview: Wrapping Up
-===
+## Overview: Wrapping Up
+
 ```{r, results='asis'}
 ksable(course.desc[c(12:14),])
 ```
 
-What is an image?
-===
+# What is an image?
+
+----
 
 A very abstract definition: __A pairing between spatial information (position) and some other kind of information (value).__
 
@@ -653,7 +668,7 @@ names(basic.image)[3]<-"Intensity"
 kable(head(basic.image))
 ```
 
-***
+----
 
 This can then be rearranged from a table form into an array form and displayed as we are used to seeing images
 
@@ -666,9 +681,8 @@ ggplot(basic.image,aes(x,y))+
   theme_bw(15)
 ```
 
-2D Intensity Images
-===
-
+## 2D Intensity Images
+<div class="columns-2">
 The next step is to apply a color map (also called lookup table, LUT) to the image so it is a bit more exciting
 
 ```{r, fig.height=5}
@@ -683,7 +697,6 @@ simple.image
 
 Which can be arbitrarily defined based on how we would like to visualize the information in the image
 
-***
 
 ```{r, fig.height=5}
 simple.image+
@@ -694,9 +707,11 @@ simple.image+
 simple.image+
   scale_fill_gradientn(colours=c("black","red","white"),trans="log")
 ```
+</div>
 
-Lookup Tables
-===
+## Lookup Tables
+
+<div class="columns-2">
 
 Formally a lookup table is a function which 
 $$ f(\textrm{Intensity}) \rightarrow \textrm{Color} $$
@@ -714,8 +729,11 @@ ggplot(basic.image,aes(x=Intensity,y=Intensity))+
 
 
 These transformations can also be non-linear as is the case of the graph below where the mapping between the intensity and the color is a $\log$ relationship meaning the the difference between the lower values is much clearer than the higher ones
+</div>
 
-***
+## Applied LUTs
+
+<div class="columns-2">
 
 
 ```{r, fig.height=5}
@@ -752,8 +770,8 @@ ggplot(both.img,aes(x,y,fill=val))+
 ```
 
 
-3D Images
-===
+## 3D Images
+<div class="columns-2">
 
 For a 3D image, the position or spatial component has a 3rd dimension (z if it is a spatial, or t if it is a movie)
 
@@ -763,7 +781,7 @@ basic.image$Intensity<-round(runif(nrow(basic.image),0,100))
 kable(head(basic.image))
 ```
 
-***
+
 
 This can then be rearranged from a table form into an array form and displayed as a series of slices
 
@@ -776,10 +794,10 @@ ggplot(basic.image,aes(x,y))+
   scale_fill_gradientn(colours=rainbow(4))+
   theme_bw(15)
 ```
+</div>
 
-
-Multiple Values
-===
+## Multiple Values
+<div class="columns-2">
 
 In the images thus far, we have had one value per position, but there is no reason there cannot be multiple values. In fact this is what color images are (red, green, and blue) values and even 4 channels with transparency (alpha) as a different. For clarity we call the __dimensionality__ of the image the number of dimensions in the spatial position, and the __depth__ the number in the value. 
 
@@ -790,11 +808,9 @@ basic.image$Transparency<-round(runif(nrow(basic.image),0,100))
 kable(head(basic.image))
 ```
 
-***
-
 This can then be rearranged from a table form into an array form and displayed as a series of slices
 
-```{r, fig.height=8}
+```{r, fig.height=8, fig.width = 6}
 ggplot(basic.image,aes(x,y))+
   geom_tile(aes(fill=Intensity,alpha=Transparency),color="black")+
   geom_text(aes(
@@ -803,9 +819,11 @@ ggplot(basic.image,aes(x,y))+
   scale_fill_gradientn(colours=rainbow(4))+
   theme_bw(15)
 ```
+</div>
 
-Hyperspectral Imaging
-===
+## Hyperspectral Imaging
+
+<div class="columns-2">
 
 At each point in the image (black dot), instead of having just a single value, there is an entire spectrum. A selected group of these (red dots) are shown to illustrate the variations inside the sample. While certainly much more complicated, this still constitutes and image and requires the same sort of techniques to process correctly.
 
@@ -827,7 +845,9 @@ ggplot(map.df,aes(x,y))+
   theme_bw(20)#,aes(fill="Scanned"))
 ```
 
-***
+</div>
+
+----
 
 ```{r load_hyperdata}
 full.df<-read.csv(hyper.path("full_img.csv"))
@@ -844,8 +864,12 @@ ggplot(
   theme_bw(10)
 ```
 
-Image Formation
-===
+
+
+# Image Formation
+
+----
+
 ![Traditional Imaging](../common/figures/image-formation.png)
 
 - __Impulses__ Light, X-Rays, Electrons, A sharp point, Magnetic field, Sound wave
@@ -853,8 +877,7 @@ Image Formation
 - __Response__ Absorption, Reflection, Phase Shift, Scattering, Emission
 - __Detection__ Your eye, Light sensitive film, CCD / CMOS, Scintillator, Transducer
 
-Where do images come from?
-===
+## Where do images come from?
 
 ```{r, results='asis'}
 in.table<-read.delim(text="Modality\tImpulse	Characteristic	Response	Detection
@@ -868,9 +891,9 @@ Atomic Force Microscopy	Sharp Point	Surface Contact	Contact, Repulsion	Deflectio
 kable(in.table,caption="Various modalities and their ways of being recorder")
 ```
 
-Acquiring Images
-===
-### Traditional / Direct imaging
+# Acquiring Images
+
+## Traditional / Direct imaging
 - Visible images produced or can be easily made visible
 - Optical imaging, microscopy
 
@@ -896,9 +919,9 @@ ggplot(both.img,aes(x,y,fill=val))+
         axis.text.y = element_blank())
 ```
 
-***
 
-### Indirect / Computational imaging
+
+## Indirect / Computational imaging
 - Recorded information does not resemble object
 - Response must be transformed (usually computationally) to produce an image
 
@@ -931,8 +954,8 @@ ggplot(both.img,aes(x,y,fill=val))+
         axis.text.y = element_blank())
 ```
 
-Traditional Imaging
-===
+## Traditional Imaging
+
 
 ![Traditional Imaging](../common/figures/traditional-imaging.png)
 
@@ -941,8 +964,8 @@ Traditional Imaging
 Copyright 2003-2013 J. Konrad in EC520 lecture, reused with permission
 </small>
 
-Traditional Imaging: Model
-===
+## Traditional Imaging: Model
+
 
 ![Traditional Imaging Model](../common/figures/traditional-image-flow.png)
 
@@ -957,8 +980,8 @@ $$
 \int_{0}^{\infty} {\left[\left([b(x,y,\lambda)*s_{ab}(x,y,\lambda)]\otimes h_{fs}(x,y,\lambda)\right)*h_{op}(x,y,\lambda)\right]*h_{det}(x,y,\lambda)}\mathrm{d}\lambda+d_{dark}(x,y)
 $$
 
-Indirect Imaging (Computational Imaging)
-===
+## Indirect Imaging (Computational Imaging)
+<div class="columns-2">
 
 - Tomography through projections
 - Microlenses (Light-field photography)
@@ -968,47 +991,48 @@ Indirect Imaging (Computational Imaging)
 Your browser does not support the video tag.
 </video>
 
-***
 
 - Diffraction patterns
 - Hyperspectral imaging with Raman, IR, CARS
 - Surface Topography with cantilevers (AFM)
 
 ![Suface Topography](../common/figures/surface-plot.png)
+</div>
 
-
-Image Analysis
-===
+## Image Analysis
+<div class="columns-2">
 
 ![Approaches](../common/figures/approaches.png)
 
-***
 
 - An image is a bucket of pixels.
 - How you choose to turn it into useful information is strongly dependent on your background
 
-Image Analysis: Experimentalist
-===
+</div>
+
+## Image Analysis: Experimentalist
+<div class="columns-2">
 
 ![Approaches](../common/figures/approaches.png)
 
-***
 
--Problem-driven
- - Top-down
- - _Reality_ Model-based
+### Problem-driven
+### Top-down
+### _Reality_ Model-based
 
 ### Examples 
 
 - cell counting
 - porosity
 
-Image Analysis: Computer Vision Approaches
-===
+</div>
+
+## Image Analysis: Computer Vision Approaches
+
+<div class="columns-2">
 
 ![Approaches](../common/figures/approaches.png)
 
-***
 
 - Method-driven
  - Feature-based
@@ -1019,14 +1043,15 @@ Image Analysis: Computer Vision Approaches
 
 - edge detection
 - face detection
+</div>
 
 
-Image Analysis: Deep Learning Approach
-===
+## Image Analysis: Deep Learning Approach
+
+<div class="columns-2">
 
 ![Approaches](../common/figures/approaches.png)
 
-***
 
 - Results-driven
 - Biology ‘inspired’
@@ -1036,45 +1061,46 @@ Image Analysis: Deep Learning Approach
 
 - Captioning images
 - Identifying unusual events
+</div>
 
-On Science
-===
-### What is the purpose?
+# On Science
+
+## What is the purpose?
+<div class="columns-2">
+
 - Discover and validate new knowledge
 
 ### How?
 - Use the scientific method as an approach to convince other people
 - Build on the results of others so we don't start from the beginning
 
-***
-
 ### Important Points
 - While qualitative assessment is important, it is difficult to reliably produce and scale
  - __Quantitative__ analysis is far from perfect, but provides metrics which can be compared and regenerated by anyone
 
-
 <small>Inspired by: [imagej-pres](http://www.slideshare.net/CurtisRueden/imagej-and-the-scijava-software-stack)</small>
+</div>
 
-Science and Imaging
-===
-
-- Images are great for qualitative analyses since our brains can quickly interpret them without large _programming_ investements. 
-- Proper processing and quantitative analysis is however much more difficult with images. 
+## Science and Imaging
+<div class="columns-2">
+### Images are great for qualitative analyses since our brains can quickly interpret them without large _programming_ investements. 
+### Proper processing and quantitative analysis is however much more difficult with images. 
  - If you measure a temperature, quantitative analysis is easy, $50K$. 
  - If you measure an image it is much more difficult and much more prone to mistakes, subtle setup variations, and confusing analyses
  
- ***
  
- Furthermore in image processing there is a plethora of tools available
+### Furthermore in image processing there is a plethora of tools available
 
 - Thousands of algorithms available
 - Thousands of tools
 - Many images require multi-step processing
 - Experimenting is time-consuming
+</div>
 
-Why quantitative?
-===
+## Why quantitative?
+
 ### Human eyes have issues
+
 Which center square seems brighter?
 ```{r, fig.align='center'}
 cent.square<-expand.grid(x=c(-1:1),y=c(-1:1))
@@ -1100,11 +1126,10 @@ ggplot(square.img,aes(x,y,fill=Intensity))+
   theme_bw(20)
 ```
 
-***
-
+----
 Are the intensities constant in the image?
 
-```{r, fig.align='center'}
+```{r}
 cent.square<-expand.grid(x=c(0:8),y=c(-1:1))
 ggplot(cent.square,aes(x,y,fill=x))+
   geom_tile()+
@@ -1113,8 +1138,7 @@ ggplot(cent.square,aes(x,y,fill=x))+
   theme_bw(20)
 ```
 
-Reproducibility
-===
+## Reproducibility
 
 Science demands __repeatability__! and really wants __reproducability__
 - Experimental conditions can change rapidly and are difficult to make consistent
@@ -1122,7 +1146,7 @@ Science demands __repeatability__! and really wants __reproducability__
 - Terabyte datasets cannot be easily passed around many different groups
 - Privacy concerns can also limit sharing and access to data
 
-***
+----
 
 - _Science_ is already difficult enough
 - Image processing makes it even more complicated
@@ -1132,12 +1156,11 @@ Science demands __repeatability__! and really wants __reproducability__
 - We can make the data analysis easy to repeat by an independent 3rd party
 
 
-Soup Example
-===
+# Soup/Recipe Example
 
+## Simple Soup
 Easy to follow the list, anyone with the right steps can execute and repeat (if not reproduce) the soup
 
-### Simple Soup
 
 1. Buy {carrots, peas, tomatoes} at market
 1. _then_ Buy meat at butcher
@@ -1147,9 +1170,9 @@ Easy to follow the list, anyone with the right steps can execute and repeat (if 
 1. _then_ Wait until boiling then add chopped vegetables
 1. _then_ Wait 5 minutes and add meat
 
-***
 
-### More complicated soup
+
+## More complicated soup
 Here it is harder to follow and you need to carefully keep track of what is being performed
 
 ### Steps 1-4
@@ -1160,10 +1183,11 @@ Here it is harder to follow and you need to carefully keep track of what is bein
 5. _then_ Wait until boiling then add $mix_1$
 6. _then_ Wait 5 minutes and add $mix_2$
 
-Using flow charts / workflows
-===
+# Using flow charts / workflows
 
-### Simple Soup
+
+## Simple Soup
+
 ```{r, fig.height=9}
 library(igraph)
 node.names<-c("Buy\nvegetables","Buy meat","Chop\nvegetables","Heat water","Wait for\nboiling","Wait 5\nadd meat")
@@ -1183,9 +1207,7 @@ E(g)$color<-"black"
 plot(g,layout=layout.circle)#,  layout= layout.kamada.kawai) ##
 ```
 
-***
-
-### Complicated Soup
+## Complicated Soup
 
 ```{r, fig.height=9}
 new.nodes<-c(node.names,"Mix carrots\npotatoes","add egg\nand fry","tenderize\nmeat",
@@ -1220,15 +1242,15 @@ E(g)$color<-"black"
 plot(g,layout=layout.circle)#,  layout= layout.kamada.kawai) ##
 ```
 
-Workflows
-===
+## Workflows
+
 Clearly a linear set of instructions is ill-suited for even a fairly easy soup, it is then even more difficult when there are dozens of steps and different pathsways
 
 ```{r, fig.width=8}
 plot(g,layout= layout.sugiyama(g)$layout)
 ```
 
-***
+----
 
 Furthermore a clean workflow allows you to better parallelize the task since it is clear which tasks can be performed independently
 ```{r, fig.width=8}
@@ -1238,4 +1260,5 @@ V(g)[c(2,9,10)]$color <- "yellow"
 plot(g,layout= layout.sugiyama(g)$layout)
 ```
 
+# Directed Acyclical Graphs (DAG)
 

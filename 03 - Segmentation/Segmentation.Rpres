@@ -15,7 +15,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging  
 ========================================================
 author: Kevin Mader
-date: 10 March 2016
+date: 15 March 2017
 width: 1440
 height: 900
 css: ../common/template.css
@@ -29,6 +29,7 @@ Course Outline
 
 ```{r, results='asis'}
 source('../common/schedule.R')
+
 ```
 
 Lesson Outline
@@ -393,8 +394,8 @@ Applying the threshold is a deceptively simple operation
 
 $$ I(x,y) = 
 \begin{cases}
-1, & f(x,y)\geq0.5 \\
-0, & f(x,y)<0.5
+1, & f(x,y)\geq0.75 \\
+0, & f(x,y)<0.75
 \end{cases}$$
 
 ```{r, fig.cap="With Threshold Overlay"}
