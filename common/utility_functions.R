@@ -5,17 +5,14 @@ require(plyr) # for processing data.frames
 library(dplyr)
 require(grid) # contains the arrow function
 require(jpeg)
-require(doMC) # for parallel code
+#require(doMC) # for parallel code
 require(png) # for reading png images
 require(gridExtra)
 
 require(reshape2) # for the melt function
-#if (!require("biOps")) {
-#  # for basic image processing
-#  devtools::install_github("cran/biOps")
-#  library("biOps")
-#}
+
 ## To install EBImage
+
 if (!require("EBImage")) { # for more image processing
   source("http://bioconductor.org/biocLite.R")
   biocLite("EBImage")
@@ -25,7 +22,7 @@ used.libraries<-c("ggplot2","lattice","plyr","reshape2","grid","gridExtra","biOp
 
 # ---- common-functions ----
 # start parallel environment
-registerDoMC()
+# registerDoMC()
 # functions for converting images back and forth
 im.to.df<-function(in.img,out.col="val") {
   out.im<-expand.grid(x=1:nrow(in.img),y=1:ncol(in.img))

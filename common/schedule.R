@@ -1,7 +1,7 @@
 
 schedule.str<-"- 23th February - Introduction and Workflows
 - 2rd March - Image Enhancement (A. Kaestner)
-- 9th March - Tutorial on Python and Jupyter (TBA)
+- 9th March - Tutorial on Python and Jupyter
 - 16th March - Basic Segmentation, Discrete Binary Structures
 - 23th March - Advanced Segmentation
 - 30th March - Analyzing Single Objects
@@ -26,14 +26,13 @@ course.desc<-
                            "Making a statistical analysis from quantified image data, and establishing the precision of the metrics calculated, also more coverage of the steps to making an analysis reproducible",
                            "Performing tracking and registration in dynamic, changing systems covering object and image based methods",
                            "Performing large scale analyses on clusters and cloud-based machines and an introduction of how to work with 'big data' frameworks",
-                           "Application of the course material to an actual scientific project from material science where we reproduce the results of a publication",
+                           "How Roche does Microscopy at Scale with High Content Screening and what the important image analysis aspects are",
                            "Applying more advanced techniques from the field of Machine Learning to image processing segmentation and analysis of aerial images specifically Support vector machines (SVM) and Markov Random Fields (MRF)"
                            ),
              Applications=c(
                "Calculating the intensity for a folder full of images",
                "Removing detector noise from neutron images to distinguish different materials",
-               "Getting familiar with Python and learning how to "
-               "Measuring improvement in signal to noise, validating methods",
+               "Getting familiar with Python and learning how the basic scikit tools work",
                "Identify cells from noise, background, and dust",
                "Identifying fat and ice crystals in ice cream images",
                "Count cells and determine their average shape and volume",
@@ -42,8 +41,8 @@ course.desc<-
                "Determine if/how different a cancerous cell is from a healthly cell properly",
                "Turning a video of foam flow into metrics like speed, average deformation, and reorganization",
                "Performing large scale analyses using ETHs clusters and Amazons Cloud Resources, how to do anything with a terabytes of data",
-               "Training an algorithm to automatically identify cells",
-               ""
+               "Robust analysis of millions of images for making decisions about pharmaceuticals to pursue",
+               "Identifying houses, streets, and cars in satellite images"
                )
   )
 cat(schedule.str)
