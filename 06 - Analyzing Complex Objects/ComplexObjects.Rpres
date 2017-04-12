@@ -6,7 +6,6 @@ source("../common/slide_setup.R")
 ## The basic files and libraries needed for most presentations
 # creates the libraries and common-functions sections
 read_chunk("../common/utility_functions.R")
-
 ```
 ```{r libraries}
 ```
@@ -17,7 +16,7 @@ read_chunk("../common/utility_functions.R")
 Quantitative Big Imaging 
 ========================================================
 author: Kevin Mader
-date: 07 April 2016
+date: 06 April 2017
 width: 1440
 height: 900
 css: ../template.css
@@ -29,6 +28,7 @@ ETHZ: 227-0966-00L
 Course Outline
 ========================================================
 ```{r, results='asis'}
+
 source('../common/schedule.R')
 ```
 
@@ -532,13 +532,16 @@ The structure is a overgrown
  - Minimum branch width
 
 
-
-Skeleton: Junctions 
+Skeleton: Junction Overview 
 ===
 
 With the skeleton which is ideally one voxel thick, we can characterize the junctions in the system by looking at the neighborhood of each voxel.
 
-```{r, fig.cap="Skeleton",fig.height=9}
+```{r simple_grid, fig.cap="Skeleton",fig.height=9}
+simple_grid<-subset(
+  expand.grid(x=c(0:10),y=c(0:10)),
+  ((x-1) %% 5==0) | ((y-1) %% 5==0)
+  )
 
 make.junc<-function(in.skel,step.size=1,max.dist=1) {
   t.neighbors<-subset(
@@ -546,14 +549,47 @@ make.junc<-function(in.skel,step.size=1,max.dist=1) {
     sqrt(xv^2+yv^2)<=(max.dist*step.size))
   spread.skel<-ddply(t.neighbors,.(xv,yv),function(c.off) {
     data.frame(x=in.skel$x+c.off[1,"xv"],
-              y=in.skel$y+c.off[1,"yv"])
+              y=in.skel$y+c.off[1,"yv"],
+              has_orig=((c.off[1,"xv"]==0) & (c.off[1,"yv"]==0)))
   })
   f.skel<-subset(
-    ddply(spread.skel,.(x,y),function(in.pt) data.frame(cnt=nrow(in.pt))),
-    cnt>1)
+    ddply(spread.skel,.(x,y),function(in.pt) data.frame(cnt=nrow(in.pt),
+                                                        has_orig=max(in.pt$has_orig))),
+    has_orig>0)
   f.skel$label<-with(f.skel,ifelse(cnt==2,"Terminal",ifelse(cnt==3,"Segment",ifelse(cnt>3,"Junction",""))))
   f.skel
 }
+
+pruned.skeleton<-simple_grid
+
+junc.skel1<-make.junc(pruned.skeleton,step.size=1,max.dist=1)
+
+ggplot(junc.skel1,aes(x=x,y=y,fill=label))+
+  geom_tile(color="black",alpha=0.9)+
+  labs(title="Cross Neighborhood",fill="Type")+
+  theme_bw(20)+coord_equal()
+```
+
+***
+
+As with _nearly_ every operation, the neighborhood we define is important and we can see that if we use a box neighborhood vs a cross neighborhood (4 vs 8 adjacent) we count diagonal connections differently
+
+```{r applied_skel, fig.cap="Skeleton",fig.height=9}
+
+junc.skel2<-make.junc(pruned.skeleton,step.size=1,max.dist=2)
+
+ggplot(junc.skel2,aes(x=x,y=y,fill=label))+
+  geom_tile(color="black",alpha=0.9)+
+  labs(title="Box Neighborhood",fill="Type")+
+  theme_bw(20)+coord_equal()
+```
+
+Skeleton: Junctions Applied
+===
+
+With the skeleton which is ideally one voxel thick, we can characterize the junctions in the system by looking at the neighborhood of each voxel.
+
+```{r, fig.cap="Skeleton",fig.height=9}
 
 pruned.skeleton<-subset(overlap.im,cnt==2)
 
@@ -570,6 +606,7 @@ ggplot(junc.skel1,aes(x=x,y=y,fill=label))+
 As with _nearly_ every operation, the neighborhood we define is important and we can see that if we use a box neighborhood vs a cross neighborhood (4 vs 8 adjacent) we count diagonal connections differently
 
 ```{r, fig.cap="Skeleton",fig.height=9}
+
 junc.skel2<-make.junc(pruned.skeleton,step.size=0.25,max.dist=2)
 
 ggplot(junc.skel2,aes(x=x,y=y,fill=label))+
@@ -590,17 +627,20 @@ The easist way is to further process the image by
 
 
 ***
+
 Most of the other metrics can be simply counted
 
 ### Cross Neighborhood
 
 ```{r, results='asis'}
+
 kable(aggregate(x~label,data=junc.skel1,FUN=length))
 ```
 
 ### Box Neighborhood
 
 ```{r, results='asis'}
+
 kable(aggregate(x~label,data=junc.skel2,FUN=length))
 ```
 
@@ -1092,3 +1132,9 @@ There are hundreds of other techniques which can be applied to these complicated
  - Jiao, Y., Stillinger, F., & Torquato, S. (2007). Modeling heterogeneous materials via two-point correlation functions: Basic principles. Physical Review E, 76(3). doi:10.1103/PhysRevE.76.031110
  - Andrey, P., Kiêu, K., Kress, C., Lehmann, G., Tirichine, L., Liu, Z., … Debey, P. (2010). Statistical analysis of 3D images detects regular spatial distributions of centromeres and chromocenters in animal and plant nuclei. PLoS Computational Biology, 6(7), e1000853. doi:10.1371/journal.pcbi.1000853
  - Haghpanahi, M., & Miramini, S. (2008). Extraction of morphological parameters of tissue engineering scaffolds using two-point correlation function, 463–466. Retrieved from http://portal.acm.org/citation.cfm?id=1713360.1713456
+ 
+ 
+Texture Analysis
+===
+
+

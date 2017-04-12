@@ -1,8 +1,9 @@
 ---
 title: "Quantitative Big Imaging"
-author: "Many Objects and Distributions"
+author: "Texture, Many Objects, and Distributions"
 date: 'ETHZ: 227-0966-00L'
-output: slidy_presentation
+output:
+  slidy_presentation: default
 ---
 
 ```{r global_setup,  warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}
@@ -999,6 +1000,7 @@ ggplot(dist.plots.swirl,
 
 Voronoi Tesselation
 ===
+
 ```{r voronoi_code}
 library(deldir)
 dd.grid.summary<-function(c.grid,...) {
@@ -1833,5 +1835,7 @@ For a wider class of analysis of spatial distribution, there exist a class a fun
 - How is it useful
  - A simple analysis can be used to see the spacing of objects (peaks in the $F(\vec{r})$ function, $A$ and $B$ are the same phase). 
  - Where are cells located in reference to canals (peaks in $F(\vec{r})$ function, $A$ is a point inside a canal $B$ is the cells)
+ 
+
  
  
