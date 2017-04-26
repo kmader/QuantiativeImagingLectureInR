@@ -4,7 +4,7 @@ author: "Statistics and Reproducibility"
 date: 'ETHZ: 227-0966-00L'
 output: 
   slidy_presentation:
-    footer: "Quantitative Big Imaging 2016"
+    footer: "Quantitative Big Imaging 2017"
 ---
 
 ```{r global_setup, warning=FALSE, cache=FALSE,echo=FALSE,error=FALSE,results='hide'}

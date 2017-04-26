@@ -1,6 +1,6 @@
 ---
 title: "Quantitative Big Imaging"
-author: "Texture, Many Objects, and Distributions"
+author: "Many Objects and Distributions"
 date: 'ETHZ: 227-0966-00L'
 output:
   slidy_presentation: default

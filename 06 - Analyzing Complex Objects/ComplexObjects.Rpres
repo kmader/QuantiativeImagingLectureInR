@@ -1137,4 +1137,128 @@ There are hundreds of other techniques which can be applied to these complicated
 Texture Analysis
 ===
 
+http://murphylab.web.cmu.edu/publications/boland/boland_node26.html
 
+Sample Textures
+===
+
+```{r}
+text_imgs<-expand.grid(x=1:16,y=1:16) %>%
+  mutate(val_x=x%%2,
+         val_y=y%%2,
+         val_xy=(x%%2+y%%2)/2.0,
+         val_x2y=(x%%4+y%%2)/2.5,
+         val_x2y2=(x%%4+y%%3)/3.5,
+         val_xya=(x+y)%%3/2.0) %>%
+  melt(id.vars=c("x","y"))
+text_imgs %>%  ggplot(aes(x,y))+
+  geom_raster(aes(fill=value))+
+  facet_wrap(~variable)+
+  coord_equal()+
+  theme_bw(10)
+```
+
+```{r}
+text_imgs %>% ggplot(aes(value))+
+  geom_density(aes(fill=variable),alpha=0.5)+
+  theme_bw(10)
+```
+
+Co-occurrence matrix
+===
+
+$$
+C_{\Delta x, \Delta y}(i,j)=\sum_{x=1}^n\sum_{y=1}^m\begin{cases} 1, & \text{if }I(x, y)=i\text{ and }I(x+\Delta x, y+\Delta y)=j \\ 0, & \text{otherwise}\end{cases}
+$$
+
+- As text $\rightarrow$ for every possible offset $\vec{r}$ = ($\Delta x$, $\Delta y$) given the current intensity ($i$) how likely is it that value at a point offset by that amount is $j$.
+- This is similar to the two point correlation function but is a 4D representation instead of just a 2D
+- In order to use this we need to discretize the image into bins
+
+```{r}
+bin_it<-function(x) as.numeric(as.factor(cut_interval(x,4)))
+bin_image<-text_imgs %>% 
+  mutate(value=bin_it(value)) 
+bin_image %>%
+  group_by(variable,value) %>%
+  summarize(count=n()) %>%
+  ggplot(aes(value,count))+
+  geom_bar(aes(fill=variable),alpha=0.5,stat="identity",pos="dodge")+
+  facet_grid(~variable)+
+  theme_bw(10)
+```
+
+Calculating the Matrix
+===
+
+```{r}
+bin_image %>% 
+  merge(bin_image,by=c("variable")) %>% 
+  mutate(dx=x.y-x.x,dy=y.y-y.x) %>% 
+  subset((abs(dx)<4) & (abs(dy)<4)) %>%
+  group_by(variable,dx,dy,value.x,value.y) %>%
+  summarize(count=n()) %>%
+  mutate(ij=paste0(value.x,"->",value.y)) %>%
+  ggplot(aes(dx,dy))+
+  geom_raster(aes(fill=count))+
+  facet_grid(variable~ij)+
+  theme_bw(10)
+```
+
+Overlapping
+===
+
+```{r}
+bin_image %>% 
+  merge(bin_image,by=c("variable")) %>% 
+  mutate(dx=x.y-x.x,dy=y.y-y.x) %>% 
+  subset((abs(dx)<5) & (abs(dy)<5)) %>%
+  group_by(variable,dx,dy,value.x,value.y) %>%
+  summarize(count=n()) %>%
+  mutate(ij=paste0(value.x,"->",value.y)) %>%
+  ggplot(aes(dx,dy))+
+  geom_contour(aes(z=count,color=ij))+
+  facet_wrap(~variable)+
+  theme_bw(10)
+```
+
+Simple Correlation
+===
+Using the mean difference ($E[i-j]$) instead of all of the i,j pair possiblities 
+
+```{r}
+bin_image %>% 
+  merge(bin_image,by=c("variable")) %>% 
+  mutate(dx=x.y-x.x,dy=y.y-y.x,dv=value.y-value.x) %>% 
+  subset((abs(dx)<4) & (abs(dy)<4)) %>%
+  group_by(variable,dx,dy,value.x,value.y) %>%
+  summarize(score=mean(dv)) %>%
+  ggplot(aes(dx,dy))+
+  geom_raster(aes(fill=score))+
+  facet_wrap(~variable)+
+  coord_equal()+
+  theme_bw(10)
+```
+
+Radial Coordinates
+===
+Rather than using $\Delta x$ and $\Delta y$ we can also show the relative positions 
+
+```{r}
+bin_image %>% 
+  merge(bin_image,by=c("variable")) %>% 
+  mutate(dr=sqrt((x.y-x.x)**2+(y.y-y.x)**2),
+         dtheta=180/pi*atan((y.y-y.x)/(x.y-x.x)),
+         dv=value.y-value.x) %>% 
+  subset(dr<6 & !is.na(dtheta)) %>%
+  mutate(dr=cut_interval(dr,10),
+         dtheta=cut_interval(dtheta,8)) %>%
+  group_by(variable,dr,dtheta,value.x,value.y) %>%
+  summarize(score=mean(dv)) %>%
+  ggplot(aes(dtheta,dr))+
+  geom_tile(aes(fill=score))+
+  facet_wrap(~variable)+
+  coord_polar(theta="x")+
+  scale_fill_distiller(palette = "Spectral")+
+  theme_bw(10)
+```
