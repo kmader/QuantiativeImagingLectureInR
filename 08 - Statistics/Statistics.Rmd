@@ -1,6 +1,6 @@
 ---
 title: "Quantitative Big Imaging"
-author: "Statistics and Reproducibility"
+author: "Statistics, Prediction, and Reproducibility"
 date: 'ETHZ: 227-0966-00L'
 output: 
   slidy_presentation:
@@ -30,11 +30,13 @@ Course Outline
 ========================================================
 
 ```{r, results='asis'}
+
 source('../common/schedule.R')
 ```
 
 Literature / Useful References
 ========================================================
+
 ### Books
 - Jean Claude, Morphometry with R
  - [Online](http://link.springer.com/book/10.1007%2F978-0-387-77789-4) through ETHZ
@@ -69,6 +71,9 @@ Literature / Useful References
 - [Julia Evans - Recalling with Precision](https://www.youtube.com/watch?v=ryZL4XNUmwo)
 - [Stripe's Next Top Model](https://github.com/stripe/topmodel)
 
+### Iris Dataset
+
+- The Iris dataset was used in Fisher's classic 1936 paper, The Use of Multiple Measurements in Taxonomic Problems: http://rcs.chemometrics.ru/Tutorials/classification/Fisher.pdf
 
  
 Previously on QBI ...
@@ -135,12 +140,12 @@ Outline
 - Motivation (Why and How?)
 - Scientific Goals
 - Reproducibility
+- Predicting and Validating
 - Statistical metrics and results
 - Parameterization
  - Parameter sweep
  - Sensitivity analysis
 - Unit Testing
-- Validation
 - Visualization
 
 What do we start with?
@@ -220,9 +225,14 @@ We normally assume
 1. A _fair_ coin has an expected value of $E(\mathcal{X})=0.5 \rightarrow$ 50% Heads, 50% Tails
 1. An _unbiased_ flip(er) means 
  - each flip is independent of the others 
- $$ P(\mathcal{F}_1(\mathcal{X})*\mathcal{F}_2(\mathcal{X}))= P(\mathcal{F}_1(\mathcal{X}))*P(\mathcal{F}_2(\mathcal{X}))$$
+
+$$ P(\mathcal{F}_1(\mathcal{X})*\mathcal{F}_2(\mathcal{X}))= P(\mathcal{F}_1(\mathcal{X}))*P(\mathcal{F}_2(\mathcal{X}))$$
+
  - the expected value of the flip is the same as that of the coin
+ 
 $$ E(\prod_{i=0}^\infty \mathcal{F}_i(\mathcal{X})) = E(\mathcal{X}) $$
+
+
 
 Simple Model to Reality
 ===
@@ -234,7 +244,7 @@ Simple Model to Reality
  - Random / Stochastic variations in coin and flipper cancel out
  - Systematic variations accumulate
 
-***
+
 
 ### Real Experiment
 
@@ -245,6 +255,30 @@ Simple Model to Reality
  - Systematic variations accumulate
 
 
+Iris: A more complicated model
+===
+
+Coin flips are very simple and probably difficult to match to another experiment. A very popular dataset for learning about such values beyond 'coin-flips' is called the Iris dataset which covers a number of measurements from different plants and the corresponding species.
+
+```{r, results='asis'}
+iris %>% sample_n(5) %>% kable
+```
+
+
+
+```{r}
+iris %>% 
+  mutate(plant.id=1:nrow(iris)) %>% 
+  melt(id.vars=c("Species","plant.id"))->flat_iris
+flat_iris %>% 
+  merge(flat_iris,by=c("Species","plant.id")) %>% 
+  ggplot(aes(value.x,value.y,color=Species)) +
+  geom_jitter()+
+  facet_grid(variable.x~variable.y,scales="free")+
+  theme_bw(10)
+```
+
+
 Reproducibility
 ===
 
@@ -253,16 +287,18 @@ A very broad topic with plenty of sub-areas and deeper meanings. We mean two thi
 ### Analysis
 
 The process of going from images to numbers is detailed in a clear manner that _anyone_, _anywhere_ could follow and get the exact (within some tolerance) same numbers from your samples
+
  - No platform dependence
  - No proprietary or "in house" algorithms
  - No manual _clicking_, _tweaking_, or _copying_
  - One script to go from image to result
  
-***
+
 
 ### Measurement
 
 Everything for analysis + taking a measurement several times (noise and exact alignment vary each time) does not change the statistics _significantly_
+
 - No sensitivity to mounting or rotation
 - No sensitivity to noise
 - No dependence on exact illumination
@@ -271,6 +307,7 @@ Reproducible Analysis
 ===
 
 The basis for reproducible scripts and analysis are scripts and macros. Since we will need to perform the same analysis many times to understand how reproducible it is.
+
 ```bash
 IMAGEFILE=$1
 THRESHOLD=130
@@ -284,26 +321,24 @@ matlab -r "inImage=$IMAGEFILE; threshImage=inImage>$THRESHOLD; analysisScript;"
 
 Comparing Groups: Intraclass Correlation Coefficient
 ===
+
 The intraclass correlation coefficient basically looking at how similar objects within a group are compared to between groups
-```{r, fig.height=7}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=runif(40))
-})
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title="Low Group Similarity")+
+
+```{r}
+ggplot(iris,aes(x=Species,y=Sepal.Width))+
+  geom_boxplot()+
+  geom_jitter()+
+  labs(x="Species",y="Sepal Width",title="Low Group Similarity")+
   theme_bw(20)
 ```
 
-***
 
-```{r, fig.height=7}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=nchar(class.name)+runif(40))
-})
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title="High Group Similarity")+
+
+```{r}
+ggplot(iris,aes(x=Species,y=Petal.Length))+
+  geom_boxplot()+
+  geom_jitter()+
+  labs(x="Species",y="Petal Length",title="High Group Similarity")+
   theme_bw(20)
 ```
 
@@ -324,59 +359,59 @@ where
 Intraclass Correlation Coefficient: Values
 ===
 
-```{r, fig.height=9}
+```{r}
 library("ICC")
 
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=runif(40))
-})
-icVal<-ICCbare(name,values,data=test.data)
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title=paste("Low Group Similarity\n ICC:",icVal))+
+icVal<-ICCbare(Species,Sepal.Width,data=iris)
+
+ggplot(iris,aes(x=Species,y=Sepal.Width))+
+  geom_boxplot()+
+  geom_jitter()+
+  labs(x="Species",y="Sepal Width",title=sprintf("Low Group Similarity\n ICC:%2.2f",icVal))+
   theme_bw(20)
 ```
 
-***
 
-```{r, fig.height=9}
-test.data<-ldply(c("Cats","People","ID","Tiger"),function(class.name) {
-  data.frame(name=class.name,values=nchar(class.name)+runif(40))
-})
-icVal<-ICCbare(name,values,data=test.data)
-ggplot(test.data,aes(x=name,y=values))+
-  geom_point()+
-  labs(x="Groups",y="Value",title=paste("High Group Similarity\n ICC:",icVal))+
+
+```{r}
+icVal<-ICCbare(Species,Petal.Length,data=iris)
+
+ggplot(iris,aes(x=Species,y=Petal.Length))+
+  geom_boxplot()+
+  geom_jitter()+
+  labs(x="Species",y="Sepal Width",title=sprintf("High Group Similarity\n ICC:%2.2f",icVal))+
   theme_bw(20)
 ```
 
 Intraclass Correlation Coefficient: Values for Coin-Flips
 ===
 We have one biased coin and try to figure out how many flips we need for the ICC to tell the difference to the normal coin
-```{r, fig.height=7}
-library("ICC")
+
+```{r}
+
 name.list<-c("Coin A","Coin B")
-test.data<-ldply(c(1:length(name.list)),function(class.id) {
+test.data<-plyr::ldply(c(1:length(name.list)),function(class.id) {
   data.frame(name=name.list[class.id],values=runif(100,max=1+2*(class.id-1))>0.5)
 })
 icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_jitter()+
-  labs(x="Groups",y="Value",title=paste("100 flips\n ICC:",icVal))+
+  labs(x="Groups",y="Value",title=sprintf("100 flips\n ICC:%2.2f",icVal))+
   theme_bw(20)
 ```
 
-***
+
 With many thousands of flips we eventually see a very strong difference but unless it is very strongly biased ICC is a poor indicator for the differences
-```{r, fig.height=7}
+
+```{r}
 name.list<-c("Coin A","Coin B")
-test.data<-ldply(c(1:length(name.list)),function(class.id) {
+test.data<-plyr::ldply(c(1:length(name.list)),function(class.id) {
   data.frame(name=name.list[class.id],values=runif(20000,max=1+2*(class.id-1))>0.5)
 })
 icVal<-ICCbare(name,values,data=test.data)
 ggplot(test.data,aes(x=name,y=values))+
   geom_jitter()+
-  labs(x="Groups",y="Value",title=paste("20,000 flips\n ICC:",icVal))+
+  labs(x="Groups",y="Value",title=sprintf("20,000 flips\n ICC:%2.2f",icVal))+
   theme_bw(20)
 ```
 
@@ -392,7 +427,7 @@ Once the reproducibility has been measured, it is possible to compare groups. Th
  - Requires knowledge of probability distribution of the data
  - Modeling can be exceptionally complicated
  
-***
+
 
 ### Loaded Coin
 We have 1 coin from a magic shop
@@ -420,7 +455,7 @@ We assume the distribution of our stochastic variable is normal (Gaussian) and t
 
 - We estimate the likelihood of our observed values assuming they are coming from random observations of a normal process
 
-***
+
 
 ### Student T-Test
 
@@ -448,8 +483,6 @@ names(cfr.table)<-c("Number of Friends Flipping","Probability Someone Flips 5 he
 kable(cfr.table)
 ```
 
-***
-
 Clearly this is not the case, otherwise we could keep flipping coins or ask all of our friends to flip until we got 5 heads and publish
 
 The p-value is only meaningful when the experiment matches what we did. 
@@ -469,7 +502,7 @@ This is very bad news for us. We have the ability to quantify all sorts of inter
 
 So lets throw them all into a magical statistics algorithm and push the __publish__ button
 
-***
+
 
 With our p value of less than 0.05 and a study with 10 samples in each group, how does increasing the number of variables affect our result
 
@@ -537,7 +570,7 @@ ggplot(sig.likelihood.corr,
   theme_bw(20)
 ```
 
-***
+
 
 So no harm done there we just add this correction factor right?
 Well what if we have exactly one variable with shift of 1.0 standard deviations from the other.
@@ -579,6 +612,323 @@ ggplot(sim.data.psig,aes(x=sample.count,y=100*prob.sig))+
   labs(x="Number of Samples in Study",y="Probability of Finding\n Significant Variable (%)",color="Variables")+
   theme_bw(20)
 
+```
+
+
+Predicting and Validating
+===
+
+![Validation Graphic](http://1.bp.blogspot.com/-ME24ePzpzIM/UQLWTwurfXI/AAAAAAAAANw/W3EETIroA80/s1600/drop_shadows_background.png)
+- Borrowed from http://peekaboo-vision.blogspot.ch/2013/01/machine-learning-cheat-sheet-for-scikit.html
+
+### Main Categories
+
+- Classification
+- Regression
+- Clustering
+- Dimensionality Reduction
+
+Overview
+===
+
+Basically all of these are ultimately functions which map inputs to outputs. 
+
+The input could be 
+
+- an image
+- a point
+- a feature vector
+- or a multidimensional tensor
+
+The output is
+
+- a value (regression)
+- a classification (classification)
+- a group (clustering)
+- a vector / matrix / tensor with _fewer_ degrees of input / less noise as the original data (dimensionality reduction)
+
+### Overfitting
+
+The most serious problem with machine learning and such approachs is overfitting your model to your data. Particularly as models get increasingly complex (random forest, neural networks, deep learning, ...), it becomes more and more difficult to apply common sense or even understand exactly what a model is doing and why a given answer is produced. 
+
+```python
+magic_classifier = {}
+# training
+magic_classifier['Dog'] = 'Animal'
+magic_classifier['Bob'] = 'Person'
+magic_classifier['Fish'] = 'Animal'
+```
+
+Now use this classifier, on the training data it works really well
+
+```python
+magic_classifier['Dog'] == 'Animal' # true, 1/1 so far!
+magic_classifier['Bob'] == 'Person' # true, 2/2 still perfect!
+magic_classifier['Fish'] == 'Animal' # true, 3/3, wow!
+```
+
+On new data it doesn't work at all, it doesn't even execute.
+
+```python
+magic_classifier['Octopus'] == 'Animal' # exception?! but it was working so well
+magic_classifier['Dan'] == 'Person' # exception?! 
+```
+
+The above example appeared to be a perfect trainer for mapping names to animals or people, but it just memorized the inputs and reproduced them at the output and so didn't actually learn anything, it just copied.
+
+Validation
+===
+
+Relevant for each of the categories, but applied in a slightly different way depending on the group. The idea is two divide the dataset into groups called training and validation or ideally training, validation, and testing. The analysis is then 
+
+- developed on __training__
+- iteratively validated on __validation__
+- ultimately tested on __testing__
+
+
+Concrete Example: Classifying Flowers
+===
+
+Here we return to the iris data set and try to automatically classify flowers
+
+```{r, results = 'asis'}
+iris  %>% sample_n(5) %>% kable(,digits=2)
+```
+
+Dividing the data
+===
+We first decide on a split, in this case 60%, 30%, 10% for training, validation, and testing and randomly divide up the data.
+
+```{r, echo=T, results='asis'}
+div.iris<-iris %>%
+  mutate(
+    # generate a random number uniformally between 0 and 1
+    rand_value = runif(nrow(iris)),
+    # divide the data based on how high this number is into different groups
+    data_div = ifelse(rand_value<0.6,"Training",
+                      ifelse(rand_value<0.9,"Validation",
+                             "Testing")
+                      )
+  ) %>% select(-rand_value) # we don't need this anymore
+div.iris %>% sample_n(4) %>% kable(digits=2)
+```
+```{r}
+ggplot(div.iris,aes(Sepal.Length,Sepal.Width))+
+  geom_point(aes(shape=data_div,color=Species),size=2)+
+  labs(shape="Type")+
+  facet_grid(~data_div)+
+  coord_equal()+
+  theme_bw(10)
+```
+
+
+Using a simple decision tree
+===
+Making a decision tree can be done by providing the output (```class```) as a function of the input, in this case just a combination of _x1_ and _y1_ (```~x1+y1```). From this a 
+```{r, echo=T}
+library(rpart)
+library(rpart.plot)
+training.data <- div.iris %>% subset(data_div == "Training")
+dec.tree<-rpart(Species~Sepal.Length+Sepal.Width,data=iris)
+```
+
+A tree can be visualized graphically as a trunk (the top most node) dividing progressively into smaller subnodes
+
+```{r}
+prp(dec.tree)
+```
+
+or as a list of rules to apply
+```{r, results='markdown'}
+print(dec.tree)
+```
+
+Overlaying with the prediction data looks good
+
+```{r}
+match_range<-function(ivec,n_length=10) seq(from=min(ivec),to=max(ivec),length=n_length)
+pred.map<-expand.grid(Sepal.Length = match_range(training.data$Sepal.Length), 
+                      Sepal.Width = match_range(training.data$Sepal.Width)) 
+pred.map$pred_class<-predict(dec.tree,pred.map,type="class")
+
+training.data %>% 
+  mutate(pred_class=predict(dec.tree,training.data,type="class"),
+         class_result=ifelse(as.character(pred_class)==as.character(Species),"Correct","Incorrect")
+         )->training.data
+ggplot(pred.map,aes(Sepal.Length,Sepal.Width))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=training.data,aes(color=Species,size=class_result))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+It struggles more with the validation data since it has never seen it before and it's not quite the same as the training
+
+```{r}
+valid.data<-div.iris %>% subset(data_div == "Validation")
+valid.data %>%
+  mutate(pred_class=predict(dec.tree,valid.data,type="class"),
+         class_result=ifelse(as.character(pred_class)==as.character(Species),"Correct","Incorrect")
+         )->valid.data
+
+ggplot(pred.map,aes(Sepal.Length,Sepal.Width))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=Species,size=class_result))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+The test data (__normally we would not look at it at all right now and wait until the very end__) looks even worse and an even smaller fraction is correctly matched.
+
+```{r}
+valid.data<-div.iris %>% subset(data_div == "Testing")
+valid.data %>%
+  mutate(pred_class=predict(dec.tree,valid.data,type="class"),
+         class_result=ifelse(as.character(pred_class)==as.character(Species),"Correct","Incorrect")
+         )->valid.data
+
+ggplot(pred.map,aes(Sepal.Length,Sepal.Width))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=Species,size=class_result))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+
+
+Tricky Concrete Example: Classification
+===
+
+Taking a list of points (feature vectors) where each has an $x1$ and a $y1$ coordinate and a classification (_Happy_ or _Sad_), we can show the data as a table
+
+```{r, results = 'asis'}
+spiral.pts <- expand.grid(x = -50:50, y = -50:50) %>% 
+  subset((x==0) | (y==0)) %>%
+  mutate(
+    r = sqrt(x^2+y^2),
+    th = r/60*2*pi,
+    x1 = cos(th)*x-sin(th)*y,
+    y1 = sin(th)*x+cos(th)*y,
+    class = ifelse(x==0,"Happy","Sad")
+  ) %>% 
+  select(x1,y1,class)
+kable(spiral.pts  %>% sample_n(5),digits=2)
+```
+
+Or graphically
+
+```{r}
+ggplot(spiral.pts,aes(x1,y1,color=class))+
+  geom_point()+
+  theme_bw(20)
+```
+
+You can play around with neural networks and this data set at [TensorFlow Playground](playground.tensorflow.org)
+
+Dividing the data
+===
+We first decide on a split, in this case 60%, 30%, 10% for training, validation, and testing and randomly divide up the data.
+
+```{r, echo=T, results='asis'}
+div.spiral.pts<-spiral.pts %>%
+  mutate(
+    # generate a random number uniformally between 0 and 1
+    rand_value = runif(nrow(spiral.pts)),
+    # divide the data based on how high this number is into different groups
+    data_div = ifelse(rand_value<0.6,"Training",
+                      ifelse(rand_value<0.9,"Validation",
+                             "Testing")
+                      )
+  ) %>% select(-rand_value) # we don't need this anymore
+div.spiral.pts %>% sample_n(4) %>% kable(digits=2)
+```
+
+```{r}
+ggplot(div.spiral.pts,aes(x1,y1))+
+  geom_point(aes(shape=data_div,color=class),size=2)+
+  labs(shape="Type")+
+  facet_wrap(~data_div)+
+  coord_equal()+
+  theme_bw(20)
+```
+
+Using a simple decision tree
+===
+Making a decision tree can be done by providing the output (```class```) as a function of the input, in this case just a combination of _x1_ and _y1_ (```~x1+y1```). From this a 
+```{r, echo=T}
+library(rpart)
+library(rpart.plot)
+training.data <- div.spiral.pts %>% subset(data_div == "Training")
+dec.tree<-rpart(class~x1+y1,data=training.data)
+```
+
+A tree can be visualized graphically as a trunk (the top most node) dividing progressively into smaller subnodes
+
+```{r}
+prp(dec.tree)
+```
+
+or as a list of rules to apply
+```{r, results='markdown'}
+print(dec.tree)
+```
+
+Overlaying with the prediction data looks good
+
+```{r}
+pred.map<-expand.grid(x1 = -50:50, y1 = -50:50) 
+pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
+
+training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+It struggles more with the validation data since it has never seen it before and it's not quite the same as the training
+
+```{r}
+valid.data<-div.spiral.pts %>% subset(data_div == "Validation")
+valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+The test data (__normally we would not look at it at all right now and wait until the very end__) looks even worse and an even smaller fraction is correctly matched.
+
+```{r}
+valid.data<-div.spiral.pts %>% subset(data_div == "Testing")
+valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
+```
+
+We can choose to make more complicated trees by changing the function to something more detailed like
+
+$$ class = x1+y1+x1^2+y1^2+\sin(x1/5)+\sin(y1/5) $$
+
+```{r, echo=T}
+dec.tree<-rpart(class~x1+y1+x1^2+y1^2+sin(x1/5)+sin(y1/5),data=training.data)
+prp(dec.tree)
+```
+
+```{r}
+pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
+
+training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
+ggplot(pred.map,aes(x1,y1))+
+  geom_tile(aes(fill=pred_class),alpha=0.5)+
+  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
+  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
+  theme_bw(20)
 ```
 
 
@@ -643,7 +993,7 @@ g<-make.im.proc.chain(filters=c("Gaussian\nFilter"),
 plot(g)#,layout=layout.circle) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
 ```
 
-***
+
 
 - Green are the images we start with (measurements)
 - Blue are processing steps
@@ -677,7 +1027,7 @@ g<-make.im.proc.chain(filters=c("Gaussian\nFilter","Median\nFilter","Diffusion\n
 plot(g,layout=layout.lgl(g,maxiter=10000,root=1)) #, layout=layout.circle)# layout.fruchterman.reingold)# layout.kamada.kawai) 
 ```
 
-***
+
 
 - A __mess__, over 1080 combinations for just one sample (not even exploring a very large range of threshold values)
 - To calculate this for even one sample can take days (weeks, years) 
@@ -704,7 +1054,7 @@ Given the complexity of the tree, we need to do some pruning
  - Is their orientation meaningful?
  
 
-***
+
 
 ```{r , fig.height=9}
 title.fun<-function(file.name) ""
@@ -721,7 +1071,7 @@ With a quantitative approach, we can calculate the specific shape or distributio
 
 The way we do this is usually a parameter sweep which means taking one (or more) parameters and varying them between the reasonable bounds (judged qualitatively).
 
-***
+
 
 ```{r, load-metrics}
 source('../common/shapeAnalysisProcess.R')
@@ -762,7 +1112,7 @@ Is it always the same?
   theme_bw(24)+labs(y="Volume (um3)",x="Threshold Value",color="Threshold")+ylim(0,1000)
 ```
 
-***
+
 
 ```{r , fig.height=5}
  ggplot(all.lacun,aes(y=PCA1_Z,x=thresh))+
@@ -779,7 +1129,7 @@ $$ S = \frac{|\Delta \textrm{Metric}|}{|\Delta \textrm{Parameter}|} $$
 
 Such a strict definition is not particularly useful for image processing since a threshold has a unit of intensity and a metric might be volume which has $m^3$ so the sensitivity becomes volume per intensity. 
 
-*** 
+ 
 
 ### Practical Sensitivity
 
@@ -917,212 +1267,6 @@ Test Driven programming is a style or approach to programming where the tests ar
 1. shapeAnalysis must run on a 1000x1000 image in 30 seconds
 
 
-Machine Learning
-===
-
-![Validation Graphic](http://1.bp.blogspot.com/-ME24ePzpzIM/UQLWTwurfXI/AAAAAAAAANw/W3EETIroA80/s1600/drop_shadows_background.png)
-- Borrowed from http://peekaboo-vision.blogspot.ch/2013/01/machine-learning-cheat-sheet-for-scikit.html
-
-### Main Categories
-
-- Classification
-- Regression
-- Clustering
-- Dimensionality Reduction
-
-Overview
-===
-
-Basically all of these are ultimately functions which map inputs to outputs. 
-
-The input could be 
-
-- an image
-- a point
-- a feature vector
-- or a multidimensional tensor
-
-The output is
-
-- a value (regression)
-- a classification (classification)
-- a group (clustering)
-- a vector / matrix / tensor with _fewer_ degrees of input / less noise as the original data (dimensionality reduction)
-
-### Overfitting
-
-The most serious problem with machine learning and such approachs is overfitting your model to your data. Particularly as models get increasingly complex (random forest, neural networks, deep learning, ...), it becomes more and more difficult to apply common sense or even understand exactly what a model is doing and why a given answer is produced. 
-
-```python
-magic_classifier = {}
-# training
-magic_classifier['Dog'] = 'Animal'
-magic_classifier['Bob'] = 'Person'
-magic_classifier['Fish'] = 'Animal'
-```
-
-Now use this classifier, on the training data it works really well
-
-```python
-magic_classifier['Dog'] == 'Animal' # true, 1/1 so far!
-magic_classifier['Bob'] == 'Person' # true, 2/2 still perfect!
-magic_classifier['Fish'] == 'Animal' # true, 3/3, wow!
-```
-
-On new data it doesn't work at all, it doesn't even execute.
-
-```python
-magic_classifier['Octopus'] == 'Animal' # exception?! but it was working so well
-magic_classifier['Dan'] == 'Person' # exception?! 
-```
-
-The above example appeared to be a perfect trainer for mapping names to animals or people, but it just memorized the inputs and reproduced them at the output and so didn't actually learn anything, it just copied.
-
-Validation
-===
-
-Relevant for each of the categories, but applied in a slightly different way depending on the group. The idea is two divide the dataset into groups called training and validation or ideally training, validation, and testing. The analysis is then 
-
-- developed on __training__
-- iteratively validated on __validation__
-- ultimately tested on __testing__
-
-
-Concrete Example: Classification
-===
-
-Taking a list of points (feature vectors) where each has an $x1$ and a $y1$ coordinate and a classification (_Happy_ or _Sad_), we can show the data as a table
-
-```{r, results = 'asis'}
-spiral.pts <- expand.grid(x = -50:50, y = -50:50) %>% 
-  subset((x==0) | (y==0)) %>%
-  mutate(
-    r = sqrt(x^2+y^2),
-    th = r/60*2*pi,
-    x1 = cos(th)*x-sin(th)*y,
-    y1 = sin(th)*x+cos(th)*y,
-    class = ifelse(x==0,"Happy","Sad")
-  ) %>% 
-  select(x1,y1,class)
-kable(spiral.pts  %>% sample_n(5))
-```
-
-Or graphically
-
-```{r}
-ggplot(spiral.pts,aes(x1,y1,color=class))+
-  geom_point()+
-  theme_bw(20)
-```
-
-You can play around with neural networks and this data set at [TensorFlow Playground](playground.tensorflow.org)
-
-Dividing the data
-===
-We first decide on a split, in this case 60%, 30%, 10% for training, validation, and testing and randomly divide up the data.
-
-```{r, echo=T, results='asis'}
-div.spiral.pts<-spiral.pts %>%
-  mutate(
-    # generate a random number uniformally between 0 and 1
-    rand_value = runif(nrow(spiral.pts)),
-    # divide the data based on how high this number is into different groups
-    data_div = ifelse(rand_value<0.6,"Training",
-                      ifelse(rand_value<0.9,"Validation",
-                             "Testing")
-                      )
-  ) %>% select(-rand_value) # we don't need this anymore
-div.spiral.pts %>% sample_n(4) %>% kable
-```
-
-```{r}
-ggplot(div.spiral.pts,aes(x1,y1))+
-  geom_point(aes(shape=data_div,color=class),size=3)+
-  labs(shape="Type")+
-  theme_bw(20)
-```
-
-Using a simple decision tree
-===
-Making a decision tree can be done by providing the output (```class```) as a function of the input, in this case just a combination of _x1_ and _y1_ (```~x1+y1```). From this a 
-```{r, echo=T}
-library(rpart)
-training.data <- div.spiral.pts %>% subset(data_div == "Training")
-dec.tree<-rpart(class~x1+y1,data=training.data)
-```
-
-A tree can be visualized graphically as a trunk (the top most node) dividing progressively into smaller subnodes
-
-```{r}
-plot(dec.tree)
-text(dec.tree)
-```
-
-or as a list of rules to apply
-```{r, results='markdown'}
-print(dec.tree)
-```
-
-Overlaying with the prediction data looks good
-
-```{r}
-pred.map<-expand.grid(x1 = -50:50, y1 = -50:50) 
-pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
-
-training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
-ggplot(pred.map,aes(x1,y1))+
-  geom_tile(aes(fill=pred_class),alpha=0.5)+
-  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
-  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
-  theme_bw(20)
-```
-
-It struggles more with the validation data since it has never seen it before and it's not quite the same as the training
-
-```{r}
-valid.data<-div.spiral.pts %>% subset(data_div == "Validation")
-valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
-ggplot(pred.map,aes(x1,y1))+
-  geom_tile(aes(fill=pred_class),alpha=0.5)+
-  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
-  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
-  theme_bw(20)
-```
-
-The test data (__normally we would not look at it at all right now and wait until the very end__) looks even worse and an even smaller fraction is correctly matched.
-
-```{r}
-valid.data<-div.spiral.pts %>% subset(data_div == "Testing")
-valid.data$pred_class<-ifelse(predict(dec.tree,valid.data)[,1]>0.5,"Happy","Sad")
-ggplot(pred.map,aes(x1,y1))+
-  geom_tile(aes(fill=pred_class),alpha=0.5)+
-  geom_point(data=valid.data,aes(color=class,size=(pred_class!=class)))+
-  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
-  theme_bw(20)
-```
-
-We can choose to make more complicated trees by changing the function to something more detailed like
-
-$$ class = x1+y1+x1^2+y1^2+\sin(x1/5)+\sin(y1/5) $$
-
-```{r, echo=T}
-dec.tree<-rpart(class~x1+y1+x1^2+y1^2+sin(x1/5)+sin(y1/5),data=training.data)
-plot(dec.tree)
-text(dec.tree)
-```
-
-```{r}
-pred.map$pred_class<-ifelse(predict(dec.tree,pred.map)[,1]>0.5,"Happy","Sad")
-
-training.data$pred_class<-ifelse(predict(dec.tree,training.data)[,1]>0.5,"Happy","Sad")
-ggplot(pred.map,aes(x1,y1))+
-  geom_tile(aes(fill=pred_class),alpha=0.5)+
-  geom_point(data=training.data,aes(color=class,size=(pred_class!=class)))+
-  labs(fill="Predicted",size = "Incorrectly\nLabeled")+
-  theme_bw(20)
-```
-
-
 Visualization
 ===
 
@@ -1163,7 +1307,7 @@ Key Ideas
 1. Does every line / color serve a purpose?
  - Pretend ink is very expensive
  
-***
+
 
 ### Simple Rules
 
@@ -1255,7 +1399,7 @@ Normally we think of plots in terms of some sort of data which is fed into a plo
 1. These produces entire graphics (sentences) or at least phrases in one go and thus abstract away from the idea of grammar. 
 1. If you spoke by finding entire sentences in a book it would be very ineffective, it is much better to build up word by word
 
-***
+
 
 ### Grammar
 

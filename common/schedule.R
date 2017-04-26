@@ -7,7 +7,7 @@ schedule.str<-"- 23th February - Introduction and Workflows
 - 30th March - Analyzing Single Objects
 - 6th April - Analyzing Complex Objects
 - 13th April - Many Objects and Distributions
-- 27th April -  Statistics and Reproducibility
+- 27th April -  Statistics, Prediction, and Reproducibility
 - 4th May - Dynamic Experiments
 - 11th May - Scaling Up / Big Data
 - 18th May  - Guest Lecture - High Content Screening (M. Prummer) / Project Presentations
